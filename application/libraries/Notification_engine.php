@@ -61,7 +61,7 @@ class Notification_engine {
     public function compile_message($template_text, $context_data = [])
     {
         $school = $this->CI->db->get_where('tbl_school_settings', ['setting_id' => 1])->row();
-        $school_name = $school ? $school->school_name : 'EduCore Public School';
+        $school_name = $school ? $school->school_name : 'School Management';
 
         $defaults = [
             '{school_name}'      => $school_name,

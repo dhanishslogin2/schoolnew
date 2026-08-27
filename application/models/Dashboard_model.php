@@ -4,7 +4,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 /**
  * Dashboard_model
  *
- * Consolidated dashboard queries for the main EduCore dashboard.
+ * Consolidated dashboard queries for the main School dashboard.
  * Each method uses a single optimised SQL query rather than multiple
  * separate calls to keep the dashboard page load fast.
  */

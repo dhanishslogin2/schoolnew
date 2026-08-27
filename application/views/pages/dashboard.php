@@ -1,7 +1,7 @@
 <?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
 
 <!-- =========================================================================
-     Dashboard — EduCore School Management
+     Dashboard — School Management
      All figures are live from the database via Dashboard_model.
      ========================================================================= -->
 
@@ -103,7 +103,7 @@
       </div>
     </div>
     <div class="mt-3 font-headline-lg text-headline-lg text-on-surface">
-      <?php echo educore_currency($fees->monthly_collection); ?>
+      <?php echo school_currency($fees->monthly_collection); ?>
     </div>
     <div class="text-body-md font-body-md text-on-surface-variant">Fees Collected (MTD)</div>
   </div>
@@ -116,7 +116,7 @@
       </div>
     </div>
     <div class="mt-3 font-headline-lg text-headline-lg text-on-surface">
-      <?php echo educore_currency($fees->total_pending); ?>
+      <?php echo school_currency($fees->total_pending); ?>
     </div>
     <div class="text-body-md font-body-md text-on-surface-variant">Pending Fees</div>
   </div>
@@ -249,25 +249,25 @@
         <div>
           <div class="text-body-md font-body-md text-on-surface-variant">Today's Collection</div>
           <div class="font-headline-md text-headline-md text-on-surface">
-            <?php echo educore_currency($fees->today_collection); ?>
+            <?php echo school_currency($fees->today_collection); ?>
           </div>
         </div>
         <div>
           <div class="text-body-md font-body-md text-on-surface-variant">Monthly Collection</div>
           <div class="font-headline-md text-headline-md text-on-surface">
-            <?php echo educore_currency($fees->monthly_collection); ?>
+            <?php echo school_currency($fees->monthly_collection); ?>
           </div>
         </div>
         <div>
           <div class="text-body-md font-body-md text-on-surface-variant">Pending Fees</div>
           <div class="font-headline-md text-headline-md text-on-tertiary-container">
-            <?php echo educore_currency($fees->total_pending); ?>
+            <?php echo school_currency($fees->total_pending); ?>
           </div>
         </div>
         <div>
           <div class="text-body-md font-body-md text-on-surface-variant">Overdue Fees</div>
           <div class="font-headline-md text-headline-md text-error">
-            <?php echo educore_currency($fees->overdue_amount); ?>
+            <?php echo school_currency($fees->overdue_amount); ?>
           </div>
         </div>
       </div>
@@ -333,7 +333,7 @@
                 </div>
               </div>
               <span class="text-[11px] text-on-surface-variant whitespace-nowrap">
-                <?php echo educore_timeago($notice->publish_date); ?>
+                <?php echo school_timeago($notice->publish_date); ?>
               </span>
             </div>
           </li>

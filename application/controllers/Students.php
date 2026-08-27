@@ -126,7 +126,7 @@ class Students extends MY_Controller {
                 $studentCol,
                 html_escape($classDisplay),
                 html_escape($st->gender),
-                educore_date($st->date_of_birth),
+                school_date($st->date_of_birth),
                 html_escape($st->guardian_name ?: '—'),
                 html_escape($st->guardian_phone ?: '—'),
                 $statusBadge,

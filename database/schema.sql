@@ -1,5 +1,5 @@
 -- ============================================================================
--- EduCore School Management Software - Relational Database Schema
+-- School Management Software - Relational Database Schema
 -- Database: db_school
 -- Engine: InnoDB | Character Set: utf8mb4 | Collation: utf8mb4_unicode_ci
 -- All tables strictly follow the 'tbl_' prefix convention.
@@ -1206,10 +1206,10 @@ CREATE TABLE `tbl_communication_settings` (
   `enable_whatsapp` TINYINT(1) NOT NULL DEFAULT 1,
   `enable_email` TINYINT(1) NOT NULL DEFAULT 1,
   `sms_provider` VARCHAR(50) NOT NULL DEFAULT 'Generic SMS Gateway',
-  `sms_sender_id` VARCHAR(20) NOT NULL DEFAULT 'EDUSCH',
+  `sms_sender_id` VARCHAR(20) NOT NULL DEFAULT 'SCHOLL',
   `whatsapp_provider` VARCHAR(50) NOT NULL DEFAULT 'WhatsApp Business API',
-  `email_from_name` VARCHAR(100) NOT NULL DEFAULT 'EduCore Model School',
-  `email_from_address` VARCHAR(100) NOT NULL DEFAULT 'notifications@educore.school',
+  `email_from_name` VARCHAR(100) NOT NULL DEFAULT 'School Management',
+  `email_from_address` VARCHAR(100) NOT NULL DEFAULT 'notifications@school.edu',
   `enable_scheduled_jobs` TINYINT(1) NOT NULL DEFAULT 1,
   `max_retries` INT UNSIGNED NOT NULL DEFAULT 3,
   `retry_interval_minutes` INT UNSIGNED NOT NULL DEFAULT 15,
@@ -2313,4 +2313,4 @@ INSERT INTO `tbl_certificates` (`certificate_id`, `student_id`, `certificate_typ
 
 -- School Settings
 INSERT INTO `tbl_school_settings` (`setting_id`, `school_name`, `school_code`, `established_year`, `principal_name`, `phone`, `email`, `website`, `address`, `description`) VALUES
-(1, 'EduCore Public School', 'EDU-KL-2026', '1998', 'Antony Xavier', '+91 484 234 5678', 'info@educore.edu', 'www.educore.edu', 'Kakkanad, Ernakulam, Kerala - 682030', 'A CBSE-affiliated school known for excellence in academics and sports.');
+(1, 'School', 'SCH-KL-2026', '1998', 'Antony Xavier', '+91 484 234 5678', 'info@school.edu', 'www.school.edu', 'Kakkanad, Ernakulam, Kerala - 682030', 'A CBSE-affiliated school known for excellence in academics and sports.');

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EduCore — shared app shell (sidebar + header) and small UI helpers.
+   School — shared app shell (sidebar + header) and small UI helpers.
    Loaded on every page via <script src="<?php echo base_url('assets/app.js'); ?>">.
    Renders into #sidebar-root and #header-root, wires up all interactivity,
    and highlights the active nav item based on body[data-page].
@@ -1068,7 +1068,7 @@ function renderSidebar(activeKey) {
       <div class="w-9 h-9 rounded-full bg-white/15 text-white flex items-center justify-center shrink-0">
         ${iconSpan("school", "text-white text-[20px]")}
       </div>
-      <a href="${url("dashboard")}" class="sidebar-label font-headline-md text-headline-md text-white font-bold tracking-tight truncate">EduCore</a>
+      <a href="${url("dashboard")}" class="sidebar-label font-headline-md text-headline-md text-white font-bold tracking-tight truncate">School</a>
       <button id="sidebar-collapse-btn" type="button" class="ml-auto hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors">
         ${iconSpan("dock_to_right", "text-[20px]")}
       </button>
@@ -1087,7 +1087,7 @@ function renderSidebar(activeKey) {
 }
 
 function renderHeader(pageKey, breadcrumb) {
-  const title = PAGE_TITLES[pageKey] || "EduCore";
+  const title = PAGE_TITLES[pageKey] || "School";
   const crumbHtml = (breadcrumb && breadcrumb.length ? breadcrumb : ["Dashboard", title])
     .map((c, i, arr) => (i === arr.length - 1
       ? `<span class="text-on-surface font-medium">${c}</span>`
@@ -1303,12 +1303,12 @@ function badge(status) {
 }
 
 // =============================================================================
-// EduCore Application Global Namespace
+// School Application Global Namespace
 // =============================================================================
-window.EduCore = window.EduCore || {};
+window.School = window.School || {};
 
 // 1. Centralized AJAX Helper
-EduCore.ajax = {
+School.ajax = {
   request: function(options) {
     const config = Object.assign({
       url: '',
@@ -1323,7 +1323,7 @@ EduCore.ajax = {
     }, options);
 
     if (typeof jQuery === 'undefined') {
-      console.error('jQuery is required for EduCore.ajax');
+      console.error('jQuery is required for School.ajax');
       return;
     }
 
@@ -1334,7 +1334,7 @@ EduCore.ajax = {
       dataType: config.dataType,
       beforeSend: function(xhr, settings) {
         if (config.showLoading) {
-          EduCore.ui.showLoading();
+          School.ui.showLoading();
         }
         if (typeof config.beforeSend === 'function') {
           config.beforeSend(xhr, settings);
@@ -1364,7 +1364,7 @@ EduCore.ajax = {
       },
       complete: function(xhr, status) {
         if (config.showLoading) {
-          EduCore.ui.hideLoading();
+          School.ui.hideLoading();
         }
         if (typeof config.complete === 'function') {
           config.complete(xhr, status);
@@ -1375,7 +1375,7 @@ EduCore.ajax = {
 };
 
 // 2. Centralized DataTables Helper
-EduCore.DataTable = {
+School.DataTable = {
   init: function(selector, options) {
     if (typeof jQuery === 'undefined' || typeof jQuery.fn.DataTable === 'undefined') {
       return null;
@@ -1409,13 +1409,13 @@ EduCore.DataTable = {
 };
 
 // 3. UI Helpers
-EduCore.ui = {
+School.ui = {
   badge: badge,
   showLoading: function() {
-    let loader = document.getElementById('educore-global-loader');
+    let loader = document.getElementById('school-global-loader');
     if (!loader) {
       loader = document.createElement('div');
-      loader.id = 'educore-global-loader';
+      loader.id = 'school-global-loader';
       loader.className = 'fixed inset-0 bg-primary/20 backdrop-blur-xs flex items-center justify-center z-50';
       loader.innerHTML = '<div class="bg-surface-container-lowest p-4 rounded-xl shadow-xl flex items-center gap-3 border border-outline-variant/60 font-medium text-body-md text-on-surface"><span class="material-symbols-outlined animate-spin text-secondary text-[24px]">sync</span> Processing request...</div>';
       document.body.appendChild(loader);
@@ -1423,7 +1423,7 @@ EduCore.ui = {
     loader.classList.remove('hidden');
   },
   hideLoading: function() {
-    const loader = document.getElementById('educore-global-loader');
+    const loader = document.getElementById('school-global-loader');
     if (loader) {
       loader.classList.add('hidden');
     }

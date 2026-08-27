@@ -22,10 +22,10 @@
       <div class="text-center pb-6 border-b-2 border-outline-variant/80">
         <div class="flex items-center justify-center gap-3 mb-2">
           <span class="material-symbols-outlined text-primary text-[40px]">school</span>
-          <h1 class="text-2xl sm:text-3xl font-extrabold uppercase tracking-wide text-on-surface">EduCore Model School</h1>
+          <h1 class="text-2xl sm:text-3xl font-extrabold uppercase tracking-wide text-on-surface">Model School</h1>
         </div>
         <p class="text-body-md text-on-surface-variant font-medium">Affiliated to Central Board of Secondary Education • School Code: 84210</p>
-        <p class="text-[12px] text-on-surface-variant">Knowledge Park, Institutional Area, City Campus • Phone: +91 98765 43210 • Email: info@educore.edu</p>
+        <p class="text-[12px] text-on-surface-variant">Knowledge Park, Institutional Area, City Campus • Phone: +91 98765 43210 • Email: info@school.edu</p>
         <div class="mt-3 inline-block px-4 py-1 rounded-full bg-primary-fixed text-primary font-bold text-[13px] uppercase tracking-wider">
           <?php echo html_escape($settings->report_card_header ?: 'Official Academic Report Card'); ?>
         </div>

@@ -14,7 +14,7 @@ class Auth extends CI_Controller {
     {
         parent::__construct();
         $this->load->model('User_model');
-        $this->load->helper('app'); // educore_initials()
+        $this->load->helper('app'); // school_initials()
     }
 
     public function index()
@@ -47,7 +47,7 @@ class Auth extends CI_Controller {
 
                 if ($user)
                 {
-                    $initials = educore_initials($user->name);
+                    $initials = school_initials($user->name);
 
                     // Store the canonical nested 'user' array plus essential
                     // top-level keys for backward compatibility with controllers

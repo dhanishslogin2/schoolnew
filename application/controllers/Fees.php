@@ -407,9 +407,9 @@ class Fees extends MY_Controller {
             $studentCol = '<a href="' . site_url('students/profile/' . $p->student_id) . '" class="text-on-surface font-medium hover:underline">' . html_escape($p->first_name . ' ' . $p->last_name) . '</a>' .
                 '<div class="text-[12px] text-on-surface-variant font-mono">' . html_escape($p->admission_number) . '</div>';
             $classCol = html_escape(trim(($p->class_name ?: '') . ' ' . ($p->section_name ?: '')));
-            $amountCol = educore_currency($p->amount_paid);
+            $amountCol = school_currency($p->amount_paid);
             $modeCol = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-surface-container-high text-on-surface-variant">' . html_escape($p->payment_mode) . '</span>';
-            $dateCol = educore_date($p->payment_date);
+            $dateCol = school_date($p->payment_date);
             $actionCol = '<a href="' . site_url('fees/receipt/' . $p->payment_id) . '" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors inline-flex items-center gap-1 text-[12px] font-medium" title="View Receipt">' .
                 '<span class="material-symbols-outlined text-[16px]">receipt</span> Print' .
             '</a>';

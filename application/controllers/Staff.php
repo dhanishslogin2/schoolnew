@@ -95,7 +95,7 @@ class Staff extends MY_Controller {
 
         $data = array();
         foreach ($staff_list as $s) {
-            $initials = educore_initials($s->full_name);
+            $initials = school_initials($s->full_name);
 
             $statusBadge = ($s->status == 1)
                 ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-secondary-container text-on-secondary-container">Active</span>'

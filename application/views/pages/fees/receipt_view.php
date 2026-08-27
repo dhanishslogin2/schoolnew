@@ -22,7 +22,7 @@
       <div class="text-center pb-5 border-b-2 border-outline-variant/80">
         <div class="flex items-center justify-center gap-2.5 mb-1">
           <span class="material-symbols-outlined text-primary text-[36px]">school</span>
-          <h1 class="text-2xl font-extrabold uppercase tracking-wide text-on-surface">EduCore Model School</h1>
+          <h1 class="text-2xl font-extrabold uppercase tracking-wide text-on-surface">Model School</h1>
         </div>
         <p class="text-body-md text-on-surface-variant font-medium">Affiliated to CBSE • Institutional Campus, City Area • Phone: +91 98765 43210</p>
         <div class="mt-2 inline-block px-3.5 py-0.5 rounded-full bg-primary-fixed text-primary font-bold text-[12px] uppercase tracking-wider">

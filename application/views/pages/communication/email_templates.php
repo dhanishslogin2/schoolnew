@@ -83,7 +83,7 @@
 
         <div class="p-4 rounded-xl bg-white border border-outline-variant/40 space-y-3 text-slate-900 shadow-sm">
           <div class="border-b border-slate-200 pb-2 text-xs space-y-1">
-            <div><strong>From:</strong> notifications@educore.school</div>
+            <div><strong>From:</strong> notifications@school.edu</div>
             <div><strong>Subject:</strong> <span id="emailSubjText" class="font-semibold text-primary"></span></div>
           </div>
           <div id="emailRenderedHtml" class="text-sm font-sans leading-relaxed py-2"></div>

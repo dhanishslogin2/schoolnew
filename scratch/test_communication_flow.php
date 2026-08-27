@@ -67,13 +67,7 @@ assertTest("Urgent Announcement created (ID: {$ann_id})", $ann_id > 0);
 // TEST 4: Dynamic Template Variable Parsing
 echo "\n4. Testing Template Variable Parsing:\n";
 $tmpl_str = "Dear {parent_name}, your child {student_name} has a pending fee of Rs. {amount} due on {due_date}. - {school_name}";
-$vars = [
-    '{parent_name}'  => 'John Doe',
-    '{student_name}' => 'Alice Doe',
-    '{amount}'       => '4500',
-    '{due_date}'     => '25 Aug 2026',
-    '{school_name}'  => 'EduCore International'
-];
+
 foreach ($vars as $k => $v) {
     $tmpl_str = str_ireplace($k, $v, $tmpl_str);
 }

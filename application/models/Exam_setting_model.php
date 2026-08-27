@@ -22,7 +22,7 @@ class Exam_setting_model extends CI_Model {
                 'include_failed_in_rank'         => 0,
                 'show_rank_on_report_card'       => 1,
                 'show_attendance_on_report_card' => 1,
-                'report_card_header'             => 'EduCore International Model School - Official Academic Report Card',
+                'report_card_header'             => 'School - Official Academic Report Card',
                 'principal_signature_title'      => 'Principal',
                 'teacher_signature_title'        => 'Class Teacher',
             ];

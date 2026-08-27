@@ -100,8 +100,8 @@
 
     <script>
       document.addEventListener("DOMContentLoaded", function() {
-        if (typeof jQuery !== 'undefined' && typeof EduCore !== 'undefined') {
-          EduCore.DataTable.init('#users-table', {
+        if (typeof jQuery !== 'undefined' && typeof School !== 'undefined') {
+          School.DataTable.init('#users-table', {
             serverSide: true,
             processing: true,
             searching: false,

@@ -234,8 +234,8 @@ $mysqli->query("CREATE TABLE IF NOT EXISTS `tbl_communication_settings` (
   `sms_provider` VARCHAR(50) NOT NULL DEFAULT 'Generic SMS Gateway',
   `sms_sender_id` VARCHAR(20) NOT NULL DEFAULT 'EDUSCH',
   `whatsapp_provider` VARCHAR(50) NOT NULL DEFAULT 'WhatsApp Business API',
-  `email_from_name` VARCHAR(100) NOT NULL DEFAULT 'EduCore International School',
-  `email_from_address` VARCHAR(100) NOT NULL DEFAULT 'notifications@educore.school',
+  `email_from_name` VARCHAR(100) NOT NULL DEFAULT 'School International School',
+  `email_from_address` VARCHAR(100) NOT NULL DEFAULT 'notifications@school.school',
   `enable_scheduled_jobs` TINYINT(1) NOT NULL DEFAULT 1,
   `max_retries` INT UNSIGNED NOT NULL DEFAULT 3,
   `retry_interval_minutes` INT UNSIGNED NOT NULL DEFAULT 15,
@@ -254,7 +254,7 @@ if ($set_cnt == 0) {
         enable_scheduled_jobs, max_retries, retry_interval_minutes, parent_teacher_direct_messaging
     ) VALUES (
         1, 1, 1, 1, 1, 'Generic SMS Gateway', 'EDUSCH', 'WhatsApp Business API',
-        'EduCore Model School', 'notifications@educore.school', 1, 3, 15, 1
+        'School Model School', 'notifications@school.school', 1, 3, 15, 1
     )");
 }
 

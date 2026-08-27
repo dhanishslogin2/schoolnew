@@ -332,7 +332,7 @@ $config['cache_query_string'] = FALSE;
 | https://codeigniter.com/user_guide/libraries/encryption.html
 |
 */
-$config['encryption_key'] = 'educore-school-management-change-this-key';
+$config['encryption_key'] = 'school-secret-key-32chars!!';
 
 /*
 |--------------------------------------------------------------------------

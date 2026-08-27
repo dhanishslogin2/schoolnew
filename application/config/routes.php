@@ -54,7 +54,7 @@ $route['404_override'] = 'errors/error_404';
 $route['translate_uri_dashes'] = FALSE;
 
 /*
- * EduCore route aliases
+ * School route aliases
  * Default CI3 controller/method routing already resolves most URIs
  * (e.g. /students/add -> Students::add()). These aliases only cover
  * the handful of URIs that need a nicer public path than the raw

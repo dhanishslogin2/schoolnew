@@ -73,8 +73,8 @@
       }
 
       document.addEventListener("DOMContentLoaded", function() {
-        if (typeof jQuery !== 'undefined' && typeof EduCore !== 'undefined') {
-          EduCore.DataTable.init('#staff-table', {
+        if (typeof jQuery !== 'undefined' && typeof School !== 'undefined') {
+          School.DataTable.init('#staff-table', {
             serverSide: true,
             processing: true,
             searching: false,

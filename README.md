@@ -1,4 +1,4 @@
-# EduCore School Management System — CodeIgniter 3.1.11
+# School Management System — CodeIgniter 3.1.11
 
 A fully normalized, database-driven CodeIgniter 3.1.11 MVC application with Tailwind CSS UI.
 

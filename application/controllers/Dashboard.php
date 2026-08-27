@@ -5,7 +5,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * Dashboard
  *
  * Loads real-time school statistics from the database and renders
- * the main EduCore dashboard.  All stat cards, attendance summary,
+ * the main School dashboard.  All stat cards, attendance summary,
  * fees overview, events and notices are fully dynamic.
  */
 class Dashboard extends MY_Controller {

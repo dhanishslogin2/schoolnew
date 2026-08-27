@@ -253,7 +253,7 @@ if ($res->fetch_assoc()['cnt'] == 0) {
         1, 2, 100.00, 35.00,
         1, 35.00, 1,
         'Percentage', 0, 1, 1,
-        'EduCore International Model School - Official Academic Report Card', 'Principal', 'Class Teacher'
+        'School International Model School - Official Academic Report Card', 'Principal', 'Class Teacher'
     )");
 }
 

@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 /**
- * EduCore Application Helper
+ * School Application Helper
  *
  * Centralised utility functions used across controllers, models, and views.
  * Autoloaded via config/autoload.php.
@@ -16,9 +16,9 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * Generate up to 2 initials from a full name.
  * e.g. "Ananthu Kumar" → "AK",  "Admin" → "AD"
  */
-if ( ! function_exists('educore_initials'))
+if ( ! function_exists('school_initials'))
 {
-    function educore_initials($name)
+    function school_initials($name)
     {
         $name = trim((string)$name);
         if ($name === '') return 'U';
@@ -41,9 +41,9 @@ if ( ! function_exists('educore_initials'))
  * Format a number as Indian currency.
  * e.g. 841200 → "₹ 8,41,200"
  */
-if ( ! function_exists('educore_currency'))
+if ( ! function_exists('school_currency'))
 {
-    function educore_currency($amount, $symbol = '₹', $decimals = 2)
+    function school_currency($amount, $symbol = '₹', $decimals = 2)
     {
         $amount = (float)$amount;
         // Indian numbering system formatting
@@ -67,9 +67,9 @@ if ( ! function_exists('educore_currency'))
  * Return a human-readable "time ago" string.
  * e.g. "2 hours ago", "3 days ago"
  */
-if ( ! function_exists('educore_timeago'))
+if ( ! function_exists('school_timeago'))
 {
-    function educore_timeago($datetime)
+    function school_timeago($datetime)
     {
         if (empty($datetime)) return '—';
         $now  = time();
@@ -90,9 +90,9 @@ if ( ! function_exists('educore_timeago'))
 /**
  * Combine first and last name into a consistently formatted full name.
  */
-if ( ! function_exists('educore_student_name'))
+if ( ! function_exists('school_student_name'))
 {
-    function educore_student_name($first_name, $last_name = '')
+    function school_student_name($first_name, $last_name = '')
     {
         return trim(trim((string)$first_name) . ' ' . trim((string)$last_name));
     }
@@ -102,9 +102,9 @@ if ( ! function_exists('educore_student_name'))
  * Format a date for display (accepts Y-m-d or any strtotime-compatible string).
  * e.g. "2025-08-15" → "15 Aug 2025"
  */
-if ( ! function_exists('educore_date'))
+if ( ! function_exists('school_date'))
 {
-    function educore_date($date, $format = 'd M Y')
+    function school_date($date, $format = 'd M Y')
     {
         if (empty($date) || $date === '0000-00-00') return '—';
         $ts = is_numeric($date) ? (int)$date : strtotime($date);
@@ -120,9 +120,9 @@ if ( ! function_exists('educore_date'))
  * Return a Tailwind-styled badge span for common status values.
  * Safe to echo directly in views (values are html_escape'd).
  */
-if ( ! function_exists('educore_status_badge'))
+if ( ! function_exists('school_status_badge'))
 {
-    function educore_status_badge($status)
+    function school_status_badge($status)
     {
         $map = [
             'Active'    => 'bg-secondary-container text-on-secondary-container',
@@ -150,9 +150,9 @@ if ( ! function_exists('educore_status_badge'))
 /**
  * Render a yes/no icon badge.
  */
-if ( ! function_exists('educore_yn_badge'))
+if ( ! function_exists('school_yn_badge'))
 {
-    function educore_yn_badge($value)
+    function school_yn_badge($value)
     {
         if ($value === 'y' || $value === 1 || $value === true) {
             return '<span class="material-symbols-outlined text-[16px] text-on-secondary-container">check_circle</span>';
@@ -169,9 +169,9 @@ if ( ! function_exists('educore_yn_badge'))
  * Cast a value to a positive integer. Returns NULL if invalid/zero.
  * Use for URL segment IDs to avoid IDOR with non-numeric values.
  */
-if ( ! function_exists('educore_id'))
+if ( ! function_exists('school_id'))
 {
-    function educore_id($value)
+    function school_id($value)
     {
         $id = (int)$value;
         return $id > 0 ? $id : NULL;
@@ -181,9 +181,9 @@ if ( ! function_exists('educore_id'))
 /**
  * Safely get an array value with a default fallback.
  */
-if ( ! function_exists('educore_array_get'))
+if ( ! function_exists('school_array_get'))
 {
-    function educore_array_get(array $arr, $key, $default = NULL)
+    function school_array_get(array $arr, $key, $default = NULL)
     {
         return isset($arr[$key]) ? $arr[$key] : $default;
     }

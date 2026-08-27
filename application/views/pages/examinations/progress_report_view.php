@@ -24,7 +24,7 @@
           <span class="material-symbols-outlined text-primary text-[36px]">trending_up</span>
           <h1 class="text-2xl font-extrabold uppercase tracking-wide text-on-surface">Comprehensive Progress Report</h1>
         </div>
-        <p class="text-body-md text-on-surface-variant font-medium">EduCore Model School • Longitudinal Academic Trend Analysis</p>
+        <p class="text-body-md text-on-surface-variant font-medium">Model School • Longitudinal Academic Trend Analysis</p>
       </div>
 
       <!-- Student Meta -->

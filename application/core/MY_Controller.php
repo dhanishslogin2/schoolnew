@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 /**
- * MY_Controller — Base controller for every EduCore page.
+ * MY_Controller — Base controller for every School page.
  *
  * Provides:
  *  - Authentication guard (redirects to login if no session)
@@ -78,37 +78,37 @@ class MY_Controller extends CI_Controller {
                     ->set_output(json_encode([
                         'status'  => 'error',
                         'message' => 'Access denied. Required permission: ' . $permission_key,
-                    ]))
-                    ->_display();
+                    ]));
+                $this->output->_display();
                 exit;
             }
 
-            $this->session->set_flashdata(
-                'error',
-                'Access Denied: You do not have permission to perform this action.'
-            );
-            redirect('unauthorized');
+            show_error('You do not have permission to access this page.', 403, '403 Forbidden');
         }
     }
 
     // -------------------------------------------------------------------------
-    // View renderer
+    // Layout renderer
     // -------------------------------------------------------------------------
 
     /**
-     * Loads templates/header → $view → templates/footer.
+     * Renders a 3-part layout: templates/header -> $view -> templates/footer.
+     * Automatically passes common view variables so controllers don't have to:
+     *   - $current_user
+     *   - $is_super_admin
+     *   - $effective_permissions  (array of keys e.g. ['students.view', ...])
+     *   - $title
+     *   - $page_key               (used by sidebar JS to highlight active item)
+     *   - $breadcrumb
      *
-     * Effective permissions are read from Rbac's per-request cache so no
-     * extra DB queries are added here after the first permission check.
-     *
-     * @param  string $view   View path relative to application/views/
+     * @param  string $view   Path relative to application/views/ (e.g. 'pages/students/index')
      * @param  array  $data   Data array passed to all three view files
      */
     public function render($view, array $data = array())
     {
         $uid = (int)($this->current_user->user_id ?? 0);
 
-        $data['title']               = $data['title'] ?? 'EduCore';
+        $data['title']               = $data['title'] ?? 'School';
         $data['page_key']            = $data['page_key'] ?? '';
         $data['breadcrumb']          = isset($data['breadcrumb'])
                                          ? json_encode($data['breadcrumb'])

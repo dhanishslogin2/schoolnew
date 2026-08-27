@@ -3,7 +3,7 @@
 <html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Login - EduCore School Management</title>
+<title>Login - School Management</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
@@ -65,7 +65,7 @@
 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-fixed mb-4">
 <span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">school</span>
 </div>
-<h1 class="font-headline-lg text-headline-lg text-primary">EduCore</h1>
+<h1 class="font-headline-lg text-headline-lg text-primary">School</h1>
 <p class="font-body-md text-body-md text-on-surface-variant mt-2">Sign in to access your administrative dashboard.</p>
 </div>
 <?php echo form_open('auth/login', array('id' => 'login-form', 'class' => 'space-y-6')); ?>

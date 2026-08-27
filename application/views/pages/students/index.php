@@ -79,8 +79,8 @@
       }
 
       document.addEventListener("DOMContentLoaded", function() {
-        if (typeof jQuery !== 'undefined' && typeof EduCore !== 'undefined') {
-          EduCore.DataTable.init('#students-table', {
+        if (typeof jQuery !== 'undefined' && typeof School !== 'undefined') {
+          School.DataTable.init('#students-table', {
             serverSide: true,
             processing: true,
             searching: false, // Page header has dedicated search input

@@ -94,8 +94,8 @@
 
     <script>
       document.addEventListener("DOMContentLoaded", function() {
-        if (typeof jQuery !== 'undefined' && typeof EduCore !== 'undefined') {
-          EduCore.DataTable.init('#payments-table', {
+        if (typeof jQuery !== 'undefined' && typeof School !== 'undefined') {
+          School.DataTable.init('#payments-table', {
             serverSide: true,
             processing: true,
             searching: false,

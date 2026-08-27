@@ -58,7 +58,7 @@
 
     <!-- Print Header -->
     <div class="hidden print:block text-center pb-4 mb-4 border-b border-outline-variant">
-      <h1 class="text-2xl font-bold text-on-surface uppercase">EduCore Model School</h1>
+      <h1 class="text-2xl font-bold text-on-surface uppercase">Model School</h1>
       <h2 class="text-lg font-semibold text-primary mt-1">Assignment Completion Report</h2>
     </div>
 

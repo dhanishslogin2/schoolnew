@@ -85,7 +85,7 @@
 
         <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
           <div class="flex items-center justify-between text-xs text-emerald-800">
-            <span>Verified Official Account: <strong>EduCore School</strong></span>
+            <span>Verified Official Account: <strong>School</strong></span>
             <span class="material-symbols-outlined text-emerald-600 text-[18px]">verified</span>
           </div>
           <div id="waRenderedText" class="p-3.5 bg-white rounded-lg border border-emerald-100 text-xs font-sans text-slate-900 whitespace-pre-wrap leading-relaxed shadow-sm"></div>

@@ -92,8 +92,8 @@ class Users extends MY_Controller {
 
         $data = [];
         foreach ($user_list as $u) {
-            $initials = educore_initials($u->name);
-            $statusBadge = educore_status_badge($u->status);
+            $initials = school_initials($u->name);
+            $statusBadge = school_status_badge($u->status);
 
             $userCol = '<div class="flex items-center gap-2.5">' .
                 '<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[11px] font-semibold shrink-0">' . html_escape($initials) . '</div>' .
@@ -121,7 +121,7 @@ class Users extends MY_Controller {
                 $roleCol,
                 $contactCol,
                 $statusBadge,
-                educore_date($u->created_at),
+                school_date($u->created_at),
                 $actionsCol
             ];
         }
