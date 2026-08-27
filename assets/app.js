@@ -1147,9 +1147,8 @@ function renderSidebar(activeKey) {
   <div id="sidebar-overlay" class="fixed inset-0 bg-on-surface/40 z-30 hidden lg:hidden"></div>
 
   <aside id="app-sidebar"
-    class="fixed lg:sticky top-0 left-0 h-screen shrink-0 bg-secondary border-r border-emerald-900/40
-    flex flex-col z-40 -translate-x-full lg:translate-x-0 transition-transform duration-200 relative">
-    <div id="sidebar-resize-handle" class="sidebar-resize-handle" title="Drag right edge to resize sidebar (Double-click to reset)"></div>
+    class="fixed lg:sticky top-0 left-0 h-screen w-[264px] shrink-0 bg-secondary border-r border-emerald-900/40
+    flex flex-col z-40 -translate-x-full lg:translate-x-0 transition-transform duration-200">
     <div class="h-16 flex items-center gap-3 px-4 border-b border-white/10 shrink-0">
       <div class="w-9 h-9 rounded-full bg-white/15 text-white flex items-center justify-center shrink-0">
         ${iconSpan("school", "text-white text-[20px]")}
@@ -1170,79 +1169,6 @@ function renderSidebar(activeKey) {
       </a>
     </div>
   </aside>`;
-}
-
-function initSidebarResize() {
-  const MIN_WIDTH = 220;
-  const DEFAULT_WIDTH = 264;
-  const MAX_WIDTH = 380;
-  const STORAGE_KEY = "school_sidebar_width";
-
-  const sidebar = document.getElementById("app-sidebar");
-  const handle = document.getElementById("sidebar-resize-handle");
-  if (!sidebar || !handle) return;
-
-  // Restore saved width from localStorage
-  const savedWidth = parseInt(localStorage.getItem(STORAGE_KEY), 10);
-  if (!isNaN(savedWidth) && savedWidth >= MIN_WIDTH && savedWidth <= MAX_WIDTH) {
-    document.documentElement.style.setProperty("--sidebar-width", savedWidth + "px");
-  } else {
-    document.documentElement.style.setProperty("--sidebar-width", DEFAULT_WIDTH + "px");
-  }
-
-  let isDragging = false;
-  let startX = 0;
-  let startWidth = DEFAULT_WIDTH;
-
-  handle.addEventListener("pointerdown", (e) => {
-    // Only allow resizing on desktop with primary mouse button
-    if (window.innerWidth < 1024 || e.button !== 0) return;
-    if (document.body.classList.contains("sidebar-collapsed")) return;
-
-    isDragging = true;
-    startX = e.clientX;
-    startWidth = sidebar.getBoundingClientRect().width;
-    document.body.classList.add("sidebar-resizing");
-    handle.setPointerCapture(e.pointerId);
-    e.preventDefault();
-  });
-
-  handle.addEventListener("pointermove", (e) => {
-    if (!isDragging) return;
-
-    const deltaX = e.clientX - startX;
-    let newWidth = Math.round(startWidth + deltaX);
-    if (newWidth < MIN_WIDTH) newWidth = MIN_WIDTH;
-    if (newWidth > MAX_WIDTH) newWidth = MAX_WIDTH;
-
-    document.documentElement.style.setProperty("--sidebar-width", newWidth + "px");
-  });
-
-  const stopDragging = (e) => {
-    if (!isDragging) return;
-    isDragging = false;
-    document.body.classList.remove("sidebar-resizing");
-    try {
-      handle.releasePointerCapture(e.pointerId);
-    } catch (err) {}
-
-    // Save finalized width to localStorage
-    const currentWidth = Math.round(sidebar.getBoundingClientRect().width);
-    if (currentWidth >= MIN_WIDTH && currentWidth <= MAX_WIDTH) {
-      localStorage.setItem(STORAGE_KEY, currentWidth.toString());
-      document.documentElement.style.setProperty("--sidebar-width", currentWidth + "px");
-    }
-  };
-
-  handle.addEventListener("pointerup", stopDragging);
-  handle.addEventListener("pointercancel", stopDragging);
-
-  // Double-click resets to default width
-  handle.addEventListener("dblclick", () => {
-    if (window.innerWidth < 1024) return;
-    document.documentElement.style.setProperty("--sidebar-width", DEFAULT_WIDTH + "px");
-    localStorage.removeItem(STORAGE_KEY);
-  });
 }
 
 function renderHeader(pageKey, breadcrumb) {
@@ -1309,9 +1235,6 @@ function initShell() {
   const headerRoot = document.getElementById("header-root");
   if (sidebarRoot) sidebarRoot.outerHTML = renderSidebar(pageKey);
   if (headerRoot) headerRoot.outerHTML = renderHeader(pageKey, breadcrumb);
-
-  // Desktop resizable sidebar
-  initSidebarResize();
 
   // Mobile drawer
   const sidebar = document.getElementById("app-sidebar");

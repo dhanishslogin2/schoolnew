@@ -56,16 +56,6 @@ tailwind.config = {
 }
 </script>
 
-<script>
-(function() {
-  try {
-    var sw = parseInt(localStorage.getItem("school_sidebar_width"), 10);
-    if (!isNaN(sw) && sw >= 220 && sw <= 380) {
-      document.documentElement.style.setProperty("--sidebar-width", sw + "px");
-    }
-  } catch (e) {}
-})();
-</script>
 </head>
 <body class="bg-background text-on-background font-body-lg" data-page="<?php echo html_escape($page_key); ?>"<?php echo $breadcrumb ? ' data-breadcrumb=\'' . $breadcrumb . '\'' : ''; ?> >
 <script>
