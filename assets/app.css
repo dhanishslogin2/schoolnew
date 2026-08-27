@@ -17,6 +17,10 @@ body {
   backdrop-filter: blur(10px);
 }
 
+:root {
+  --sidebar-width: 264px;
+}
+
 /* Thin, quiet scrollbars for tables + general scroll */
 .app-scroll::-webkit-scrollbar,
 nav.overflow-y-auto::-webkit-scrollbar,
@@ -48,12 +52,72 @@ nav.overflow-y-auto::-webkit-scrollbar-thumb,
   transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
+/* Sidebar Width & Dynamic Resizing */
+@media (min-width: 1024px) {
+  #app-sidebar {
+    width: var(--sidebar-width, 264px);
+    min-width: 220px;
+    max-width: 380px;
+    transition: width 0.15s ease;
+  }
+  body.sidebar-resizing #app-sidebar {
+    transition: none !important;
+    user-select: none;
+  }
+  body.sidebar-resizing {
+    cursor: col-resize !important;
+    user-select: none !important;
+  }
+}
+
+@media (max-width: 1023.98px) {
+  #app-sidebar {
+    width: 264px;
+    max-width: 85vw;
+  }
+  .sidebar-resize-handle {
+    display: none !important;
+  }
+}
+
+/* Resize handle on right edge of desktop sidebar */
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 50;
+  transition: background-color 0.15s ease;
+}
+.sidebar-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 2px;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+}
+.sidebar-resize-handle:hover::after,
+body.sidebar-resizing .sidebar-resize-handle::after {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
 /* Desktop icon-rail collapse (toggled via body.sidebar-collapsed) */
 @media (min-width: 1024px) {
-  body.sidebar-collapsed #app-sidebar { width: 76px; }
+  body.sidebar-collapsed #app-sidebar {
+    width: 76px !important;
+    min-width: 76px !important;
+    max-width: 76px !important;
+  }
   body.sidebar-collapsed .sidebar-label { display: none; }
   body.sidebar-collapsed #app-sidebar nav { overflow: visible; }
+  body.sidebar-collapsed .nav-groups { display: none !important; }
   body.sidebar-collapsed .nav-children { display: none !important; }
+  body.sidebar-collapsed .sidebar-resize-handle { display: none !important; }
 }
 
 /* Card shadows matching the DESIGN.md elevation spec */

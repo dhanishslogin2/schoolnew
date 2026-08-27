@@ -109,7 +109,14 @@ class MY_Controller extends CI_Controller {
         $uid = (int)($this->current_user->user_id ?? 0);
 
         $data['title']               = $data['title'] ?? 'School';
-        $data['page_key']            = $data['page_key'] ?? '';
+        
+        // Auto-determine page_key if not explicitly specified in the controller
+        if (empty($data['page_key'])) {
+            $class  = strtolower($this->router->fetch_class());
+            $method = strtolower($this->router->fetch_method());
+            $data['page_key'] = $this->_resolve_page_key($class, $method, $view);
+        }
+
         $data['breadcrumb']          = isset($data['breadcrumb'])
                                          ? json_encode($data['breadcrumb'])
                                          : NULL;
@@ -125,5 +132,508 @@ class MY_Controller extends CI_Controller {
         $this->load->view('templates/header', $data);
         $this->load->view($view, $data);
         $this->load->view('templates/footer', $data);
+    }
+
+    /**
+     * Resolve the active page_key from controller, method, and view path.
+     *
+     * @param  string $class   Current controller (lowercase)
+     * @param  string $method  Current method (lowercase)
+     * @param  string $view    Current view path
+     * @return string
+     */
+    protected function _resolve_page_key($class, $method, $view = '')
+    {
+        // 1. Dashboard
+        if ($class === 'dashboard') {
+            return 'dashboard';
+        }
+
+        // 2. Student Management
+        if ($class === 'students') {
+            switch ($method) {
+                case 'overview':
+                case 'index':
+                    return 'students';
+                case 'list_students':
+                case 'list':
+                case 'student_list':
+                    return 'student-directory';
+                case 'register':
+                case 'add':
+                case 'create':
+                    return 'student-registration';
+                case 'admissions':
+                case 'admission':
+                    return 'admissions';
+                case 'documents':
+                    return 'student-documents';
+                case 'id_cards':
+                    return 'student-id-cards';
+                case 'promotion':
+                case 'promote':
+                    return 'student-promotion';
+                case 'transfers':
+                case 'tc':
+                    return 'student-transfers';
+                case 'profile':
+                    return 'student-profile';
+                case 'search':
+                    return 'student-search';
+                default:
+                    return 'students';
+            }
+        }
+
+        // 3. Staff / Teacher Management
+        if ($class === 'staff') {
+            switch ($method) {
+                case 'overview':
+                case 'index':
+                    return 'staff';
+                case 'directory':
+                case 'list':
+                    return 'staff-directory';
+                case 'teachers':
+                    return 'teachers';
+                case 'non_teaching':
+                    return 'non-teaching-staff';
+                case 'departments':
+                    return 'departments';
+                case 'designations':
+                    return 'designations';
+                case 'departments_designations':
+                    return 'departments-designations';
+                case 'documents':
+                    return 'staff-documents';
+                case 'workload':
+                    return 'teacher-workload';
+                case 'attendance':
+                    return 'staff-attendance';
+                case 'leave':
+                    return 'staff-leave';
+                default:
+                    return 'staff';
+            }
+        }
+
+        // 4. Academic Management
+        if ($class === 'academics') {
+            switch ($method) {
+                case 'overview':
+                case 'index':
+                    return 'academics';
+                case 'years':
+                    return 'academic-years';
+                case 'classes':
+                    return 'classes';
+                case 'sections':
+                    return 'sections';
+                case 'subjects':
+                    return 'subjects';
+                case 'class_teachers':
+                    return 'class-teachers';
+                case 'subject_teachers':
+                    return 'subject-teachers';
+                case 'timetable':
+                    return 'timetable';
+                case 'calendar':
+                    return 'academic-calendar';
+                default:
+                    return 'academics';
+            }
+        }
+
+        // 5. Student Attendance
+        if ($class === 'attendance') {
+            switch ($method) {
+                case 'overview':
+                case 'dashboard':
+                case 'index':
+                    return 'attendance-dashboard';
+                case 'daily':
+                    return 'attendance-daily';
+                case 'periods':
+                    return 'attendance-periods';
+                case 'period_wise':
+                    return 'attendance-period-wise';
+                case 'class_attendance':
+                    return 'attendance-class';
+                case 'section_attendance':
+                    return 'attendance-section';
+                case 'history':
+                    return 'attendance-history';
+                case 'tracking':
+                    return 'attendance-tracking';
+                case 'calendar':
+                    return 'attendance-calendar';
+                case 'reports':
+                    return 'attendance-reports';
+                case 'notifications':
+                    return 'attendance-notifications';
+                case 'notification_history':
+                    return 'attendance-notification-history';
+                case 'settings':
+                    return 'attendance-settings';
+                default:
+                    return 'attendance-dashboard';
+            }
+        }
+
+        // 6. Examination & Results
+        if ($class === 'examinations') {
+            switch ($method) {
+                case 'overview':
+                case 'dashboard':
+                case 'index':
+                    return 'exam-dashboard';
+                case 'exams':
+                    return 'exams';
+                case 'types':
+                    return 'exam-types';
+                case 'schedules':
+                    return 'exam-schedules';
+                case 'allocations':
+                    return 'exam-allocations';
+                case 'marks_entry':
+                    return 'marks-entry';
+                case 'verification':
+                    return 'marks-verification';
+                case 'grades':
+                    return 'grade-management';
+                case 'calculate':
+                    return 'result-calculation';
+                case 'results':
+                case 'result_detail':
+                    return 'results';
+                case 'ranks':
+                    return 'exam-ranks';
+                case 'report_cards':
+                case 'report_card':
+                    return 'report-cards';
+                case 'progress_reports':
+                case 'progress_report':
+                    return 'progress-reports';
+                case 'publishing':
+                    return 'result-publishing';
+                case 'reports':
+                    return 'exam-reports';
+                case 'settings':
+                    return 'exam-settings';
+                default:
+                    return 'exam-dashboard';
+            }
+        }
+
+        // 7. Fees & Finance
+        if ($class === 'fees') {
+            switch ($method) {
+                case 'overview':
+                case 'dashboard':
+                case 'index':
+                    return 'fee-dashboard';
+                case 'categories':
+                    return 'fee-categories';
+                case 'structures':
+                    return 'fee-structures';
+                case 'assignments':
+                    return 'fee-assignments';
+                case 'student_fees':
+                    return 'student-fees';
+                case 'collection':
+                    return 'fee-collection';
+                case 'payments':
+                    return 'payment-history';
+                case 'receipts':
+                case 'receipt':
+                    return 'fee-receipts';
+                case 'discounts':
+                    return 'fee-discounts';
+                case 'due_fees':
+                    return 'due-fees';
+                case 'reminders':
+                case 'reminder_history':
+                    return 'fee-reminders';
+                case 'adjustments':
+                    return 'fee-adjustments';
+                case 'refunds':
+                    return 'fee-refunds';
+                case 'reports':
+                    return 'collection-reports';
+                case 'settings':
+                    return 'finance-settings';
+                default:
+                    return 'fee-dashboard';
+            }
+        }
+
+        // 8. Timetable
+        if ($class === 'timetable') {
+            switch ($method) {
+                case 'overview':
+                case 'dashboard':
+                case 'index':
+                    return 'timetable-dashboard';
+                case 'classes':
+                    return 'class-timetable';
+                case 'teachers':
+                    return 'teacher-timetable';
+                case 'allocations':
+                    return 'subject-allocation';
+                case 'builder':
+                    return 'timetable-builder';
+                case 'free_periods':
+                    return 'free-periods';
+                case 'conflicts':
+                    return 'timetable-conflicts';
+                case 'publish_lock':
+                    return 'timetable-publish';
+                case 'reports':
+                    return 'timetable-reports';
+                case 'settings':
+                    return 'timetable-settings';
+                default:
+                    return 'timetable-dashboard';
+            }
+        }
+
+        // 9. Homework / Assignments
+        if ($class === 'homework') {
+            switch ($method) {
+                case 'overview':
+                case 'dashboard':
+                case 'index':
+                    return 'homework-dashboard';
+                case 'assignments':
+                    return 'homework-assignments';
+                case 'create':
+                case 'edit':
+                    return 'homework-create';
+                case 'types':
+                    return 'homework-types';
+                case 'subjects':
+                    return 'homework-subjects';
+                case 'classes':
+                    return 'homework-classes';
+                case 'calendar':
+                    return 'homework-calendar';
+                case 'submissions':
+                case 'submission_detail':
+                case 'review':
+                case 'student_view':
+                    return 'homework-submissions';
+                case 'reports':
+                    return 'homework-reports';
+                case 'settings':
+                    return 'homework-settings';
+                default:
+                    return 'homework-dashboard';
+            }
+        }
+
+        // 10. Communication
+        if ($class === 'communication') {
+            switch ($method) {
+                case 'overview':
+                case 'dashboard':
+                case 'index':
+                    return 'comm-dashboard';
+                case 'templates':
+                    return 'comm-templates';
+                case 'sms_templates':
+                    return 'comm-sms-templates';
+                case 'whatsapp_templates':
+                    return 'comm-whatsapp-templates';
+                case 'email_templates':
+                    return 'comm-email-templates';
+                case 'automated_notifications':
+                    return 'comm-automated';
+                case 'queue':
+                    return 'comm-queue';
+                case 'history':
+                case 'details':
+                    return 'comm-history';
+                case 'reports':
+                    return 'comm-reports';
+                case 'settings':
+                    return 'comm-settings';
+                case 'notices':
+                case 'create_notice':
+                    return 'notices';
+                case 'announcements':
+                    return 'announcements';
+                default:
+                    return 'comm-dashboard';
+            }
+        }
+
+        // 11. Leave Management
+        if ($class === 'leave') {
+            switch ($method) {
+                case 'overview':
+                case 'dashboard':
+                case 'index':
+                    return 'leave-dashboard';
+                case 'student_leave':
+                    return 'leave-student';
+                case 'staff_leave':
+                    return 'leave-staff';
+                case 'types':
+                    return 'leave-types';
+                case 'request':
+                    return 'leave-request';
+                case 'approval':
+                    return 'leave-approval';
+                case 'balances':
+                    return 'leave-balance';
+                case 'calendar':
+                    return 'leave-calendar';
+                case 'history':
+                case 'details':
+                    return 'leave-history';
+                case 'reports':
+                    return 'leave-reports';
+                case 'settings':
+                    return 'leave-settings';
+                default:
+                    return 'leave-dashboard';
+            }
+        }
+
+        // 12. Transport Management
+        if ($class === 'transport') {
+            switch ($method) {
+                case 'overview':
+                case 'dashboard':
+                case 'index':
+                    return 'transport-dashboard';
+                case 'vehicles':
+                case 'vehicle_details':
+                    return 'transport-vehicles';
+                case 'drivers':
+                case 'driver_details':
+                    return 'transport-drivers';
+                case 'routes':
+                case 'route_details':
+                    return 'transport-routes';
+                case 'stops':
+                    return 'transport-stops';
+                case 'assignments':
+                case 'bulk_assign':
+                    return 'transport-assignments';
+                case 'fees':
+                    return 'transport-fees';
+                case 'maintenance':
+                case 'maintenance_history':
+                    return 'transport-maintenance';
+                case 'documents':
+                    return 'transport-documents';
+                case 'reports':
+                    return 'transport-reports';
+                case 'settings':
+                    return 'transport-settings';
+                default:
+                    return 'transport-dashboard';
+            }
+        }
+
+        // 13. Certificates & Documents
+        if ($class === 'certificates') {
+            switch ($method) {
+                case 'overview':
+                case 'dashboard':
+                case 'index':
+                    return 'certificates-dashboard';
+                case 'requests':
+                case 'request_create':
+                    return 'certificates-requests';
+                case 'types':
+                    return 'certificates-types';
+                case 'bonafide':
+                    return 'certificates-bonafide';
+                case 'transfer_certificate':
+                    return 'certificates-transfer';
+                case 'study_certificate':
+                    return 'certificates-study';
+                case 'conduct_certificate':
+                    return 'certificates-conduct';
+                case 'generate':
+                case 'preview':
+                case 'print_cert':
+                case 'issue':
+                    return 'certificates-generate';
+                case 'templates':
+                    return 'certificates-templates';
+                case 'documents':
+                    return 'certificates-documents';
+                case 'document_categories':
+                    return 'certificates-doc-categories';
+                case 'document_verification':
+                    return 'certificates-doc-verification';
+                case 'history':
+                case 'reissue':
+                    return 'certificates-history';
+                case 'reports':
+                    return 'certificates-reports';
+                case 'settings':
+                    return 'certificates-settings';
+                default:
+                    return 'certificates-dashboard';
+            }
+        }
+
+        // 14. Reports
+        if ($class === 'reports') {
+            return 'reports';
+        }
+
+        // 15. User Management
+        if ($class === 'users') {
+            switch ($method) {
+                case 'overview':
+                case 'dashboard':
+                case 'index':
+                    return 'user-dashboard';
+                case 'list_users':
+                case 'list':
+                    return 'users';
+                case 'create':
+                    return 'user-create';
+                case 'details':
+                case 'edit':
+                    return 'user-details';
+                case 'roles':
+                    return 'user-roles';
+                case 'permissions':
+                case 'user_permissions':
+                    return 'user-permissions';
+                case 'role_permissions':
+                    return 'user-role-permissions';
+                case 'parents':
+                    return 'user-parents';
+                case 'students':
+                    return 'user-students';
+                case 'teachers':
+                    return 'user-teachers';
+                case 'staff':
+                    return 'user-staff';
+                case 'login_activity':
+                    return 'user-login-activity';
+                case 'security_settings':
+                    return 'user-security-settings';
+                case 'audit_logs':
+                    return 'user-audit-logs';
+                default:
+                    return 'users';
+            }
+        }
+
+        // 16. School Settings
+        if ($class === 'settings') {
+            return 'settings';
+        }
+
+        // Fallback: sanitized class name
+        return str_replace('_', '-', $class);
     }
 }

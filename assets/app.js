@@ -938,54 +938,133 @@ function iconSpan(name, extra) {
   return `<span class="material-symbols-outlined ${extra || ""}">${name}</span>`;
 }
 
+function detectCurrentPageKey() {
+  const bodyKey = (document.body.dataset.page || "").trim();
+  const currentPath = (window.location && window.location.pathname ? window.location.pathname.toLowerCase() : "");
+  
+  // Normalize path by stripping base directory and index.php
+  const cleanPath = currentPath
+    .replace(/^.*\/index\.php\/?/, "")
+    .replace(/^.*\/schoolnew\/?/i, "")
+    .replace(/^\/+|\/+$/g, "");
+
+  // Root or explicit dashboard
+  if (cleanPath === "" || cleanPath === "dashboard") {
+    return "dashboard";
+  }
+
+  // If body[data-page] is explicitly given and is NOT dashboard
+  if (bodyKey && bodyKey !== "dashboard") {
+    return bodyKey;
+  }
+
+  // Exact matching against PAGE_URLS
+  for (const [key, uri] of Object.entries(PAGE_URLS)) {
+    const normUri = uri.toLowerCase().replace(/^\/+|\/+$/g, "");
+    if (cleanPath === normUri || cleanPath === normUri + "/index") {
+      return key;
+    }
+  }
+
+  // Match with underscore/dash conversions
+  const normClean = cleanPath.replace(/_/g, "-");
+  for (const [key, uri] of Object.entries(PAGE_URLS)) {
+    const normUri = uri.toLowerCase().replace(/_/g, "-").replace(/^\/+|\/+$/g, "");
+    if (normClean === normUri || normClean === normUri + "-index") {
+      return key;
+    }
+  }
+
+  // Match prefix e.g. "students/register/..." -> "student-registration"
+  for (const [key, uri] of Object.entries(PAGE_URLS)) {
+    const normUri = uri.toLowerCase().replace(/^\/+|\/+$/g, "");
+    if (cleanPath.startsWith(normUri + "/")) {
+      return key;
+    }
+  }
+
+  // Match by first path segment (module name)
+  const firstSegment = cleanPath.split("/")[0];
+  for (const item of NAV) {
+    if (item.key === firstSegment) {
+      return item.key;
+    }
+  }
+
+  return bodyKey || "dashboard";
+}
+
 // Find active hierarchy path: Module Key and Group Label for the current active page
 function findActiveHierarchy(activeKey) {
-  const currentPath = (window.location && window.location.pathname ? window.location.pathname.toLowerCase() : "");
+  const normKey = (activeKey || "").toLowerCase();
+  const normKeyDash = normKey.replace(/_/g, "-");
 
-  // 1. Contextual matching: check the NAV module whose key appears in the current URL path
+  // Helper matcher
+  function matchesKey(k, aliases) {
+    if (!k) return false;
+    const nk = k.toLowerCase();
+    const nkDash = nk.replace(/_/g, "-");
+    if (nk === normKey || nkDash === normKeyDash) return true;
+    if (aliases && Array.isArray(aliases)) {
+      return aliases.some(a => {
+        const na = a.toLowerCase();
+        return na === normKey || na.replace(/_/g, "-") === normKeyDash;
+      });
+    }
+    return false;
+  }
+
+  // 1. Exact match across NAV
   for (const item of NAV) {
-    const isModuleInPath = currentPath.includes("/" + item.key + "/") || currentPath.endsWith("/" + item.key);
-    if (isModuleInPath) {
-      if (item.key === activeKey) {
-        return { moduleKey: item.key, groupLabel: null, pageKey: activeKey };
+    if (!item.groups) {
+      if (matchesKey(item.key)) {
+        return { moduleKey: item.key, groupLabel: null, pageKey: item.key };
       }
-      if (item.groups) {
-        for (const group of item.groups) {
-          if (group.key === activeKey || (group.aliases && group.aliases.includes(activeKey))) {
-            return { moduleKey: item.key, groupLabel: null, pageKey: group.key };
-          }
-          if (group.items && group.items.some((c) => c.key === activeKey || (c.aliases && c.aliases.includes(activeKey)))) {
-            return { moduleKey: item.key, groupLabel: group.label, pageKey: activeKey };
+      continue;
+    }
+
+    for (const group of item.groups) {
+      // Direct submodule item (Level 2)
+      if (group.key) {
+        if (matchesKey(group.key, group.aliases)) {
+          return { moduleKey: item.key, groupLabel: null, pageKey: group.key };
+        }
+      }
+      // Collapsible subgroup (Level 2 dropdown)
+      if (group.items) {
+        for (const child of group.items) {
+          if (matchesKey(child.key, child.aliases)) {
+            return { moduleKey: item.key, groupLabel: group.label, pageKey: child.key };
           }
         }
       }
     }
   }
 
-  // 2. Standard matching across all NAV items
+  // 2. Prefix match (e.g. "leave-..." belongs to module "leave")
   for (const item of NAV) {
-    if (item.key === activeKey) {
-      return { moduleKey: item.key, groupLabel: null, pageKey: activeKey };
-    }
     if (item.groups) {
-      for (const group of item.groups) {
-        if (group.key === activeKey || (group.aliases && group.aliases.includes(activeKey))) {
-          return { moduleKey: item.key, groupLabel: null, pageKey: group.key };
-        }
-        if (group.items && group.items.some((c) => c.key === activeKey || (c.aliases && c.aliases.includes(activeKey)))) {
-          return { moduleKey: item.key, groupLabel: group.label, pageKey: activeKey };
-        }
+      if (normKeyDash.startsWith(item.key + "-") || normKeyDash === item.key) {
+        // Find default/overview subitem if available
+        const defaultGroup = item.groups[0];
+        const defaultKey = defaultGroup.key || (defaultGroup.items ? defaultGroup.items[0].key : item.key);
+        return { moduleKey: item.key, groupLabel: defaultGroup.label || null, pageKey: defaultKey };
       }
     }
+  }
+
+  // 3. Fallback: if activeKey is 'dashboard'
+  if (normKey === "dashboard") {
+    return { moduleKey: "dashboard", groupLabel: null, pageKey: "dashboard" };
   }
 
   return { moduleKey: null, groupLabel: null, pageKey: activeKey };
 }
 
 function renderNavItem(item, activeKey, activeHierarchy) {
-  const isModuleOpen = item.key === activeHierarchy.moduleKey;  // Direct link module (e.g. Dashboard)
+  const isModuleOpen = item.key === activeHierarchy.moduleKey;
   if (!item.groups) {
-    const active = item.key === activeKey;
+    const active = isModuleOpen && item.key === activeHierarchy.pageKey;
     return `
       <div class="nav-group mb-1">
         <a href="${url(item.key)}" class="flex items-center justify-between px-3 py-2.5 rounded-xl text-body-md font-body-md transition-all duration-200
@@ -1003,7 +1082,10 @@ function renderNavItem(item, activeKey, activeHierarchy) {
   const groupsHtml = item.groups.map((group) => {
     // Level 2 Direct Item (e.g. Overview, Student Reports, Attendance Reports inside Reports)
     if (group.key) {
-      const active = group.key === activeKey || (group.aliases && group.aliases.includes(activeKey));
+      const active = isModuleOpen && (
+        group.key === activeHierarchy.pageKey ||
+        (group.aliases && group.aliases.includes(activeHierarchy.pageKey))
+      );
       return `
         <a href="${url(group.key)}" class="flex items-center justify-between pl-7 pr-3 py-1.5 rounded-lg text-xs font-body-md transition-colors
           ${active ? "bg-secondary/15 text-secondary font-bold shadow-xs" : "text-secondary/80 hover:bg-secondary/10 hover:text-secondary"}">
@@ -1012,13 +1094,16 @@ function renderNavItem(item, activeKey, activeHierarchy) {
         </a>`;
     }
 
-    // Level 2 Expandable Group (e.g. Finance Reports, Examination & Results)
+    // Level 2 Expandable Group (e.g. Finance Reports, Examination & Results, Leave Requests)
     const isGroupOpen = isModuleOpen && (
       group.label === activeHierarchy.groupLabel ||
-      (group.items && group.items.some((c) => c.key === activeKey || (c.aliases && c.aliases.includes(activeKey))))
+      (group.items && group.items.some((c) => c.key === activeHierarchy.pageKey || (c.aliases && c.aliases.includes(activeHierarchy.pageKey))))
     );
     const itemsHtml = group.items.map((c) => {
-      const active = c.key === activeKey || (c.aliases && c.aliases.includes(activeKey));
+      const active = isModuleOpen && (
+        c.key === activeHierarchy.pageKey ||
+        (c.aliases && c.aliases.includes(activeHierarchy.pageKey))
+      );
       return `
         <a href="${url(c.key)}" class="flex items-center justify-between pl-10 pr-3 py-1.5 rounded-lg text-xs font-body-md transition-colors
           ${active ? "bg-secondary/15 text-secondary font-bold shadow-xs" : "text-secondary/80 hover:bg-secondary/10 hover:text-secondary"}">
@@ -1062,8 +1147,9 @@ function renderSidebar(activeKey) {
   <div id="sidebar-overlay" class="fixed inset-0 bg-on-surface/40 z-30 hidden lg:hidden"></div>
 
   <aside id="app-sidebar"
-    class="fixed lg:sticky top-0 left-0 h-screen w-[264px] shrink-0 bg-secondary border-r border-emerald-900/40
-    flex flex-col z-40 -translate-x-full lg:translate-x-0 transition-transform duration-200">
+    class="fixed lg:sticky top-0 left-0 h-screen shrink-0 bg-secondary border-r border-emerald-900/40
+    flex flex-col z-40 -translate-x-full lg:translate-x-0 transition-transform duration-200 relative">
+    <div id="sidebar-resize-handle" class="sidebar-resize-handle" title="Drag right edge to resize sidebar (Double-click to reset)"></div>
     <div class="h-16 flex items-center gap-3 px-4 border-b border-white/10 shrink-0">
       <div class="w-9 h-9 rounded-full bg-white/15 text-white flex items-center justify-center shrink-0">
         ${iconSpan("school", "text-white text-[20px]")}
@@ -1084,6 +1170,79 @@ function renderSidebar(activeKey) {
       </a>
     </div>
   </aside>`;
+}
+
+function initSidebarResize() {
+  const MIN_WIDTH = 220;
+  const DEFAULT_WIDTH = 264;
+  const MAX_WIDTH = 380;
+  const STORAGE_KEY = "school_sidebar_width";
+
+  const sidebar = document.getElementById("app-sidebar");
+  const handle = document.getElementById("sidebar-resize-handle");
+  if (!sidebar || !handle) return;
+
+  // Restore saved width from localStorage
+  const savedWidth = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+  if (!isNaN(savedWidth) && savedWidth >= MIN_WIDTH && savedWidth <= MAX_WIDTH) {
+    document.documentElement.style.setProperty("--sidebar-width", savedWidth + "px");
+  } else {
+    document.documentElement.style.setProperty("--sidebar-width", DEFAULT_WIDTH + "px");
+  }
+
+  let isDragging = false;
+  let startX = 0;
+  let startWidth = DEFAULT_WIDTH;
+
+  handle.addEventListener("pointerdown", (e) => {
+    // Only allow resizing on desktop with primary mouse button
+    if (window.innerWidth < 1024 || e.button !== 0) return;
+    if (document.body.classList.contains("sidebar-collapsed")) return;
+
+    isDragging = true;
+    startX = e.clientX;
+    startWidth = sidebar.getBoundingClientRect().width;
+    document.body.classList.add("sidebar-resizing");
+    handle.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  handle.addEventListener("pointermove", (e) => {
+    if (!isDragging) return;
+
+    const deltaX = e.clientX - startX;
+    let newWidth = Math.round(startWidth + deltaX);
+    if (newWidth < MIN_WIDTH) newWidth = MIN_WIDTH;
+    if (newWidth > MAX_WIDTH) newWidth = MAX_WIDTH;
+
+    document.documentElement.style.setProperty("--sidebar-width", newWidth + "px");
+  });
+
+  const stopDragging = (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    document.body.classList.remove("sidebar-resizing");
+    try {
+      handle.releasePointerCapture(e.pointerId);
+    } catch (err) {}
+
+    // Save finalized width to localStorage
+    const currentWidth = Math.round(sidebar.getBoundingClientRect().width);
+    if (currentWidth >= MIN_WIDTH && currentWidth <= MAX_WIDTH) {
+      localStorage.setItem(STORAGE_KEY, currentWidth.toString());
+      document.documentElement.style.setProperty("--sidebar-width", currentWidth + "px");
+    }
+  };
+
+  handle.addEventListener("pointerup", stopDragging);
+  handle.addEventListener("pointercancel", stopDragging);
+
+  // Double-click resets to default width
+  handle.addEventListener("dblclick", () => {
+    if (window.innerWidth < 1024) return;
+    document.documentElement.style.setProperty("--sidebar-width", DEFAULT_WIDTH + "px");
+    localStorage.removeItem(STORAGE_KEY);
+  });
 }
 
 function renderHeader(pageKey, breadcrumb) {
@@ -1143,13 +1302,16 @@ function renderHeader(pageKey, breadcrumb) {
 }
 
 function initShell() {
-  const pageKey = document.body.dataset.page || "dashboard";
+  const pageKey = detectCurrentPageKey();
   const breadcrumb = document.body.dataset.breadcrumb ? JSON.parse(document.body.dataset.breadcrumb) : null;
 
   const sidebarRoot = document.getElementById("sidebar-root");
   const headerRoot = document.getElementById("header-root");
   if (sidebarRoot) sidebarRoot.outerHTML = renderSidebar(pageKey);
   if (headerRoot) headerRoot.outerHTML = renderHeader(pageKey, breadcrumb);
+
+  // Desktop resizable sidebar
+  initSidebarResize();
 
   // Mobile drawer
   const sidebar = document.getElementById("app-sidebar");
