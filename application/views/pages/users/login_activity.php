@@ -42,7 +42,7 @@
                     <?php echo html_escape($a->username); ?>
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap font-mono text-xs text-on-surface">
-                    <?php echo html_escape($a->ip_address ?: '127.0.0.1'); ?>
+                    <?php echo html_escape($a->ip_address ?: '—'); ?>
                   </td>
                   <td class="px-4 py-3 text-xs text-on-surface-variant max-w-[280px]">
                     <div class="line-clamp-1 font-mono text-[11px]"><?php echo html_escape($a->user_agent); ?></div>

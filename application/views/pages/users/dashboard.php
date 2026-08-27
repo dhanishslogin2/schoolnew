@@ -165,7 +165,7 @@
                   <span class="text-[11px] font-bold <?php echo $stBadge; ?>"><?php echo $act->status; ?></span>
                 </div>
                 <div class="text-[11px] text-on-surface-variant font-mono flex items-center justify-between">
-                  <span>IP: <?php echo html_escape($act->ip_address ?: '127.0.0.1'); ?></span>
+                  <span>IP: <?php echo html_escape($act->ip_address ?: '—'); ?></span>
                   <span><?php echo date('d M, h:i A', strtotime($act->created_at)); ?></span>
                 </div>
                 <?php if ($act->failure_reason): ?>

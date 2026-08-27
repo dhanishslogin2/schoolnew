@@ -314,7 +314,7 @@ class User_model extends CI_Model {
      */
     public function log_login_activity($user_id, $username, $status, $failure_reason = NULL)
     {
-        $ip = $this->input->ip_address() ?: '127.0.0.1';
+        $ip = $this->input->ip_address() ?: '0.0.0.0';
         $ua = substr($this->input->user_agent() ?: 'Browser', 0, 250);
 
         $this->db->insert('tbl_user_login_activity', [
