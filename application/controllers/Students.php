@@ -22,6 +22,7 @@ class Students extends MY_Controller {
 
     public function overview()
     {
+        $this->require_permission('students.view');
         $year_id = $this->input->get('academic_year_id') ?: NULL;
         $stats = $this->Student_model->get_dashboard_stats($year_id);
 
@@ -35,6 +36,7 @@ class Students extends MY_Controller {
 
     public function list_students()
     {
+        $this->require_permission('students.view');
         $filters = array(
             'academic_year_id' => $this->input->get('academic_year_id'),
             'class_id'         => $this->input->get('class_id'),
@@ -60,6 +62,90 @@ class Students extends MY_Controller {
         ));
     }
 
+    public function ajax_list()
+    {
+        $this->require_permission('students.view');
+
+        $draw   = (int)$this->input->post('draw');
+        $start  = (int)$this->input->post('start');
+        $length = (int)$this->input->post('length');
+        $order  = $this->input->post('order');
+        $search = $this->input->post('search');
+
+        $order_col_idx = isset($order[0]['column']) ? (int)$order[0]['column'] : 0;
+        $order_dir     = isset($order[0]['dir']) ? $order[0]['dir'] : 'asc';
+        $search_val    = isset($search['value']) ? trim($search['value']) : '';
+
+        $filters = array(
+            'academic_year_id' => $this->input->post('academic_year_id') ?: $this->input->get('academic_year_id'),
+            'class_id'         => $this->input->post('class_id') ?: $this->input->get('class_id'),
+            'section_id'       => $this->input->post('section_id') ?: $this->input->get('section_id'),
+            'gender'           => $this->input->post('gender') ?: $this->input->get('gender'),
+            'status'           => $this->input->post('status') !== NULL ? $this->input->post('status') : $this->input->get('status'),
+            'search'           => $search_val,
+        );
+
+        $records_total    = $this->Student_model->get_datatables_count_all($filters);
+        $records_filtered = $this->Student_model->count_filtered($filters);
+        $students         = $this->Student_model->get_datatables_data($filters, $length, $start, $order_col_idx, $order_dir);
+
+        $data = array();
+        foreach ($students as $st) {
+            $nameParts = explode(' ', trim($st->first_name . ' ' . $st->last_name));
+            $initials = '';
+            foreach ($nameParts as $np) { if (!empty($np)) $initials .= strtoupper($np[0]); }
+            if (strlen($initials) > 2) $initials = substr($initials, 0, 2);
+
+            $statusBadge = ($st->status == 1)
+                ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-secondary-container text-on-secondary-container">Active</span>'
+                : '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-surface-container-high text-on-surface-variant">Inactive</span>';
+
+            $classDisplay = trim(($st->class_name ?: '') . ' ' . ($st->section_name ?: ''));
+
+            $admissionCol = '<a href="' . site_url('students/profile/' . $st->student_id) . '" class="text-primary font-medium hover:underline">' . html_escape($st->admission_number) . '</a>';
+            if (!empty($st->roll_number)) {
+                $admissionCol .= ' <span class="text-[11px] text-on-surface-variant ml-1 font-mono">#' . html_escape($st->roll_number) . '</span>';
+            }
+
+            $studentCol = '<div class="flex items-center gap-2.5">' .
+                '<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[11px] font-semibold shrink-0">' . html_escape($initials) . '</div>' .
+                '<div>' .
+                    '<div class="font-medium text-on-surface">' . html_escape($st->first_name . ' ' . $st->last_name) . '</div>' .
+                    '<div class="text-[12px] text-on-surface-variant">' . html_escape($classDisplay . ' · ' . $st->gender) . '</div>' .
+                '</div>' .
+            '</div>';
+
+            $actionsCol = '<div class="flex items-center justify-end gap-1.5">' .
+                '<a href="' . site_url('students/profile/' . $st->student_id) . '" title="View Profile" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">visibility</span></a>' .
+                '<a href="' . site_url('students/edit/' . $st->student_id) . '" title="Edit Student" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">edit</span></a>' .
+                '<a href="' . site_url('students/id_cards?student_id=' . $st->student_id) . '" title="ID Card" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">badge</span></a>' .
+            '</div>';
+
+            $data[] = array(
+                $admissionCol,
+                $studentCol,
+                html_escape($classDisplay),
+                html_escape($st->gender),
+                educore_date($st->date_of_birth),
+                html_escape($st->guardian_name ?: '—'),
+                html_escape($st->guardian_phone ?: '—'),
+                $statusBadge,
+                $actionsCol
+            );
+        }
+
+        $output = array(
+            "draw"            => $draw,
+            "recordsTotal"    => $records_total,
+            "recordsFiltered" => $records_filtered,
+            "data"            => $data,
+        );
+
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode($output));
+    }
+
     /* =========================================================================
        2. Student Registration / Add Student
        ========================================================================= */
@@ -70,6 +156,8 @@ class Students extends MY_Controller {
 
     public function add()
     {
+        $this->require_permission('students.create');
+
         if ($this->input->method() === 'post') {
             $this->form_validation->set_rules('first_name', 'First Name', 'required|trim');
             $this->form_validation->set_rules('admission_number', 'Admission Number', 'required|trim');
@@ -114,11 +202,14 @@ class Students extends MY_Controller {
         ));
     }
 
+
     /* =========================================================================
        3. Student Edit
        ========================================================================= */
     public function edit($student_id = NULL)
     {
+        $this->require_permission('students.edit');
+
         if (!$student_id) {
             redirect('students');
             return;
@@ -181,6 +272,8 @@ class Students extends MY_Controller {
        ========================================================================= */
     public function delete($student_id = NULL)
     {
+        $this->require_permission('students.delete');
+
         if (!$student_id) {
             redirect('students');
             return;
@@ -202,6 +295,7 @@ class Students extends MY_Controller {
        ========================================================================= */
     public function profile($student_id = NULL)
     {
+        $this->require_permission('students.view');
         if (!$student_id) {
             $first = $this->Student_model->get_all();
             $student_id = !empty($first) ? $first[0]->student_id : 1;
@@ -314,6 +408,7 @@ class Students extends MY_Controller {
        ========================================================================= */
     public function documents()
     {
+        $this->require_permission('students.view');
         $filters = array(
             'student_id'    => $this->input->get('student_id'),
             'class_id'      => $this->input->get('class_id'),
@@ -336,6 +431,7 @@ class Students extends MY_Controller {
 
     public function upload_document($student_id = NULL)
     {
+        $this->require_permission('students.edit');
         if ($this->input->method() === 'post') {
             $student_id = $this->input->post('student_id') ?: $student_id;
             $docType    = $this->input->post('document_type', TRUE) ?: 'Other';
@@ -376,6 +472,7 @@ class Students extends MY_Controller {
 
     public function delete_document($document_id = NULL)
     {
+        $this->require_permission('students.edit');
         if ($document_id) {
             $this->Student_model->delete_document($document_id);
             $this->session->set_flashdata('success', 'Document removed successfully.');
@@ -389,6 +486,7 @@ class Students extends MY_Controller {
        ========================================================================= */
     public function id_cards()
     {
+        $this->require_permission('students.view');
         $class_id   = $this->input->get('class_id');
         $section_id = $this->input->get('section_id');
 
@@ -416,6 +514,7 @@ class Students extends MY_Controller {
        ========================================================================= */
     public function promotion()
     {
+        $this->require_permission('students.promote');
         if ($this->input->method() === 'post') {
             $student_ids  = $this->input->post('student_ids');
             $from_year    = $this->input->post('from_academic_year_id');
@@ -474,6 +573,7 @@ class Students extends MY_Controller {
        ========================================================================= */
     public function transfers()
     {
+        $this->require_permission('students.edit');
         if ($this->input->method() === 'post') {
             $student_id = $this->input->post('student_id');
             $student    = $this->Student_model->get_by_id($student_id);
@@ -516,6 +616,7 @@ class Students extends MY_Controller {
 
     public function tc($transfer_id = NULL)
     {
+        $this->require_permission('students.view');
         if (!$transfer_id) {
             redirect('students/transfers');
             return;
@@ -540,6 +641,7 @@ class Students extends MY_Controller {
        ========================================================================= */
     public function search()
     {
+        $this->require_permission('students.view');
         $filters = array(
             'academic_year_id' => $this->input->get('academic_year_id'),
             'class_id'         => $this->input->get('class_id'),

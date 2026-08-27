@@ -25,6 +25,24 @@ class Section_model extends CI_Model {
         return $this->db->get()->result();
     }
 
+    public function get_dropdown($class_id = NULL)
+    {
+        $this->db
+            ->select('sec.section_id, sec.section_name, sec.class_id, c.class_name')
+            ->from('tbl_sections sec')
+            ->join('tbl_classes c', 'c.class_id = sec.class_id', 'left')
+            ->where('sec.status', 1)
+            ->where('sec.is_deleted', 'n')
+            ->order_by('sec.class_id', 'ASC')
+            ->order_by('sec.section_name', 'ASC');
+
+        if ($class_id) {
+            $this->db->where('sec.class_id', (int)$class_id);
+        }
+
+        return $this->db->get()->result();
+    }
+
     public function get_by_class($class_id)
     {
         return $this->get_all($class_id);

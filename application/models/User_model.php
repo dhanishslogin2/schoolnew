@@ -9,7 +9,11 @@ class User_model extends CI_Model {
     public function get_all(array $filters = array())
     {
         $this->db
-            ->select('u.*, r.role_name, r.role_code, r.user_type as role_user_type, s.full_name as staff_name, st.first_name as student_first_name, st.last_name as student_last_name, st.admission_number')
+            ->select('u.user_id, u.name, u.username, u.email, u.phone, u.role_id, u.staff_id, u.student_id,
+                      u.user_type, u.status, u.created_at, u.updated_at, u.is_deleted,
+                      r.role_name, r.role_code, r.user_type as role_user_type,
+                      s.full_name as staff_name,
+                      st.first_name as student_first_name, st.last_name as student_last_name, st.admission_number')
             ->from('tbl_users u')
             ->join('tbl_roles r', 'r.role_id = u.role_id', 'left')
             ->join('tbl_staff s', 's.staff_id = u.staff_id', 'left')
@@ -39,14 +43,139 @@ class User_model extends CI_Model {
         return $this->db->order_by('u.user_id', 'ASC')->get()->result();
     }
 
-    public function get_by_id($id)
+    public function count_filtered(array $filters = array())
     {
-        return $this->db
-            ->select('u.*, r.role_name, r.role_code, s.full_name as staff_name, s.employee_code, st.first_name as student_first_name, st.last_name as student_last_name, st.admission_number')
+        $this->db
             ->from('tbl_users u')
             ->join('tbl_roles r', 'r.role_id = u.role_id', 'left')
             ->join('tbl_staff s', 's.staff_id = u.staff_id', 'left')
             ->join('tbl_students st', 'st.student_id = u.student_id', 'left')
+            ->where('u.is_deleted', 'n');
+
+        if (!empty($filters['role_id'])) {
+            $this->db->where('u.role_id', (int)$filters['role_id']);
+        }
+        if (!empty($filters['user_type'])) {
+            $this->db->where('u.user_type', $filters['user_type']);
+        }
+        if (!empty($filters['status'])) {
+            $this->db->where('u.status', $filters['status']);
+        }
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $this->db->group_start()
+                ->like('u.name', $search)
+                ->or_like('u.username', $search)
+                ->or_like('u.email', $search)
+                ->or_like('u.phone', $search)
+                ->or_like('st.admission_number', $search)
+            ->group_end();
+        }
+
+        return $this->db->count_all_results();
+    }
+
+    public function get_datatables_data(array $filters = array(), $limit = 25, $start = 0, $order_col = 'u.user_id', $order_dir = 'ASC')
+    {
+        $allowed_cols = array(
+            0 => 'u.name',
+            1 => 'u.username',
+            2 => 'r.role_name',
+            3 => 'u.email',
+            4 => 'u.status',
+            5 => 'u.created_at',
+            6 => 'u.user_id'
+        );
+
+        $col = isset($allowed_cols[$order_col]) ? $allowed_cols[$order_col] : 'u.user_id';
+        $dir = (strtoupper($order_dir) === 'DESC') ? 'DESC' : 'ASC';
+
+        $this->db
+            ->select('u.user_id, u.name, u.username, u.email, u.phone, u.role_id, u.staff_id, u.student_id,
+                      u.user_type, u.status, u.created_at, u.updated_at,
+                      r.role_name, r.role_code, r.user_type as role_user_type,
+                      s.full_name as staff_name,
+                      st.first_name as student_first_name, st.last_name as student_last_name, st.admission_number')
+            ->from('tbl_users u')
+            ->join('tbl_roles r', 'r.role_id = u.role_id', 'left')
+            ->join('tbl_staff s', 's.staff_id = u.staff_id', 'left')
+            ->join('tbl_students st', 'st.student_id = u.student_id', 'left')
+            ->where('u.is_deleted', 'n');
+
+        if (!empty($filters['role_id'])) {
+            $this->db->where('u.role_id', (int)$filters['role_id']);
+        }
+        if (!empty($filters['user_type'])) {
+            $this->db->where('u.user_type', $filters['user_type']);
+        }
+        if (!empty($filters['status'])) {
+            $this->db->where('u.status', $filters['status']);
+        }
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $this->db->group_start()
+                ->like('u.name', $search)
+                ->or_like('u.username', $search)
+                ->or_like('u.email', $search)
+                ->or_like('u.phone', $search)
+                ->or_like('st.admission_number', $search)
+                ->or_like('r.role_name', $search)
+            ->group_end();
+        }
+
+        $this->db->order_by($col, $dir);
+
+        if ($limit > 0) {
+            $this->db->limit($limit, $start);
+        }
+
+        return $this->db->get()->result();
+    }
+
+    public function get_datatables_count_all()
+    {
+        return $this->db->where('is_deleted', 'n')->count_all_results('tbl_users');
+    }
+
+    public function get_dropdown()
+    {
+        return $this->db
+            ->select('user_id, name, username, email')
+            ->where('is_deleted', 'n')
+            ->where('status', 'Active')
+            ->order_by('name', 'ASC')
+            ->get('tbl_users')
+            ->result();
+    }
+
+    public function get_by_id($id)
+    {
+        return $this->db
+            ->select('u.user_id, u.name, u.username, u.email, u.phone, u.role_id, u.staff_id, u.student_id,
+                      u.user_type, u.status, u.created_at, u.updated_at, u.is_deleted,
+                      r.role_name, r.role_code,
+                      s.full_name as staff_name, s.employee_code,
+                      st.first_name as student_first_name, st.last_name as student_last_name, st.admission_number')
+            ->from('tbl_users u')
+            ->join('tbl_roles r', 'r.role_id = u.role_id', 'left')
+            ->join('tbl_staff s', 's.staff_id = u.staff_id', 'left')
+            ->join('tbl_students st', 'st.student_id = u.student_id', 'left')
+            ->where('u.user_id', $id)
+            ->where('u.is_deleted', 'n')
+            ->get()
+            ->row();
+    }
+
+    /**
+     * Get a user record WITH the password hash for authentication purposes only.
+     * Do NOT use this in list views or admin interfaces.
+     */
+    public function get_for_auth($id)
+    {
+        return $this->db
+            ->select('u.*, r.role_name, r.role_code')
+            ->from('tbl_users u')
+            ->join('tbl_roles r', 'r.role_id = u.role_id', 'left')
             ->where('u.user_id', $id)
             ->where('u.is_deleted', 'n')
             ->get()

@@ -29,6 +29,21 @@ class Subject_model extends CI_Model {
         return $this->db->get()->result();
     }
 
+    public function get_dropdown($class_id = NULL)
+    {
+        $this->db
+            ->select('subject_id, subject_name, subject_code, class_id')
+            ->where('status', 1)
+            ->where('is_deleted', 'n')
+            ->order_by('subject_name', 'ASC');
+
+        if ($class_id) {
+            $this->db->where('class_id', (int)$class_id);
+        }
+
+        return $this->db->get($this->table)->result();
+    }
+
     /**
      * Get all active subjects (no class filter). 
      * Use this when you need every subject in the system.

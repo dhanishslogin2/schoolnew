@@ -1302,4 +1302,152 @@ function badge(status) {
   return `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold ${cls}">${status}</span>`;
 }
 
+// =============================================================================
+// EduCore Application Global Namespace
+// =============================================================================
+window.EduCore = window.EduCore || {};
+
+// 1. Centralized AJAX Helper
+EduCore.ajax = {
+  request: function(options) {
+    const config = Object.assign({
+      url: '',
+      method: 'POST',
+      data: {},
+      dataType: 'json',
+      beforeSend: null,
+      success: null,
+      error: null,
+      complete: null,
+      showLoading: false
+    }, options);
+
+    if (typeof jQuery === 'undefined') {
+      console.error('jQuery is required for EduCore.ajax');
+      return;
+    }
+
+    return jQuery.ajax({
+      url: config.url,
+      type: config.method,
+      data: config.data,
+      dataType: config.dataType,
+      beforeSend: function(xhr, settings) {
+        if (config.showLoading) {
+          EduCore.ui.showLoading();
+        }
+        if (typeof config.beforeSend === 'function') {
+          config.beforeSend(xhr, settings);
+        }
+      },
+      success: function(response, status, xhr) {
+        if (typeof config.success === 'function') {
+          config.success(response, status, xhr);
+        }
+      },
+      error: function(xhr, status, error) {
+        let msg = 'An unexpected error occurred. Please try again.';
+        if (xhr.status === 403) {
+          msg = 'Access Denied: You do not have permission for this action.';
+        } else if (xhr.status === 404) {
+          msg = 'The requested resource was not found.';
+        } else if (xhr.status === 500) {
+          msg = 'A server error occurred. Please contact the administrator.';
+        } else if (xhr.responseJSON && xhr.responseJSON.message) {
+          msg = xhr.responseJSON.message;
+        }
+        if (typeof config.error === 'function') {
+          config.error(xhr, status, error, msg);
+        } else {
+          alert(msg);
+        }
+      },
+      complete: function(xhr, status) {
+        if (config.showLoading) {
+          EduCore.ui.hideLoading();
+        }
+        if (typeof config.complete === 'function') {
+          config.complete(xhr, status);
+        }
+      }
+    });
+  }
+};
+
+// 2. Centralized DataTables Helper
+EduCore.DataTable = {
+  init: function(selector, options) {
+    if (typeof jQuery === 'undefined' || typeof jQuery.fn.DataTable === 'undefined') {
+      return null;
+    }
+
+    const defaultOptions = {
+      responsive: true,
+      pageLength: 25,
+      lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+      language: {
+        search: "_INPUT_",
+        searchPlaceholder: "Search records...",
+        lengthMenu: "Show _MENU_ entries",
+        info: "Showing _START_ to _END_ of _TOTAL_ entries",
+        infoEmpty: "Showing 0 to 0 of 0 entries",
+        infoFiltered: "(filtered from _MAX_ total records)",
+        emptyTable: "No matching records found",
+        processing: '<div class="flex items-center justify-center gap-2 py-3"><span class="material-symbols-outlined animate-spin text-[20px]">sync</span> Loading records...</div>'
+      }
+    };
+
+    const merged = jQuery.extend(true, {}, defaultOptions, options);
+    
+    // Destroy previous instance if already initialized on this selector
+    if (jQuery.fn.DataTable.isDataTable(selector)) {
+      jQuery(selector).DataTable().destroy();
+    }
+
+    return jQuery(selector).DataTable(merged);
+  }
+};
+
+// 3. UI Helpers
+EduCore.ui = {
+  badge: badge,
+  showLoading: function() {
+    let loader = document.getElementById('educore-global-loader');
+    if (!loader) {
+      loader = document.createElement('div');
+      loader.id = 'educore-global-loader';
+      loader.className = 'fixed inset-0 bg-primary/20 backdrop-blur-xs flex items-center justify-center z-50';
+      loader.innerHTML = '<div class="bg-surface-container-lowest p-4 rounded-xl shadow-xl flex items-center gap-3 border border-outline-variant/60 font-medium text-body-md text-on-surface"><span class="material-symbols-outlined animate-spin text-secondary text-[24px]">sync</span> Processing request...</div>';
+      document.body.appendChild(loader);
+    }
+    loader.classList.remove('hidden');
+  },
+  hideLoading: function() {
+    const loader = document.getElementById('educore-global-loader');
+    if (loader) {
+      loader.classList.add('hidden');
+    }
+  }
+};
+
+// 4. Duplicate Form Submission Prevention
+document.addEventListener("submit", function(e) {
+  const form = e.target;
+  if (form && form.tagName === 'FORM' && !form.dataset.submitting && !form.hasAttribute('data-no-lock')) {
+    const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+    if (submitBtn) {
+      form.dataset.submitting = "true";
+      submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+      submitBtn.setAttribute('disabled', 'disabled');
+      // Auto re-enable after 8s fallback in case of validation interruption
+      setTimeout(function() {
+        delete form.dataset.submitting;
+        submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+        submitBtn.removeAttribute('disabled');
+      }, 8000);
+    }
+  }
+});
+
 document.addEventListener("DOMContentLoaded", initShell);
+

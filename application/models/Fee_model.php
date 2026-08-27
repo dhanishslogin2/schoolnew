@@ -413,6 +413,121 @@ class Fee_model extends CI_Model {
         return $this->db->order_by('fp.payment_id', 'DESC')->limit($limit)->get()->result();
     }
 
+    public function count_filtered_payments($filters = array())
+    {
+        $this->db
+            ->from('tbl_fee_payments fp')
+            ->join('tbl_students st', 'st.student_id = fp.student_id', 'inner')
+            ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'left')
+            ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
+            ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left')
+            ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
+            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->where('fp.is_deleted', 'n')
+            ->where('fp.status', 1);
+
+        if (!empty($filters['student_id'])) {
+            $this->db->where('fp.student_id', (int)$filters['student_id']);
+        }
+        if (!empty($filters['class_id'])) {
+            $this->db->where('st.class_id', (int)$filters['class_id']);
+        }
+        if (!empty($filters['payment_mode'])) {
+            $this->db->where('fp.payment_mode', $filters['payment_mode']);
+        }
+        if (!empty($filters['date_from'])) {
+            $this->db->where('fp.payment_date >=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $this->db->where('fp.payment_date <=', $filters['date_to']);
+        }
+        if (!empty($filters['search'])) {
+            $s = trim($filters['search']);
+            $this->db->group_start()
+                     ->like('st.first_name', $s)
+                     ->or_like('st.last_name', $s)
+                     ->or_like('fp.receipt_no', $s)
+                     ->or_like('st.admission_number', $s)
+                     ->or_like('fp.transaction_reference', $s)
+                     ->or_like('fh.head_name', $s)
+                     ->group_end();
+        }
+
+        return $this->db->count_all_results();
+    }
+
+    public function get_payments_datatables($filters = array(), $limit = 25, $start = 0, $order_col = 'fp.payment_id', $order_dir = 'DESC')
+    {
+        $allowed_cols = array(
+            0 => 'fp.receipt_no',
+            1 => 'st.first_name',
+            2 => 'c.class_name',
+            3 => 'fh.head_name',
+            4 => 'fp.amount_paid',
+            5 => 'fp.payment_mode',
+            6 => 'fp.transaction_reference',
+            7 => 'fp.payment_date',
+            8 => 'fp.payment_id'
+        );
+
+        $col = isset($allowed_cols[$order_col]) ? $allowed_cols[$order_col] : 'fp.payment_id';
+        $dir = (strtoupper($order_dir) === 'ASC') ? 'ASC' : 'DESC';
+
+        $this->db->select('fp.payment_id, fp.receipt_no, fp.amount_paid, fp.payment_mode, fp.transaction_reference, fp.payment_date,
+                           st.student_id, st.admission_number, st.first_name, st.last_name, 
+                           c.class_name, sec.section_name, fh.head_name as category_name, sf.invoice_no, u.name as collected_by_name')
+                 ->from('tbl_fee_payments fp')
+                 ->join('tbl_students st', 'st.student_id = fp.student_id', 'inner')
+                 ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'left')
+                 ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
+                 ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left')
+                 ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
+                 ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+                 ->join('tbl_users u', 'u.user_id = fp.collected_by', 'left')
+                 ->where('fp.is_deleted', 'n')
+                 ->where('fp.status', 1);
+
+        if (!empty($filters['student_id'])) {
+            $this->db->where('fp.student_id', (int)$filters['student_id']);
+        }
+        if (!empty($filters['class_id'])) {
+            $this->db->where('st.class_id', (int)$filters['class_id']);
+        }
+        if (!empty($filters['payment_mode'])) {
+            $this->db->where('fp.payment_mode', $filters['payment_mode']);
+        }
+        if (!empty($filters['date_from'])) {
+            $this->db->where('fp.payment_date >=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $this->db->where('fp.payment_date <=', $filters['date_to']);
+        }
+        if (!empty($filters['search'])) {
+            $s = trim($filters['search']);
+            $this->db->group_start()
+                     ->like('st.first_name', $s)
+                     ->or_like('st.last_name', $s)
+                     ->or_like('fp.receipt_no', $s)
+                     ->or_like('st.admission_number', $s)
+                     ->or_like('fp.transaction_reference', $s)
+                     ->or_like('fh.head_name', $s)
+                     ->group_end();
+        }
+
+        $this->db->order_by($col, $dir);
+
+        if ($limit > 0) {
+            $this->db->limit($limit, $start);
+        }
+
+        return $this->db->get()->result();
+    }
+
+    public function get_payments_count_all()
+    {
+        return $this->db->where('is_deleted', 'n')->where('status', 1)->count_all_results('tbl_fee_payments');
+    }
+
     public function get_due_fees($filters = array(), $limit = 100)
     {
         $today = date('Y-m-d');

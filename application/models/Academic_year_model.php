@@ -15,6 +15,16 @@ class Academic_year_model extends CI_Model {
             ->result();
     }
 
+    public function get_dropdown()
+    {
+        return $this->db
+            ->select('academic_year_id, year_name, is_active')
+            ->where('status', 1)
+            ->order_by('start_date', 'DESC')
+            ->get($this->table)
+            ->result();
+    }
+
     public function get_by_id($id)
     {
         return $this->db

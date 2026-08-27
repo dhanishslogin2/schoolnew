@@ -70,12 +70,8 @@
 
     <!-- Payments Table -->
     <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 overflow-hidden mb-6">
-      <div class="p-4 border-b border-outline-variant/50 flex items-center justify-between">
-        <span class="text-body-md font-semibold text-on-surface">Payment Records (<?php echo count($payments); ?>)</span>
-      </div>
-
-      <div class="table-scroll overflow-x-auto">
-        <table class="w-full data-table zebra border-collapse text-body-md">
+      <div class="table-scroll overflow-x-auto p-2">
+        <table id="payments-table" class="w-full data-table zebra border-collapse text-body-md">
           <thead>
             <tr class="border-b border-outline-variant/60 bg-surface-container-low/50">
               <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Receipt #</th>
@@ -90,49 +86,44 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-outline-variant/40">
-            <?php if (empty($payments)): ?>
-              <tr><td colspan="9" class="px-4 py-8 text-center text-on-surface-variant">No payment transactions found.</td></tr>
-            <?php else: ?>
-              <?php foreach ($payments as $p): ?>
-                <tr class="hover:bg-surface-container-low transition-colors">
-                  <td class="px-4 py-3 font-mono font-bold text-primary whitespace-nowrap">
-                    <a href="<?php echo site_url('fees/receipt/' . $p->payment_id); ?>" class="hover:underline">
-                      <?php echo html_escape($p->receipt_no); ?>
-                    </a>
-                  </td>
-                  <td class="px-4 py-3 whitespace-nowrap font-bold text-on-surface">
-                    <?php echo html_escape($p->first_name . ' ' . $p->last_name); ?>
-                    <span class="text-[11px] text-on-surface-variant block font-mono font-normal"><?php echo html_escape($p->admission_number); ?></span>
-                  </td>
-                  <td class="px-4 py-3 whitespace-nowrap text-on-surface-variant">
-                    <?php echo html_escape($p->class_name . ' ' . $p->section_name); ?>
-                  </td>
-                  <td class="px-4 py-3 whitespace-nowrap font-medium text-on-surface">
-                    <?php echo html_escape($p->category_name); ?>
-                  </td>
-                  <td class="px-4 py-3 text-right font-mono font-bold text-secondary whitespace-nowrap text-base">
-                    ₹<?php echo number_format($p->amount_paid, 2); ?>
-                  </td>
-                  <td class="px-4 py-3 text-center whitespace-nowrap">
-                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-surface-container-high text-on-surface">
-                      <?php echo html_escape($p->payment_mode); ?>
-                    </span>
-                  </td>
-                  <td class="px-4 py-3 font-mono text-[12px] text-on-surface-variant whitespace-nowrap">
-                    <?php echo html_escape($p->transaction_reference ?: '—'); ?>
-                  </td>
-                  <td class="px-4 py-3 text-center font-mono text-[12px] text-on-surface whitespace-nowrap">
-                    <?php echo date('d M Y', strtotime($p->payment_date)); ?>
-                  </td>
-                  <td class="px-4 py-3 text-center whitespace-nowrap">
-                    <a href="<?php echo site_url('fees/receipt/' . $p->payment_id); ?>" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container-high text-primary hover:bg-primary-fixed transition-colors text-[12px] font-semibold">
-                      <span class="material-symbols-outlined text-[16px]">receipt</span>View Receipt
-                    </a>
-                  </td>
-                </tr>
-              <?php endforeach; ?>
-            <?php endif; ?>
+            <!-- DataTables Server-Side Populated -->
           </tbody>
         </table>
       </div>
     </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        if (typeof jQuery !== 'undefined' && typeof EduCore !== 'undefined') {
+          EduCore.DataTable.init('#payments-table', {
+            serverSide: true,
+            processing: true,
+            searching: false,
+            order: [[0, 'desc']],
+            ajax: {
+              url: '<?php echo site_url('fees/ajax_payments_list'); ?>',
+              type: 'POST',
+              data: function(d) {
+                d.class_id     = '<?php echo html_escape($filters['class_id'] ?? ''); ?>';
+                d.payment_mode = '<?php echo html_escape($filters['payment_mode'] ?? ''); ?>';
+                d.date_from    = '<?php echo html_escape($filters['date_from'] ?? ''); ?>';
+                d.date_to      = '<?php echo html_escape($filters['date_to'] ?? ''); ?>';
+                d.search       = { value: '<?php echo html_escape($filters['search'] ?? ''); ?>' };
+              }
+            },
+            columns: [
+              { data: 0, orderable: true },
+              { data: 1, orderable: true },
+              { data: 2, orderable: true },
+              { data: 3, orderable: true },
+              { data: 4, orderable: true, className: 'text-right' },
+              { data: 5, orderable: true, className: 'text-center' },
+              { data: 6, orderable: true },
+              { data: 7, orderable: true, className: 'text-center' },
+              { data: 8, orderable: false, className: 'text-center' }
+            ]
+          });
+        }
+      });
+    </script>
+

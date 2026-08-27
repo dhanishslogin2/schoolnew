@@ -29,6 +29,7 @@ class Academics extends MY_Controller {
 
     public function overview()
     {
+        $this->require_permission('academics.view');
         $active_year = $this->Academic_year_model->get_active();
         $year_id     = $active_year ? (int)$active_year->academic_year_id : NULL;
 
@@ -69,9 +70,11 @@ class Academics extends MY_Controller {
        ========================================================================= */
     public function years()
     {
+        $this->require_permission('academics.view');
         if ($this->input->method() === 'post') {
             $action = $this->input->post('action');
             if ($action === 'add') {
+                $this->require_permission('academics.create');
                 $this->form_validation->set_rules('year_name', 'Year Name', 'required|trim');
                 $this->form_validation->set_rules('start_date', 'Start Date', 'required');
                 $this->form_validation->set_rules('end_date', 'End Date', 'required');
@@ -91,6 +94,7 @@ class Academics extends MY_Controller {
                     $this->session->set_flashdata('error', validation_errors());
                 }
             } elseif ($action === 'edit') {
+                $this->require_permission('academics.edit');
                 $id = $this->input->post('academic_year_id');
                 $isActive = ($this->input->post('is_active') == '1') ? 1 : 0;
                 $this->Academic_year_model->update($id, array(
@@ -117,6 +121,7 @@ class Academics extends MY_Controller {
 
     public function set_active_year($id = NULL)
     {
+        $this->require_permission('academics.edit');
         if (!empty($id)) {
             $this->Academic_year_model->set_active($id);
             $this->session->set_flashdata('success', 'Active academic session updated!');
@@ -126,6 +131,7 @@ class Academics extends MY_Controller {
 
     public function delete_year($id = NULL)
     {
+        $this->require_permission('academics.delete');
         if (!empty($id)) {
             $this->Academic_year_model->soft_delete($id);
             $this->session->set_flashdata('success', 'Academic Year deactivated.');
@@ -138,9 +144,11 @@ class Academics extends MY_Controller {
        ========================================================================= */
     public function classes()
     {
+        $this->require_permission('academics.view');
         if ($this->input->method() === 'post') {
             $action = $this->input->post('action');
             if ($action === 'add') {
+                $this->require_permission('academics.create');
                 $this->form_validation->set_rules('class_name', 'Class Name', 'required|trim');
                 if ($this->form_validation->run() === TRUE) {
                     $this->Class_model->insert(array(
@@ -157,6 +165,7 @@ class Academics extends MY_Controller {
                     $this->session->set_flashdata('error', validation_errors());
                 }
             } elseif ($action === 'edit') {
+                $this->require_permission('academics.edit');
                 $id = $this->input->post('class_id');
                 $this->Class_model->update($id, array(
                     'academic_year_id' => $this->input->post('academic_year_id') ?: 1,
@@ -186,6 +195,7 @@ class Academics extends MY_Controller {
 
     public function delete_class($id = NULL)
     {
+        $this->require_permission('academics.delete');
         if (!empty($id)) {
             $this->Class_model->soft_delete($id);
             $this->session->set_flashdata('success', 'Class record deactivated.');
@@ -198,9 +208,11 @@ class Academics extends MY_Controller {
        ========================================================================= */
     public function sections()
     {
+        $this->require_permission('academics.view');
         if ($this->input->method() === 'post') {
             $action = $this->input->post('action');
             if ($action === 'add') {
+                $this->require_permission('academics.create');
                 $this->form_validation->set_rules('class_id', 'Class', 'required');
                 $this->form_validation->set_rules('section_name', 'Section Name', 'required|trim');
 
@@ -226,6 +238,7 @@ class Academics extends MY_Controller {
                     $this->session->set_flashdata('error', validation_errors());
                 }
             } elseif ($action === 'edit') {
+                $this->require_permission('academics.edit');
                 $id = $this->input->post('section_id');
                 $class_id = $this->input->post('class_id');
                 $section_name = trim($this->input->post('section_name'));
@@ -262,6 +275,7 @@ class Academics extends MY_Controller {
 
     public function delete_section($id = NULL)
     {
+        $this->require_permission('academics.delete');
         if (!empty($id)) {
             $this->Section_model->soft_delete($id);
             $this->session->set_flashdata('success', 'Section deactivated.');
@@ -274,9 +288,11 @@ class Academics extends MY_Controller {
        ========================================================================= */
     public function subjects()
     {
+        $this->require_permission('academics.view');
         if ($this->input->method() === 'post') {
             $action = $this->input->post('action');
             if ($action === 'add') {
+                $this->require_permission('academics.create');
                 $this->form_validation->set_rules('subject_name', 'Subject Name', 'required|trim');
                 if ($this->form_validation->run() === TRUE) {
                     $this->Subject_model->insert(array(
@@ -293,6 +309,7 @@ class Academics extends MY_Controller {
                     $this->session->set_flashdata('error', validation_errors());
                 }
             } elseif ($action === 'edit') {
+                $this->require_permission('academics.edit');
                 $id = $this->input->post('subject_id');
                 $this->Subject_model->update($id, array(
                     'class_id'     => $this->input->post('class_id') ?: NULL,
@@ -322,6 +339,7 @@ class Academics extends MY_Controller {
 
     public function delete_subject($id = NULL)
     {
+        $this->require_permission('academics.delete');
         if (!empty($id)) {
             $this->Subject_model->soft_delete($id);
             $this->session->set_flashdata('success', 'Subject deactivated.');
@@ -334,7 +352,9 @@ class Academics extends MY_Controller {
        ========================================================================= */
     public function class_teachers()
     {
+        $this->require_permission('academics.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('academics.edit');
             $year_id    = $this->input->post('academic_year_id') ?: 1;
             $class_id   = $this->input->post('class_id');
             $section_id = $this->input->post('section_id');
@@ -380,6 +400,7 @@ class Academics extends MY_Controller {
 
     public function delete_class_teacher($id = NULL)
     {
+        $this->require_permission('academics.edit');
         if (!empty($id)) {
             $this->Class_teacher_model->delete($id);
             $this->session->set_flashdata('success', 'Class teacher assignment removed.');
@@ -392,7 +413,9 @@ class Academics extends MY_Controller {
        ========================================================================= */
     public function subject_teachers()
     {
+        $this->require_permission('academics.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('academics.edit');
             $year_id    = $this->input->post('academic_year_id') ?: 1;
             $class_id   = $this->input->post('class_id');
             $section_id = $this->input->post('section_id');
@@ -442,6 +465,7 @@ class Academics extends MY_Controller {
 
     public function delete_subject_teacher($id = NULL)
     {
+        $this->require_permission('academics.edit');
         if (!empty($id)) {
             $this->Subject_teacher_model->delete($id);
             $this->session->set_flashdata('success', 'Subject teacher assignment removed.');
@@ -454,7 +478,9 @@ class Academics extends MY_Controller {
        ========================================================================= */
     public function timetable()
     {
+        $this->require_permission('timetable.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('timetable.edit');
             $action = $this->input->post('action');
             if ($action === 'save_entry') {
                 $ttId = $this->input->post('timetable_id');
@@ -562,6 +588,7 @@ class Academics extends MY_Controller {
 
     public function delete_timetable_entry($id = NULL)
     {
+        $this->require_permission('timetable.edit');
         $year_id = $this->input->get('academic_year_id') ?: 1;
         $class_id = $this->input->get('class_id');
         $section_id = $this->input->get('section_id');
@@ -574,6 +601,7 @@ class Academics extends MY_Controller {
 
     public function delete_period($id = NULL)
     {
+        $this->require_permission('timetable.edit');
         if (!empty($id)) {
             $this->Period_model->soft_delete($id);
             $this->session->set_flashdata('success', 'Period slot deleted.');
@@ -586,9 +614,11 @@ class Academics extends MY_Controller {
        ========================================================================= */
     public function calendar()
     {
+        $this->require_permission('academics.view');
         if ($this->input->method() === 'post') {
             $action = $this->input->post('action');
             if ($action === 'add') {
+                $this->require_permission('academics.create');
                 $this->form_validation->set_rules('title', 'Event / Holiday Title', 'required|trim');
                 $this->form_validation->set_rules('start_date', 'Start Date', 'required');
 
@@ -610,6 +640,7 @@ class Academics extends MY_Controller {
                     $this->session->set_flashdata('error', validation_errors());
                 }
             } elseif ($action === 'edit') {
+                $this->require_permission('academics.edit');
                 $id = $this->input->post('calendar_id');
                 $this->Academic_calendar_model->update($id, array(
                     'academic_year_id' => $this->input->post('academic_year_id') ?: 1,
@@ -658,6 +689,7 @@ class Academics extends MY_Controller {
 
     public function delete_calendar_event($id = NULL)
     {
+        $this->require_permission('academics.delete');
         if (!empty($id)) {
             $this->Academic_calendar_model->soft_delete($id);
             $this->session->set_flashdata('success', 'Calendar event removed.');

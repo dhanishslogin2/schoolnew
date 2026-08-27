@@ -30,6 +30,7 @@ class Communication extends MY_Controller {
     // 1. Notification Dashboard
     public function dashboard()
     {
+        $this->require_permission('communication.view');
         $data['title'] = 'Notification & Communication Dashboard';
         $data['stats'] = $this->Communication_model->get_dashboard_stats();
         $data['recent_notifications'] = $this->Communication_model->get_messages([], 6);
@@ -43,6 +44,7 @@ class Communication extends MY_Controller {
     // 2. Centralized Notification Templates
     public function templates()
     {
+        $this->require_permission('communication.manage_templates');
         if ($this->input->post('action') === 'create') {
             $code = strtoupper(trim($this->input->post('template_code')));
             
@@ -101,6 +103,7 @@ class Communication extends MY_Controller {
     // 3. SMS Templates
     public function sms_templates()
     {
+        $this->require_permission('communication.manage_templates');
         $filters = [
             'channel'  => 'SMS',
             'category' => $this->input->get('category') ?: NULL,
@@ -119,6 +122,7 @@ class Communication extends MY_Controller {
     // 4. WhatsApp Templates
     public function whatsapp_templates()
     {
+        $this->require_permission('communication.manage_templates');
         $filters = [
             'channel'  => 'WhatsApp',
             'category' => $this->input->get('category') ?: NULL,
@@ -137,6 +141,7 @@ class Communication extends MY_Controller {
     // 5. Email Templates
     public function email_templates()
     {
+        $this->require_permission('communication.manage_templates');
         $filters = [
             'channel'  => 'Email',
             'category' => $this->input->get('category') ?: NULL,
@@ -155,6 +160,7 @@ class Communication extends MY_Controller {
     // Template Duplicate / Toggle
     public function duplicate_template($id)
     {
+        $this->require_permission('communication.manage_templates');
         $new_id = $this->Communication_model->duplicate_template($id);
         if ($new_id) {
             $this->session->set_flashdata('success', 'Template duplicated successfully!');
@@ -166,6 +172,7 @@ class Communication extends MY_Controller {
 
     public function toggle_template($id)
     {
+        $this->require_permission('communication.manage_templates');
         $tmpl = $this->Communication_model->get_template_by_id($id);
         if ($tmpl) {
             $new_st = ($tmpl->status === 'Active') ? 'Inactive' : 'Active';
@@ -178,6 +185,7 @@ class Communication extends MY_Controller {
     // 6. Automated Notifications & Rules
     public function automated_notifications()
     {
+        $this->require_permission('communication.automated_rules');
         if ($this->input->post('action') === 'create_rule') {
             $ruleData = [
                 'rule_name'        => trim($this->input->post('rule_name')),
@@ -216,6 +224,7 @@ class Communication extends MY_Controller {
 
     public function toggle_rule($rule_id)
     {
+        $this->require_permission('communication.automated_rules');
         $this->Notification_rule_model->toggle_status($rule_id);
         $this->session->set_flashdata('success', 'Notification rule status updated.');
         redirect('communication/automated_notifications');
@@ -223,6 +232,7 @@ class Communication extends MY_Controller {
 
     public function test_rule($rule_id)
     {
+        $this->require_permission('communication.automated_rules');
         $rule = $this->Notification_rule_model->get_by_id($rule_id);
         if (!$rule) {
             $this->session->set_flashdata('error', 'Rule not found.');
@@ -254,6 +264,7 @@ class Communication extends MY_Controller {
     // 7. Notification Queue
     public function queue()
     {
+        $this->require_permission('communication.view');
         $filters = [
             'status'        => $this->input->get('status') ?: NULL,
             'channel'       => $this->input->get('channel') ?: NULL,
@@ -270,6 +281,7 @@ class Communication extends MY_Controller {
 
     public function process_queue_item($id)
     {
+        $this->require_permission('communication.send');
         $this->Notification_queue_model->process_item($id);
         $this->session->set_flashdata('success', "Queue item #{$id} processed and dispatched!");
         redirect('communication/queue');
@@ -277,6 +289,7 @@ class Communication extends MY_Controller {
 
     public function cancel_queue_item($id)
     {
+        $this->require_permission('communication.send');
         $this->notification_engine->cancel_notification($id);
         $this->session->set_flashdata('success', "Notification #{$id} cancelled.");
         redirect('communication/queue');
@@ -285,6 +298,7 @@ class Communication extends MY_Controller {
     // 8. Notification History
     public function history()
     {
+        $this->require_permission('communication.view');
         $filters = [
             'channel'        => $this->input->get('channel') ?: NULL,
             'source_module'  => $this->input->get('source_module') ?: NULL,
@@ -305,6 +319,7 @@ class Communication extends MY_Controller {
     // 9. Notification Details
     public function details($id)
     {
+        $this->require_permission('communication.view');
         $msg = $this->Communication_model->get_message_by_id($id);
         if (!$msg) {
             $this->session->set_flashdata('error', 'Notification record not found.');
@@ -321,6 +336,7 @@ class Communication extends MY_Controller {
     // 10. Failed Notifications
     public function failed()
     {
+        $this->require_permission('communication.view');
         $filters = [
             'channel'       => $this->input->get('channel') ?: NULL,
             'source_module' => $this->input->get('source_module') ?: NULL,
@@ -335,6 +351,7 @@ class Communication extends MY_Controller {
 
     public function retry_failed($id)
     {
+        $this->require_permission('communication.send');
         $this->notification_engine->retry_notification($id);
         $this->session->set_flashdata('success', "Notification #{$id} retried successfully.");
         redirect('communication/failed');
@@ -343,6 +360,7 @@ class Communication extends MY_Controller {
     // 11. Delivery Reports
     public function reports()
     {
+        $this->require_permission('communication.view');
         $reports = $this->Communication_model->get_delivery_reports();
         
         if ($this->input->get('export') === 'csv') {
@@ -372,6 +390,7 @@ class Communication extends MY_Controller {
     // 12. Notification Settings
     public function settings()
     {
+        $this->require_permission('communication.manage_templates');
         if ($this->input->post()) {
             $settingsData = [
                 'enable_inapp'            => $this->input->post('enable_inapp') ? 1 : 0,
@@ -404,6 +423,7 @@ class Communication extends MY_Controller {
     // AJAX Variable Live Preview
     public function preview_template()
     {
+        $this->require_permission('communication.manage_templates');
         $raw_template = $this->input->post('template_text');
         $sample_student = $this->Student_model->get_all(['limit' => 1])[0] ?? NULL;
         $context = [
@@ -438,6 +458,7 @@ class Communication extends MY_Controller {
     // Existing Notices & Circulars Handlers
     public function notices()
     {
+        $this->require_permission('communication.view');
         $filters = [
             'category'    => $this->input->get('category') ?: NULL,
             'priority'    => $this->input->get('priority') ?: NULL,
@@ -455,6 +476,7 @@ class Communication extends MY_Controller {
 
     public function create_notice()
     {
+        $this->require_permission('communication.send');
         if ($this->input->post()) {
             $attachment = NULL;
             if (!empty($_FILES['attachment']['name'])) {
@@ -504,6 +526,7 @@ class Communication extends MY_Controller {
 
     public function announcements()
     {
+        $this->require_permission('communication.view');
         $data['title'] = 'School Announcements';
         $data['announcements'] = $this->Announcement_model->get_all();
         $this->render('pages/communication/announcements', $data);
@@ -511,6 +534,7 @@ class Communication extends MY_Controller {
 
     public function conversations()
     {
+        $this->require_permission('communication.view');
         $data['title'] = 'Conversations';
         $data['conversations'] = $this->Conversation_model->get_all();
         $this->render('pages/communication/conversations', $data);
@@ -518,6 +542,7 @@ class Communication extends MY_Controller {
 
     public function groups()
     {
+        $this->require_permission('communication.view');
         $data['title'] = 'Communication Groups';
         $data['groups'] = $this->Communication_group_model->get_all();
         $this->render('pages/communication/groups', $data);

@@ -24,6 +24,21 @@ class Class_model extends CI_Model {
         return $this->db->get()->result();
     }
 
+    public function get_dropdown($academic_year_id = NULL)
+    {
+        $this->db
+            ->select('class_id, class_name')
+            ->where('status', 1)
+            ->where('is_deleted', 'n')
+            ->order_by('class_id', 'ASC');
+
+        if ($academic_year_id) {
+            $this->db->where('academic_year_id', (int)$academic_year_id);
+        }
+
+        return $this->db->get($this->table)->result();
+    }
+
     public function get_by_id($id)
     {
         return $this->db

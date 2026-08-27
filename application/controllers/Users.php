@@ -65,6 +65,79 @@ class Users extends MY_Controller {
         ]);
     }
 
+    public function ajax_list()
+    {
+        $this->require_permission('users.view');
+
+        $draw   = (int)$this->input->post('draw');
+        $start  = (int)$this->input->post('start');
+        $length = (int)$this->input->post('length');
+        $order  = $this->input->post('order');
+        $search = $this->input->post('search');
+
+        $order_col_idx = isset($order[0]['column']) ? (int)$order[0]['column'] : 0;
+        $order_dir     = isset($order[0]['dir']) ? $order[0]['dir'] : 'asc';
+        $search_val    = isset($search['value']) ? trim($search['value']) : '';
+
+        $filters = [
+            'role_id'   => $this->input->post('role_id', TRUE) ?: $this->input->get('role_id', TRUE),
+            'user_type' => $this->input->post('user_type', TRUE) ?: $this->input->get('user_type', TRUE),
+            'status'    => $this->input->post('status', TRUE) ?: $this->input->get('status', TRUE),
+            'search'    => $search_val,
+        ];
+
+        $records_total    = $this->User_model->get_datatables_count_all();
+        $records_filtered = $this->User_model->count_filtered($filters);
+        $user_list        = $this->User_model->get_datatables_data($filters, $length, $start, $order_col_idx, $order_dir);
+
+        $data = [];
+        foreach ($user_list as $u) {
+            $initials = educore_initials($u->name);
+            $statusBadge = educore_status_badge($u->status);
+
+            $userCol = '<div class="flex items-center gap-2.5">' .
+                '<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[11px] font-semibold shrink-0">' . html_escape($initials) . '</div>' .
+                '<div>' .
+                    '<div class="font-medium text-on-surface">' . html_escape($u->name) . '</div>' .
+                    '<div class="text-[12px] text-on-surface-variant">' . html_escape($u->user_type ?: 'User') . '</div>' .
+                '</div>' .
+            '</div>';
+
+            $roleCol = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-primary-fixed/30 text-primary">' . html_escape($u->role_name ?: 'No Role') . '</span>';
+
+            $contactCol = '<div>' .
+                '<div class="text-on-surface">' . html_escape($u->email ?: '—') . '</div>' .
+                '<div class="text-[12px] text-on-surface-variant">' . html_escape($u->phone ?: '—') . '</div>' .
+            '</div>';
+
+            $actionsCol = '<div class="flex items-center justify-end gap-1.5">' .
+                '<a href="' . site_url('users/details/' . $u->user_id) . '" title="View Details" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">visibility</span></a>' .
+                '<a href="' . site_url('users/edit/' . $u->user_id) . '" title="Edit User" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">edit</span></a>' .
+            '</div>';
+
+            $data[] = [
+                $userCol,
+                html_escape($u->username),
+                $roleCol,
+                $contactCol,
+                $statusBadge,
+                educore_date($u->created_at),
+                $actionsCol
+            ];
+        }
+
+        $output = [
+            "draw"            => $draw,
+            "recordsTotal"    => $records_total,
+            "recordsFiltered" => $records_filtered,
+            "data"            => $data,
+        ];
+
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode($output));
+    }
+
     /**
      * 3. Add User Form & Creation
      */

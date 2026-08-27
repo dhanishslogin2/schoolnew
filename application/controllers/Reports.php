@@ -6,7 +6,6 @@ class Reports extends MY_Controller {
     public function __construct()
     {
         parent::__construct();
-        $this->require_auth();
         $this->load->model(array(
             'Student_model',
             'Staff_model',
@@ -19,6 +18,7 @@ class Reports extends MY_Controller {
 
     public function index()
     {
+        $this->require_permission('reports.view');
         $today = date('Y-m-d');
         $total_students = $this->db->where('status >=', 0)->count_all_results('tbl_students');
         $total_staff = $this->db->where('status >=', 0)->count_all_results('tbl_staff');

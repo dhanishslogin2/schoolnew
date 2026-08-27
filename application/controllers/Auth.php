@@ -4,10 +4,9 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 /**
  * Auth
  *
- * Ported from index.html (redirect-to-login) and login.html.
- * This is a prototype/UI-only auth flow, same as the original static
- * HTML: any submitted credentials are accepted. Wire up a real user
- * model + password check here before going to production.
+ * Handles user login and logout.
+ * Credentials are verified against tbl_users using bcrypt (password_verify).
+ * Accounts must be Active and not locked to succeed.
  */
 class Auth extends CI_Controller {
 
@@ -15,6 +14,7 @@ class Auth extends CI_Controller {
     {
         parent::__construct();
         $this->load->model('User_model');
+        $this->load->helper('app'); // educore_initials()
     }
 
     public function index()
@@ -35,54 +35,52 @@ class Auth extends CI_Controller {
 
         if ($this->input->method() === 'post')
         {
-            $this->form_validation->set_rules('email', 'Email Address or Username', 'required|trim');
-            $this->form_validation->set_rules('password', 'Password', 'required');
+            $this->form_validation->set_rules('email',    'Email or Username', 'required|trim');
+            $this->form_validation->set_rules('password', 'Password',          'required');
 
             if ($this->form_validation->run() === TRUE)
             {
-                $email = $this->input->post('email', TRUE);
-                $password = $this->input->post('password');
+                $identifier = $this->input->post('email',    TRUE);
+                $password   = $this->input->post('password');
 
-                $user = $this->User_model->verify_credentials($email, $password);
+                $user = $this->User_model->verify_credentials($identifier, $password);
 
                 if ($user)
                 {
-                    // Generate initials
-                    $parts = explode(' ', trim($user->name));
-                    $initials = '';
-                    foreach ($parts as $p) {
-                        if (!empty($p)) $initials .= strtoupper($p[0]);
-                    }
-                    if (strlen($initials) > 2) $initials = substr($initials, 0, 2);
-                    if (empty($initials)) $initials = 'U';
+                    $initials = educore_initials($user->name);
 
-                    $this->session->set_userdata(array(
-                        'logged_in'     => TRUE,
-                        'user_id'       => $user->user_id,
-                        'user_name'     => $user->name,
-                        'user_email'    => $user->email,
-                        'user_role'     => $user->role_name,
-                        'role_id'       => $user->role_id,
-                        'user_initials' => $initials,
-                        'user'          => array(
+                    // Store the canonical nested 'user' array plus essential
+                    // top-level keys for backward compatibility with controllers
+                    // and models that read userdata('user_id') / userdata('user_role')
+                    $this->session->set_userdata([
+                        'logged_in'  => TRUE,
+                        // Legacy flat keys (still read by 30+ controller/model locations)
+                        'user_id'    => (int)$user->user_id,
+                        'user_name'  => $user->name,
+                        'user_email' => $user->email,
+                        'user_role'  => $user->role_name,
+                        'role_id'    => (int)$user->role_id,
+                        // Canonical nested object (used by MY_Controller + Rbac)
+                        'user'       => [
                             'user_id'   => (int)$user->user_id,
                             'name'      => $user->name,
                             'username'  => $user->username,
                             'email'     => $user->email,
                             'role_id'   => (int)$user->role_id,
                             'role'      => $user->role_name,
-                            'role_code' => $user->role_code ?: 'SUPER_ADMIN',
+                            'role_code' => $user->role_code ?: 'USER',
                             'user_type' => $user->user_type ?: 'Admin',
                             'initials'  => $initials,
-                        ),
-                    ));
+                        ],
+                    ]);
+
 
                     redirect('dashboard');
                     return;
                 }
                 else
                 {
-                    $this->session->set_flashdata('error', 'Invalid email address or password.');
+                    $this->session->set_flashdata('error', 'Invalid email address or password. Please try again.');
                 }
             }
             else

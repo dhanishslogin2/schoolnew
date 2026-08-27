@@ -22,8 +22,16 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | If you need to allow multiple domains, remember that this file is still
 | a PHP script and you can easily do that on your own.
 |
-*/
-$config['base_url'] = '';
+if (!empty($_SERVER['HTTP_HOST'])) {
+    $host = $_SERVER['HTTP_HOST'];
+    if ($host === '[::1]' || $host === '::1' || $host === '127.0.0.1') {
+        $host = 'localhost';
+    }
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $config['base_url'] = $protocol . '://' . $host . '/schoolnew/';
+} else {
+    $config['base_url'] = 'http://localhost/schoolnew/';
+}
 
 /*
 |--------------------------------------------------------------------------

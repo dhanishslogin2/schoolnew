@@ -107,6 +107,104 @@ class Staff_model extends CI_Model {
         return $this->db->get()->result();
     }
 
+    public function count_filtered($filters = array())
+    {
+        $this->db
+            ->from('tbl_staff s')
+            ->where('s.is_deleted', 'n');
+
+        if (!empty($filters['staff_type'])) {
+            $this->db->where('s.staff_type', $filters['staff_type']);
+        }
+        if (!empty($filters['department_id'])) {
+            $this->db->where('s.department_id', (int)$filters['department_id']);
+        }
+        if (!empty($filters['designation_id'])) {
+            $this->db->where('s.designation_id', (int)$filters['designation_id']);
+        }
+        if (!empty($filters['employment_status'])) {
+            $this->db->where('s.employment_status', $filters['employment_status']);
+        }
+        if (isset($filters['status']) && $filters['status'] !== '' && $filters['status'] !== 'All') {
+            $this->db->where('s.status', (int)$filters['status']);
+        }
+        if (!empty($filters['search'])) {
+            $s = trim($filters['search']);
+            $this->db->group_start()
+                ->like('s.full_name', $s)
+                ->or_like('s.employee_code', $s)
+                ->or_like('s.email', $s)
+                ->or_like('s.phone', $s)
+                ->group_end();
+        }
+
+        return $this->db->count_all_results();
+    }
+
+    public function get_datatables_data($filters = array(), $limit = 25, $start = 0, $order_col = 's.staff_id', $order_dir = 'ASC')
+    {
+        $allowed_cols = array(
+            0 => 's.employee_code',
+            1 => 's.full_name',
+            2 => 'd.department_name',
+            3 => 'dg.designation_name',
+            4 => 's.email',
+            5 => 's.status',
+            6 => 's.staff_id'
+        );
+
+        $col = isset($allowed_cols[$order_col]) ? $allowed_cols[$order_col] : 's.staff_id';
+        $dir = (strtoupper($order_dir) === 'DESC') ? 'DESC' : 'ASC';
+
+        $this->db
+            ->select('s.staff_id, s.employee_code, s.full_name, s.gender, s.email, s.phone, s.status, s.staff_type,
+                      d.department_name, dg.designation_name')
+            ->from('tbl_staff s')
+            ->join('tbl_departments d', 'd.department_id = s.department_id', 'left')
+            ->join('tbl_designations dg', 'dg.designation_id = s.designation_id', 'left')
+            ->where('s.is_deleted', 'n');
+
+        if (!empty($filters['staff_type'])) {
+            $this->db->where('s.staff_type', $filters['staff_type']);
+        }
+        if (!empty($filters['department_id'])) {
+            $this->db->where('s.department_id', (int)$filters['department_id']);
+        }
+        if (!empty($filters['designation_id'])) {
+            $this->db->where('s.designation_id', (int)$filters['designation_id']);
+        }
+        if (!empty($filters['employment_status'])) {
+            $this->db->where('s.employment_status', $filters['employment_status']);
+        }
+        if (isset($filters['status']) && $filters['status'] !== '' && $filters['status'] !== 'All') {
+            $this->db->where('s.status', (int)$filters['status']);
+        }
+        if (!empty($filters['search'])) {
+            $s = trim($filters['search']);
+            $this->db->group_start()
+                ->like('s.full_name', $s)
+                ->or_like('s.employee_code', $s)
+                ->or_like('s.email', $s)
+                ->or_like('s.phone', $s)
+                ->or_like('d.department_name', $s)
+                ->or_like('dg.designation_name', $s)
+                ->group_end();
+        }
+
+        $this->db->order_by($col, $dir);
+
+        if ($limit > 0) {
+            $this->db->limit($limit, $start);
+        }
+
+        return $this->db->get()->result();
+    }
+
+    public function get_datatables_count_all()
+    {
+        return $this->db->where('is_deleted', 'n')->count_all_results('tbl_staff');
+    }
+
     public function get_teachers($filters = array())
     {
         $this->db

@@ -25,6 +25,7 @@ class Leave extends MY_Controller {
 
     public function dashboard()
     {
+        $this->require_permission('leave.view');
         $data['title'] = 'Leave Dashboard';
         $data['stats'] = $this->Leave_model->get_dashboard_stats();
         $data['recent_student_leaves'] = $this->Leave_model->get_applications(['applicant_type' => 'Student'], 5);
@@ -37,6 +38,7 @@ class Leave extends MY_Controller {
     // 2. Student Leave Directory
     public function student_leave()
     {
+        $this->require_permission('leave.view');
         $filters = [
             'applicant_type' => 'Student',
             'class_id'       => $this->input->get('class_id') ?: NULL,
@@ -58,6 +60,7 @@ class Leave extends MY_Controller {
     // 3. Staff Leave Directory
     public function staff_leave()
     {
+        $this->require_permission('leave.view');
         $filters = [
             'applicant_type' => 'Staff',
             'department_id'  => $this->input->get('department_id') ?: NULL,
@@ -78,7 +81,9 @@ class Leave extends MY_Controller {
     // 4. Leave Types Management
     public function types()
     {
+        $this->require_permission('leave.view');
         if ($this->input->post()) {
+            $this->require_permission('leave.approve');
             $type_id = (int)$this->input->post('type_id');
             $action = $this->input->post('action');
 
@@ -120,6 +125,7 @@ class Leave extends MY_Controller {
     // 5. Leave Request Form (Student & Staff)
     public function request()
     {
+        $this->require_permission('leave.apply');
         if ($this->input->post()) {
             $applicant_type = $this->input->post('applicant_type') ?: 'Student';
             $from_date = $this->input->post('from_date');
@@ -204,6 +210,7 @@ class Leave extends MY_Controller {
     // 6. Leave Approval Desk
     public function approval()
     {
+        $this->require_permission('leave.approve');
         $filters = [
             'status' => $this->input->get('status') ?: 'Pending',
             'search' => $this->input->get('search') ?: NULL,
@@ -219,6 +226,7 @@ class Leave extends MY_Controller {
     // 7. Approval Action Handlers
     public function approve_action($id)
     {
+        $this->require_permission('leave.approve');
         $approver_id = $this->session->userdata('user_id') ?: 1;
         $this->Leave_model->approve($id, $approver_id, 'Approved via approver desk');
         $this->session->set_flashdata('success', 'Leave request approved successfully.');
@@ -227,6 +235,7 @@ class Leave extends MY_Controller {
 
     public function reject_action($id)
     {
+        $this->require_permission('leave.approve');
         $approver_id = $this->session->userdata('user_id') ?: 1;
         $reason = trim($this->input->post('rejection_reason')) ?: 'Insufficient documentation or scheduling conflict.';
         $this->Leave_model->reject($id, $approver_id, $reason);
@@ -236,6 +245,7 @@ class Leave extends MY_Controller {
 
     public function clarification_action($id)
     {
+        $this->require_permission('leave.approve');
         $approver_id = $this->session->userdata('user_id') ?: 1;
         $notes = trim($this->input->post('clarification_notes')) ?: 'Please submit medical prescription / event invitation.';
         $this->Leave_model->request_clarification($id, $approver_id, $notes);
@@ -245,6 +255,7 @@ class Leave extends MY_Controller {
 
     public function cancel_action($id)
     {
+        $this->require_permission('leave.apply');
         $user_id = $this->session->userdata('user_id') ?: 1;
         $this->Leave_model->cancel($id, $user_id, 'Staff', 'Cancelled by user');
         $this->session->set_flashdata('success', 'Leave application cancelled.');
@@ -254,6 +265,7 @@ class Leave extends MY_Controller {
     // 8. Leave Balances Summary
     public function balances()
     {
+        $this->require_permission('leave.view');
         $type = $this->input->get('type') ?: 'Staff';
         $data['title'] = 'Leave Balances Matrix';
         $data['type'] = $type;
@@ -265,6 +277,7 @@ class Leave extends MY_Controller {
     // 9. Leave Calendar
     public function calendar()
     {
+        $this->require_permission('leave.view');
         $data['title'] = 'Leave Calendar';
         $data['leaves'] = $this->Leave_model->get_applications(['status' => 'Approved'], 100);
 
@@ -274,6 +287,7 @@ class Leave extends MY_Controller {
     // 10. Leave History
     public function history()
     {
+        $this->require_permission('leave.view');
         $filters = [
             'status' => $this->input->get('status') ?: NULL,
             'search' => $this->input->get('search') ?: NULL,
@@ -289,6 +303,7 @@ class Leave extends MY_Controller {
     // 11. Leave Details View
     public function details($id)
     {
+        $this->require_permission('leave.view');
         $app = $this->Leave_model->get_by_id($id);
         if (!$app) {
             $this->session->set_flashdata('error', 'Leave request not found.');
@@ -306,6 +321,7 @@ class Leave extends MY_Controller {
     // 12. Leave Reports
     public function reports()
     {
+        $this->require_permission('leave.view');
         $filters = [
             'applicant_type' => $this->input->get('applicant_type') ?: NULL,
             'status'         => $this->input->get('status') ?: NULL,
@@ -341,6 +357,7 @@ class Leave extends MY_Controller {
     // 13. Leave Settings
     public function settings()
     {
+        $this->require_permission('leave.approve');
         if ($this->input->post()) {
             $postData = [
                 'enable_student_leave'     => $this->input->post('enable_student_leave') ? 1 : 0,

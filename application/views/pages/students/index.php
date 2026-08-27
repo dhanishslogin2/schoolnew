@@ -49,8 +49,8 @@
     </div>
   
     <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 overflow-hidden">
-      <div class="table-scroll overflow-x-auto">
-        <table class="w-full data-table zebra border-collapse">
+      <div class="table-scroll overflow-x-auto p-2">
+        <table id="students-table" class="w-full data-table zebra border-collapse text-body-md">
           <thead>
             <tr class="border-b border-outline-variant/60">
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Admission No.</th>
@@ -65,61 +65,9 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-outline-variant/40">
-            <?php if (empty($students)): ?>
-              <tr>
-                <td colspan="9" class="px-4 py-8 text-center text-body-md text-on-surface-variant">No students found matching current criteria.</td>
-              </tr>
-            <?php endif; ?>
-            <?php foreach ($students as $st): ?>
-              <?php
-                $nameParts = explode(' ', trim($st->first_name . ' ' . $st->last_name));
-                $initials = '';
-                foreach ($nameParts as $np) { if (!empty($np)) $initials .= strtoupper($np[0]); }
-                if (strlen($initials) > 2) $initials = substr($initials, 0, 2);
-                $statusBadge = ($st->status == 1)
-                  ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-secondary-container text-on-secondary-container">Active</span>'
-                  : '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-surface-container-high text-on-surface-variant">Inactive</span>';
-                $classDisplay = trim(($st->class_name ?: '') . ' ' . ($st->section_name ?: ''));
-              ?>
-              <tr class='hover:bg-surface-container-low transition-colors'>
-                <td class="px-4 py-3 text-body-md font-body-md text-on-surface whitespace-nowrap">
-                  <a href="<?php echo site_url('students/profile/' . $st->student_id); ?>" class="text-primary font-medium hover:underline"><?php echo html_escape($st->admission_number); ?></a>
-                  <?php if (!empty($st->roll_number)): ?>
-                    <span class="text-[11px] text-on-surface-variant ml-1 font-mono">#<?php echo html_escape($st->roll_number); ?></span>
-                  <?php endif; ?>
-                </td>
-                <td class="px-4 py-3 text-body-md font-body-md text-on-surface whitespace-nowrap">
-                  <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[11px] font-semibold shrink-0"><?php echo html_escape($initials); ?></div>
-                    <div>
-                      <div class="font-medium text-on-surface"><?php echo html_escape($st->first_name . ' ' . $st->last_name); ?></div>
-                      <div class="text-[12px] text-on-surface-variant"><?php echo html_escape($classDisplay . ' · ' . $st->gender); ?></div>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-4 py-3 text-body-md font-body-md text-on-surface whitespace-nowrap"><?php echo html_escape($classDisplay); ?></td>
-                <td class="px-4 py-3 text-body-md font-body-md text-on-surface whitespace-nowrap"><?php echo html_escape($st->gender); ?></td>
-                <td class="px-4 py-3 text-body-md font-body-md text-on-surface whitespace-nowrap"><?php echo date('d M Y', strtotime($st->date_of_birth)); ?></td>
-                <td class="px-4 py-3 text-body-md font-body-md text-on-surface whitespace-nowrap"><?php echo html_escape($st->guardian_name); ?></td>
-                <td class="px-4 py-3 text-body-md font-body-md text-on-surface whitespace-nowrap"><?php echo html_escape($st->guardian_phone); ?></td>
-                <td class="px-4 py-3 text-body-md font-body-md text-on-surface whitespace-nowrap"><?php echo $statusBadge; ?></td>
-                <td class="px-4 py-3 text-body-md font-body-md text-right whitespace-nowrap">
-                  <div class="flex items-center justify-end gap-1.5">
-                    <a href="<?php echo site_url('students/profile/' . $st->student_id); ?>" title="View Profile" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">visibility</span></a>
-                    <a href="<?php echo site_url('students/edit/' . $st->student_id); ?>" title="Edit Student" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[18px]">edit</span></a>
-                    <button onclick="confirmDelete(<?php echo $st->student_id; ?>, '<?php echo html_escape(addslashes($st->first_name . ' ' . $st->last_name)); ?>')" title="Delete Student" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-error-container/20 hover:text-error transition-colors cursor-pointer"><span class="material-symbols-outlined text-[18px]">delete</span></button>
-                  </div>
-                </td>
-              </tr>
-            <?php endforeach; ?>
+            <!-- DataTables Server-Side Populated -->
           </tbody>
         </table>
-      </div>
-      <div class="flex items-center justify-between px-4 py-3 border-t border-outline-variant/50 text-body-md font-body-md text-on-surface-variant">
-        <span>Showing <?php echo count($students); ?> records</span>
-        <div class="flex items-center gap-1">
-          <a href="<?php echo site_url('students/id_cards'); ?>" class="inline-flex items-center gap-1 text-label-md text-primary hover:underline"><span class="material-symbols-outlined text-[16px]">badge</span>Print ID Cards</a>
-        </div>
       </div>
     </div>
 
@@ -129,9 +77,38 @@
         if (val) { url.searchParams.set(key, val); } else { url.searchParams.delete(key); }
         window.location.href = url.toString();
       }
-      function confirmDelete(id, name) {
-        if (confirm('Are you sure you want to deactivate student "' + name + '"?\n\nThis will safely update their status to inactive without deleting historical data.')) {
-          window.location.href = '<?php echo site_url('students/delete/'); ?>' + id;
+
+      document.addEventListener("DOMContentLoaded", function() {
+        if (typeof jQuery !== 'undefined' && typeof EduCore !== 'undefined') {
+          EduCore.DataTable.init('#students-table', {
+            serverSide: true,
+            processing: true,
+            searching: false, // Page header has dedicated search input
+            ajax: {
+              url: '<?php echo site_url('students/ajax_list'); ?>',
+              type: 'POST',
+              data: function(d) {
+                d.academic_year_id = '<?php echo html_escape($this->input->get('academic_year_id')); ?>';
+                d.class_id         = '<?php echo html_escape($this->input->get('class_id')); ?>';
+                d.section_id       = '<?php echo html_escape($this->input->get('section_id')); ?>';
+                d.gender           = '<?php echo html_escape($this->input->get('gender')); ?>';
+                d.status           = '<?php echo html_escape($this->input->get('status')); ?>';
+                d.search           = { value: '<?php echo html_escape($this->input->get('search')); ?>' };
+              }
+            },
+            columns: [
+              { data: 0, orderable: true },
+              { data: 1, orderable: true },
+              { data: 2, orderable: true },
+              { data: 3, orderable: true },
+              { data: 4, orderable: true },
+              { data: 5, orderable: true },
+              { data: 6, orderable: true },
+              { data: 7, orderable: true },
+              { data: 8, orderable: false, className: 'text-right' }
+            ]
+          });
         }
-      }
+      });
     </script>
+

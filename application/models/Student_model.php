@@ -148,6 +148,80 @@ class Student_model extends CI_Model {
         return $this->db->count_all_results();
     }
 
+    public function get_datatables_data($filters = array(), $limit = 25, $start = 0, $order_col = 'st.student_id', $order_dir = 'ASC')
+    {
+        $allowed_cols = array(
+            0 => 'st.admission_number',
+            1 => 'st.first_name',
+            2 => 'c.class_name',
+            3 => 'st.gender',
+            4 => 'st.date_of_birth',
+            5 => 'st.guardian_name',
+            6 => 'st.guardian_phone',
+            7 => 'st.status',
+            8 => 'st.student_id'
+        );
+
+        $col = isset($allowed_cols[$order_col]) ? $allowed_cols[$order_col] : 'st.student_id';
+        $dir = (strtoupper($order_dir) === 'DESC') ? 'DESC' : 'ASC';
+
+        $this->db
+            ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, 
+                      st.gender, st.date_of_birth, st.guardian_name, st.guardian_phone, st.status,
+                      c.class_name, sec.section_name, y.year_name')
+            ->from('tbl_students st')
+            ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
+            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_academic_years y', 'y.academic_year_id = st.academic_year_id', 'left')
+            ->where('st.is_deleted', 'n');
+
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('st.academic_year_id', (int)$filters['academic_year_id']);
+        }
+        if (!empty($filters['class_id'])) {
+            $this->db->where('st.class_id', (int)$filters['class_id']);
+        }
+        if (!empty($filters['section_id'])) {
+            $this->db->where('st.section_id', (int)$filters['section_id']);
+        }
+        if (!empty($filters['gender'])) {
+            $this->db->where('st.gender', $filters['gender']);
+        }
+        if (isset($filters['status']) && $filters['status'] !== '' && $filters['status'] !== 'All') {
+            $this->db->where('st.status', (int)$filters['status']);
+        }
+        if (!empty($filters['search'])) {
+            $s = trim($filters['search']);
+            $this->db->group_start()
+                ->like('st.first_name', $s)
+                ->or_like('st.last_name', $s)
+                ->or_like('st.admission_number', $s)
+                ->or_like('st.guardian_name', $s)
+                ->or_like('st.guardian_phone', $s)
+                ->or_like('st.roll_number', $s)
+                ->or_like('c.class_name', $s)
+                ->or_like('sec.section_name', $s)
+            ->group_end();
+        }
+
+        $this->db->order_by($col, $dir);
+
+        if ($limit > 0) {
+            $this->db->limit($limit, $start);
+        }
+
+        return $this->db->get()->result();
+    }
+
+    public function get_datatables_count_all($filters = array())
+    {
+        $this->db->where('is_deleted', 'n');
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('academic_year_id', (int)$filters['academic_year_id']);
+        }
+        return $this->db->count_all_results('tbl_students');
+    }
+
     public function get_by_id($id)
     {
         return $this->db

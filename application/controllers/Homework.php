@@ -29,6 +29,7 @@ class Homework extends MY_Controller {
 
     public function dashboard()
     {
+        $this->require_permission('homework.view');
         $active_year = $this->Academic_year_model->get_active();
         $year_id = $active_year ? $active_year->academic_year_id : 1;
 
@@ -44,6 +45,7 @@ class Homework extends MY_Controller {
     // 2. Assignment List
     public function assignments()
     {
+        $this->require_permission('homework.view');
         $active_year = $this->Academic_year_model->get_active();
         $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
 
@@ -75,6 +77,7 @@ class Homework extends MY_Controller {
     // 3. Create Assignment
     public function create()
     {
+        $this->require_permission('homework.create');
         $active_year = $this->Academic_year_model->get_active();
         $year_id = $active_year ? $active_year->academic_year_id : 1;
 
@@ -186,6 +189,7 @@ class Homework extends MY_Controller {
     // 4. Edit Assignment
     public function edit($id)
     {
+        $this->require_permission('homework.create');
         $assignment = $this->Homework_model->get_by_id($id);
         if (!$assignment) {
             $this->session->set_flashdata('error', 'Assignment not found.');
@@ -239,6 +243,7 @@ class Homework extends MY_Controller {
     // 5. Assignment Details
     public function details($id)
     {
+        $this->require_permission('homework.view');
         $assignment = $this->Homework_model->get_by_id($id);
         if (!$assignment) {
             $this->session->set_flashdata('error', 'Assignment not found.');
@@ -273,6 +278,7 @@ class Homework extends MY_Controller {
     // 6. Assignment Types
     public function types()
     {
+        $this->require_permission('homework.create');
         if ($this->input->post()) {
             $type_id = $this->input->post('type_id');
             $action = $this->input->post('action');
@@ -306,6 +312,7 @@ class Homework extends MY_Controller {
     // 7. Subject-wise Assignments
     public function subjects()
     {
+        $this->require_permission('homework.view');
         $active_year = $this->Academic_year_model->get_active();
         $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
         $subject_id = $this->input->get('subject_id');
@@ -326,6 +333,7 @@ class Homework extends MY_Controller {
     // 8. Class-wise Assignments
     public function classes()
     {
+        $this->require_permission('homework.view');
         $active_year = $this->Academic_year_model->get_active();
         $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
         $class_id = $this->input->get('class_id');
@@ -350,6 +358,7 @@ class Homework extends MY_Controller {
     // 9. Homework Calendar
     public function calendar()
     {
+        $this->require_permission('homework.view');
         $active_year = $this->Academic_year_model->get_active();
         $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
 
@@ -364,6 +373,7 @@ class Homework extends MY_Controller {
     // 10. Submission Tracking
     public function submissions()
     {
+        $this->require_permission('homework.view');
         $filters = [
             'assignment_id' => $this->input->get('assignment_id') ?: NULL,
             'class_id'      => $this->input->get('class_id') ?: NULL,
@@ -385,6 +395,7 @@ class Homework extends MY_Controller {
     // 11. Submission Details
     public function submission_detail($id)
     {
+        $this->require_permission('homework.view');
         $submission = $this->Homework_submission_model->get_by_id($id);
         if (!$submission) {
             $this->session->set_flashdata('error', 'Submission record not found.');
@@ -402,6 +413,7 @@ class Homework extends MY_Controller {
     // 12. Teacher Review Form
     public function review($id)
     {
+        $this->require_permission('homework.review');
         $submission = $this->Homework_submission_model->get_by_id($id);
         if (!$submission) {
             $this->session->set_flashdata('error', 'Submission record not found.');
@@ -456,6 +468,7 @@ class Homework extends MY_Controller {
     // 13. Student-Facing Submission View & Form
     public function student_view($id)
     {
+        $this->require_permission('homework.view');
         $assignment = $this->Homework_model->get_by_id($id);
         if (!$assignment) {
             $this->session->set_flashdata('error', 'Assignment not found.');
@@ -537,6 +550,7 @@ class Homework extends MY_Controller {
     // 14. Assignment Reports
     public function reports()
     {
+        $this->require_permission('homework.view');
         $active_year = $this->Academic_year_model->get_active();
         $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
         $report_type = $this->input->get('type') ?: 'completion';
@@ -582,6 +596,7 @@ class Homework extends MY_Controller {
     // 15. Homework Settings
     public function settings()
     {
+        $this->require_permission('homework.create');
         if ($this->input->post()) {
             $postData = [
                 'default_submission_deadline_days' => (int)$this->input->post('default_submission_deadline_days'),
@@ -608,6 +623,7 @@ class Homework extends MY_Controller {
     // Actions: Duplicate, Publish, Archive, Delete
     public function duplicate($id)
     {
+        $this->require_permission('homework.create');
         $new_id = $this->Homework_model->duplicate($id);
         if ($new_id) {
             $this->session->set_flashdata('success', 'Assignment duplicated as Draft. You can now edit and publish it.');
@@ -620,6 +636,7 @@ class Homework extends MY_Controller {
 
     public function publish($id)
     {
+        $this->require_permission('homework.create');
         $this->Homework_model->update($id, ['status' => 'Published']);
         $this->Homework_notification_model->queue_class_notifications($id, 'New Assignment', "An assignment has been published.");
         $this->session->set_flashdata('success', 'Assignment published successfully!');
@@ -628,6 +645,7 @@ class Homework extends MY_Controller {
 
     public function archive($id)
     {
+        $this->require_permission('homework.create');
         $this->Homework_model->update($id, ['status' => 'Archived']);
         $this->session->set_flashdata('success', 'Assignment archived.');
         redirect('homework/assignments');
@@ -635,6 +653,7 @@ class Homework extends MY_Controller {
 
     public function delete($id)
     {
+        $this->require_permission('homework.create');
         $this->Homework_model->delete($id);
         $this->session->set_flashdata('success', 'Assignment removed.');
         redirect('homework/assignments');

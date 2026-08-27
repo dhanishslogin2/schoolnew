@@ -28,6 +28,7 @@ class Transport extends MY_Controller {
 
     public function dashboard()
     {
+        $this->require_permission('transport.view');
         $data['title'] = 'Transport Dashboard';
         $data['stats'] = $this->Transport_model->get_dashboard_stats();
         $data['vehicles'] = $this->Vehicle_model->get_all();
@@ -40,7 +41,9 @@ class Transport extends MY_Controller {
     // 2. Vehicles Directory
     public function vehicles()
     {
+        $this->require_permission('transport.view');
         if ($this->input->post()) {
+            $this->require_permission('transport.manage');
             $vehicle_id = (int)$this->input->post('vehicle_id');
             $action = $this->input->post('action');
 
@@ -95,6 +98,7 @@ class Transport extends MY_Controller {
     // 3. Vehicle Details Profile
     public function vehicle_details($id)
     {
+        $this->require_permission('transport.view');
         $vehicle = $this->Vehicle_model->get_by_id($id);
         if (!$vehicle) {
             $this->session->set_flashdata('error', 'Vehicle not found.');
@@ -115,7 +119,9 @@ class Transport extends MY_Controller {
     // 4. Drivers Directory
     public function drivers()
     {
+        $this->require_permission('transport.view');
         if ($this->input->post()) {
+            $this->require_permission('transport.manage');
             $driver_id = (int)$this->input->post('driver_id');
             $action = $this->input->post('action');
 
@@ -159,6 +165,7 @@ class Transport extends MY_Controller {
     // 5. Driver Details Profile
     public function driver_details($id)
     {
+        $this->require_permission('transport.view');
         $driver = $this->Driver_model->get_by_id($id);
         if (!$driver) {
             $this->session->set_flashdata('error', 'Driver not found.');
@@ -176,7 +183,9 @@ class Transport extends MY_Controller {
     // 6. Routes Directory
     public function routes()
     {
+        $this->require_permission('transport.view');
         if ($this->input->post()) {
+            $this->require_permission('transport.manage');
             $route_id = (int)$this->input->post('route_id');
             $action = $this->input->post('action');
 
@@ -220,6 +229,7 @@ class Transport extends MY_Controller {
     // 7. Route Details & Passenger Manifest
     public function route_details($id)
     {
+        $this->require_permission('transport.view');
         $route = $this->Route_model->get_by_id($id);
         if (!$route) {
             $this->session->set_flashdata('error', 'Route not found.');
@@ -238,9 +248,11 @@ class Transport extends MY_Controller {
     // 8. Stops Management
     public function stops()
     {
+        $this->require_permission('transport.view');
         $route_id = $this->input->get('route_id') ?: NULL;
 
         if ($this->input->post()) {
+            $this->require_permission('transport.manage');
             $stop_id = (int)$this->input->post('stop_id');
             $action = $this->input->post('action');
 
@@ -284,7 +296,9 @@ class Transport extends MY_Controller {
     // 9. Student Transport Assignment & Allocation
     public function assignments()
     {
+        $this->require_permission('transport.view');
         if ($this->input->post()) {
+            $this->require_permission('transport.manage');
             $student_id = (int)$this->input->post('student_id');
             $route_id = (int)$this->input->post('route_id');
             $vehicle_id = (int)$this->input->post('vehicle_id');
@@ -343,6 +357,7 @@ class Transport extends MY_Controller {
 
     public function remove_assignment_action($id)
     {
+        $this->require_permission('transport.manage');
         $this->Transport_assignment_model->remove_assignment($id, 'Removed via transport console');
         $this->session->set_flashdata('success', 'Transport assignment cancelled.');
         redirect('transport/assignments');
@@ -351,6 +366,7 @@ class Transport extends MY_Controller {
     // 10. Bulk Student Assignment
     public function bulk_assign()
     {
+        $this->require_permission('transport.manage');
         if ($this->input->post()) {
             $student_ids = $this->input->post('student_ids') ?: [];
             $route_id = (int)$this->input->post('route_id');
@@ -411,6 +427,7 @@ class Transport extends MY_Controller {
     // 11. Transport Fees Configuration & Overview
     public function fees()
     {
+        $this->require_permission('transport.view');
         $data['title'] = 'Transport Fees & Pricing';
         $data['routes'] = $this->Route_model->get_all();
         $data['stops'] = $this->Stop_model->get_all_by_route();
@@ -422,7 +439,9 @@ class Transport extends MY_Controller {
     // 12. Vehicle Maintenance Logs
     public function maintenance()
     {
+        $this->require_permission('transport.view');
         if ($this->input->post()) {
+            $this->require_permission('transport.manage');
             $postData = [
                 'vehicle_id'        => (int)$this->input->post('vehicle_id'),
                 'maintenance_type'  => $this->input->post('maintenance_type') ?: 'Routine Service',
@@ -452,6 +471,7 @@ class Transport extends MY_Controller {
     // 13. Maintenance History
     public function maintenance_history()
     {
+        $this->require_permission('transport.view');
         $vehicle_id = $this->input->get('vehicle_id') ?: NULL;
 
         $data['title'] = 'Maintenance History Ledger';
@@ -466,7 +486,9 @@ class Transport extends MY_Controller {
     // 14. Transport Documents
     public function documents()
     {
+        $this->require_permission('transport.view');
         if ($this->input->post()) {
+            $this->require_permission('transport.manage');
             $action = $this->input->post('action');
             if ($action === 'delete') {
                 $doc_id = (int)$this->input->post('document_id');
@@ -518,6 +540,7 @@ class Transport extends MY_Controller {
     // 15. Transport Reports
     public function reports()
     {
+        $this->require_permission('transport.view');
         $type = $this->input->get('type') ?: 'vehicle';
 
         if ($this->input->get('export') === 'csv') {
@@ -557,6 +580,7 @@ class Transport extends MY_Controller {
     // 16. Transport Settings
     public function settings()
     {
+        $this->require_permission('transport.manage');
         if ($this->input->post()) {
             $postData = [
                 'enable_transport'              => $this->input->post('enable_transport') ? 1 : 0,

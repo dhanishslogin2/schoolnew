@@ -32,6 +32,7 @@ class Certificates extends MY_Controller {
      */
     public function index()
     {
+        $this->require_permission('certificates.view');
         $stats               = $this->Certificate_model->get_dashboard_stats();
         $recent_certificates = $this->Certificate_model->get_all(array());
         $recent_certificates = array_slice($recent_certificates, 0, 8);
@@ -52,6 +53,7 @@ class Certificates extends MY_Controller {
      */
     public function requests()
     {
+        $this->require_permission('certificates.view');
         $filters = array(
             'status'              => $this->input->get('status', TRUE),
             'certificate_type_id' => $this->input->get('certificate_type_id', TRUE),
@@ -80,6 +82,7 @@ class Certificates extends MY_Controller {
      */
     public function request_create()
     {
+        $this->require_permission('certificates.generate');
         if ($this->input->method() === 'post') {
             $student_id          = (int)$this->input->post('student_id', TRUE);
             $certificate_type_id = (int)$this->input->post('certificate_type_id', TRUE);
@@ -139,6 +142,7 @@ class Certificates extends MY_Controller {
      */
     public function approve_request($id)
     {
+        $this->require_permission('certificates.generate');
         $req = $this->Certificate_request_model->get_by_id($id);
         if ($req) {
             $this->Certificate_request_model->update_status($id, 'Approved', null, $this->get_current_user_id());
@@ -153,6 +157,7 @@ class Certificates extends MY_Controller {
      */
     public function reject_request($id)
     {
+        $this->require_permission('certificates.generate');
         $reason = $this->input->post('rejection_reason', TRUE) ?: 'Requirements not met.';
         $req = $this->Certificate_request_model->get_by_id($id);
         if ($req) {
@@ -168,7 +173,9 @@ class Certificates extends MY_Controller {
      */
     public function types()
     {
+        $this->require_permission('certificates.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('certificates.generate');
             $name        = trim($this->input->post('type_name', TRUE));
             $code        = strtoupper(trim($this->input->post('type_code', TRUE)));
             $prefix      = strtoupper(trim($this->input->post('prefix', TRUE)));
@@ -202,6 +209,7 @@ class Certificates extends MY_Controller {
      */
     public function bonafide()
     {
+        $this->require_permission('certificates.view');
         $certificates = $this->Certificate_model->get_all(array('type_code' => 'BONAFIDE'));
         $students     = $this->Student_model->get_all();
 
@@ -218,6 +226,7 @@ class Certificates extends MY_Controller {
      */
     public function transfer_certificate()
     {
+        $this->require_permission('certificates.view');
         $certificates = $this->Certificate_model->get_all(array('type_code' => 'TC'));
         $students     = $this->Student_model->get_all();
         $settings     = $this->Certificate_setting_model->get_settings();
@@ -236,6 +245,7 @@ class Certificates extends MY_Controller {
      */
     public function study_certificate()
     {
+        $this->require_permission('certificates.view');
         $certificates = $this->Certificate_model->get_all(array('type_code' => 'STUDY'));
         $students     = $this->Student_model->get_all();
 
@@ -252,6 +262,7 @@ class Certificates extends MY_Controller {
      */
     public function conduct_certificate()
     {
+        $this->require_permission('certificates.view');
         $certificates = $this->Certificate_model->get_all(array('type_code' => 'CONDUCT'));
         $students     = $this->Student_model->get_all();
 
@@ -268,6 +279,7 @@ class Certificates extends MY_Controller {
      */
     public function generate($req_or_stud_id = null)
     {
+        $this->require_permission('certificates.generate');
         if ($this->input->method() === 'post') {
             $student_id          = (int)$this->input->post('student_id', TRUE);
             $certificate_type_id = (int)$this->input->post('certificate_type_id', TRUE);
@@ -371,6 +383,7 @@ class Certificates extends MY_Controller {
      */
     public function preview($certificate_id)
     {
+        $this->require_permission('certificates.view');
         $cert = $this->Certificate_model->get_by_id($certificate_id);
         if (!$cert) {
             $this->session->set_flashdata('error', 'Certificate not found.');
@@ -397,6 +410,7 @@ class Certificates extends MY_Controller {
      */
     public function print_cert($certificate_id)
     {
+        $this->require_permission('certificates.view');
         $cert = $this->Certificate_model->get_by_id($certificate_id);
         if (!$cert) {
             show_404();
@@ -423,6 +437,7 @@ class Certificates extends MY_Controller {
      */
     public function issue($certificate_id)
     {
+        $this->require_permission('certificates.generate');
         $cert = $this->Certificate_model->get_by_id($certificate_id);
         if ($cert) {
             $this->Certificate_model->update($certificate_id, array(
@@ -443,7 +458,9 @@ class Certificates extends MY_Controller {
      */
     public function templates()
     {
+        $this->require_permission('certificates.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('certificates.generate');
             $name        = trim($this->input->post('template_name', TRUE));
             $type_code   = trim($this->input->post('type_code', TRUE));
             $header      = trim($this->input->post('header_content', TRUE));
@@ -495,6 +512,7 @@ class Certificates extends MY_Controller {
      */
     public function documents()
     {
+        $this->require_permission('certificates.view');
         $filters = array(
             'student_id'          => $this->input->get('student_id', TRUE),
             'category_id'         => $this->input->get('category_id', TRUE),
@@ -503,6 +521,7 @@ class Certificates extends MY_Controller {
         );
 
         if ($this->input->method() === 'post') {
+            $this->require_permission('certificates.verify_docs');
             $student_id   = (int)$this->input->post('student_id', TRUE);
             $category_id  = (int)$this->input->post('category_id', TRUE);
             $doc_name     = trim($this->input->post('document_name', TRUE));
@@ -572,7 +591,9 @@ class Certificates extends MY_Controller {
      */
     public function document_categories()
     {
+        $this->require_permission('certificates.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('certificates.verify_docs');
             $name        = trim($this->input->post('category_name', TRUE));
             $code        = strtoupper(trim($this->input->post('code', TRUE)));
             $description = trim($this->input->post('description', TRUE));
@@ -610,6 +631,7 @@ class Certificates extends MY_Controller {
      */
     public function document_verification()
     {
+        $this->require_permission('certificates.verify_docs');
         $filters = array('verification_status' => 'Pending');
         $pending_docs = $this->Student_document_model->get_all($filters);
 
@@ -622,6 +644,7 @@ class Certificates extends MY_Controller {
 
     public function verify_doc($id)
     {
+        $this->require_permission('certificates.verify_docs');
         $this->Student_document_model->verify_document($id, 'Verified', null, $this->get_current_user_id());
         $this->Certificate_setting_model->log_audit('Document Verified', 'Student Document', $id, "Verified by user #{$this->get_current_user_id()}", $this->get_current_user_id());
         $this->session->set_flashdata('success', 'Document verified successfully.');
@@ -630,6 +653,7 @@ class Certificates extends MY_Controller {
 
     public function reject_doc($id)
     {
+        $this->require_permission('certificates.verify_docs');
         $reason = $this->input->post('rejection_reason', TRUE) ?: 'Document unreadable or invalid.';
         $this->Student_document_model->verify_document($id, 'Rejected', $reason, $this->get_current_user_id());
         $this->Certificate_setting_model->log_audit('Document Rejected', 'Student Document', $id, "Reason: {$reason}", $this->get_current_user_id());
@@ -642,6 +666,7 @@ class Certificates extends MY_Controller {
      */
     public function history()
     {
+        $this->require_permission('certificates.view');
         $certificates = $this->Certificate_model->get_all();
         $this->render('pages/certificates/history', array(
             'title'        => 'Certificate History & Reissue Ledger',
@@ -652,6 +677,7 @@ class Certificates extends MY_Controller {
 
     public function reissue($certificate_id)
     {
+        $this->require_permission('certificates.generate');
         if ($this->input->method() === 'post') {
             $reason = trim($this->input->post('reissue_reason', TRUE));
             if (empty($reason)) {
@@ -672,6 +698,7 @@ class Certificates extends MY_Controller {
      */
     public function reports()
     {
+        $this->require_permission('certificates.view');
         $type = $this->input->get('type', TRUE) ?: 'issued';
         $export = $this->input->get('export', TRUE);
 
@@ -731,6 +758,7 @@ class Certificates extends MY_Controller {
      */
     public function settings()
     {
+        $this->require_permission('certificates.generate');
         if ($this->input->method() === 'post') {
             $settings_data = array(
                 'numbering_format'                   => trim($this->input->post('numbering_format', TRUE)),

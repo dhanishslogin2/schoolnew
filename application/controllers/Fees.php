@@ -6,7 +6,6 @@ class Fees extends MY_Controller {
     public function __construct()
     {
         parent::__construct();
-        $this->require_auth();
         $this->load->model(array(
             'Fee_model',
             'Fee_category_model',
@@ -26,6 +25,7 @@ class Fees extends MY_Controller {
     // 1. Fee Dashboard
     public function index()
     {
+        $this->require_permission('fees.view');
         $metrics = $this->Fee_model->get_dashboard_metrics();
         $collection_summary = $this->Fee_model->get_collection_summary();
         $outstanding_summary = $this->Fee_model->get_outstanding_summary();
@@ -46,7 +46,9 @@ class Fees extends MY_Controller {
     // 2. Fee Categories
     public function categories()
     {
+        $this->require_permission('fees.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('fees.edit');
             $action = $this->input->post('action');
             if ($action === 'delete') {
                 $cat_id = (int)$this->input->post('fee_head_id');
@@ -109,7 +111,9 @@ class Fees extends MY_Controller {
     // 3. Fee Structures
     public function structures()
     {
+        $this->require_permission('fees.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('fees.edit');
             $action = $this->input->post('action');
             if ($action === 'delete') {
                 $struct_id = (int)$this->input->post('fee_structure_id');
@@ -199,7 +203,9 @@ class Fees extends MY_Controller {
     // 4. Student Fee Assignment
     public function assignments()
     {
+        $this->require_permission('fees.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('fees.edit');
             $assignment_type = $this->input->post('assignment_type');
 
             if ($assignment_type === 'individual') {
@@ -260,6 +266,7 @@ class Fees extends MY_Controller {
     // 5. Student Fee Details
     public function student_fees($student_id = 0)
     {
+        $this->require_permission('fees.view');
         $filters = array(
             'student_id'     => $student_id ?: $this->input->get('student_id'),
             'class_id'       => $this->input->get('class_id'),
@@ -288,6 +295,7 @@ class Fees extends MY_Controller {
     // 6. Fee Collection & Payment Processing
     public function collection()
     {
+        $this->require_permission('fees.collect');
         if ($this->input->method() === 'post') {
             $student_fee_id = (int)$this->input->post('student_fee_id');
             $amount_to_pay = (float)$this->input->post('amount_to_pay');
@@ -346,6 +354,7 @@ class Fees extends MY_Controller {
     // 7. Payment History
     public function payments()
     {
+        $this->require_permission('fees.view');
         $filters = array(
             'class_id'     => $this->input->get('class_id'),
             'payment_mode' => $this->input->get('payment_mode'),
@@ -366,9 +375,74 @@ class Fees extends MY_Controller {
         ));
     }
 
+    public function ajax_payments_list()
+    {
+        $this->require_permission('fees.view');
+
+        $draw   = (int)$this->input->post('draw');
+        $start  = (int)$this->input->post('start');
+        $length = (int)$this->input->post('length');
+        $order  = $this->input->post('order');
+        $search = $this->input->post('search');
+
+        $order_col_idx = isset($order[0]['column']) ? (int)$order[0]['column'] : 0;
+        $order_dir     = isset($order[0]['dir']) ? $order[0]['dir'] : 'desc';
+        $search_val    = isset($search['value']) ? trim($search['value']) : '';
+
+        $filters = array(
+            'class_id'     => $this->input->post('class_id') ?: $this->input->get('class_id'),
+            'payment_mode' => $this->input->post('payment_mode') ?: $this->input->get('payment_mode'),
+            'date_from'    => $this->input->post('date_from') ?: $this->input->get('date_from'),
+            'date_to'      => $this->input->post('date_to') ?: $this->input->get('date_to'),
+            'search'       => $search_val,
+        );
+
+        $records_total    = $this->Fee_model->get_payments_count_all();
+        $records_filtered = $this->Fee_model->count_filtered_payments($filters);
+        $payments_list    = $this->Fee_model->get_payments_datatables($filters, $length, $start, $order_col_idx, $order_dir);
+
+        $data = array();
+        foreach ($payments_list as $p) {
+            $receiptCol = '<a href="' . site_url('fees/receipt/' . $p->payment_id) . '" class="hover:underline font-mono font-bold text-primary">' . html_escape($p->receipt_no) . '</a>';
+            $studentCol = '<a href="' . site_url('students/profile/' . $p->student_id) . '" class="text-on-surface font-medium hover:underline">' . html_escape($p->first_name . ' ' . $p->last_name) . '</a>' .
+                '<div class="text-[12px] text-on-surface-variant font-mono">' . html_escape($p->admission_number) . '</div>';
+            $classCol = html_escape(trim(($p->class_name ?: '') . ' ' . ($p->section_name ?: '')));
+            $amountCol = educore_currency($p->amount_paid);
+            $modeCol = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-surface-container-high text-on-surface-variant">' . html_escape($p->payment_mode) . '</span>';
+            $dateCol = educore_date($p->payment_date);
+            $actionCol = '<a href="' . site_url('fees/receipt/' . $p->payment_id) . '" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors inline-flex items-center gap-1 text-[12px] font-medium" title="View Receipt">' .
+                '<span class="material-symbols-outlined text-[16px]">receipt</span> Print' .
+            '</a>';
+
+            $data[] = array(
+                $receiptCol,
+                $studentCol,
+                $classCol,
+                html_escape($p->category_name ?: 'General Fee'),
+                $amountCol,
+                $modeCol,
+                html_escape($p->transaction_reference ?: '—'),
+                $dateCol,
+                $actionCol
+            );
+        }
+
+        $output = array(
+            "draw"            => $draw,
+            "recordsTotal"    => $records_total,
+            "recordsFiltered" => $records_filtered,
+            "data"            => $data,
+        );
+
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode($output));
+    }
+
     // 8. Receipts List
     public function receipts()
     {
+        $this->require_permission('fees.view');
         $filters = array(
             'class_id'     => $this->input->get('class_id'),
             'payment_mode' => $this->input->get('payment_mode'),
@@ -392,6 +466,7 @@ class Fees extends MY_Controller {
     // 9. Single Printable Receipt
     public function receipt($payment_id = 0)
     {
+        $this->require_permission('fees.view');
         $receipt = $this->Fee_model->get_receipt_by_id((int)$payment_id);
         if (!$receipt) {
             $this->session->set_flashdata('error', 'Receipt record not found.');
@@ -411,7 +486,9 @@ class Fees extends MY_Controller {
     // 10. Discounts & Concessions
     public function discounts()
     {
+        $this->require_permission('fees.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('fees.edit');
             $action = $this->input->post('action');
             if ($action === 'delete') {
                 $discount_id = (int)$this->input->post('discount_id');
@@ -466,6 +543,7 @@ class Fees extends MY_Controller {
     // 11. Due Fees
     public function due_fees()
     {
+        $this->require_permission('fees.view');
         $filters = array(
             'class_id'    => $this->input->get('class_id'),
             'section_id'  => $this->input->get('section_id'),
@@ -493,7 +571,9 @@ class Fees extends MY_Controller {
     // 12. Fee Reminders
     public function reminders()
     {
+        $this->require_permission('fees.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('fees.edit');
             $student_id = (int)$this->input->post('student_id');
             $student_fee_id = (int)$this->input->post('student_fee_id');
             $reminder_type = trim($this->input->post('reminder_type') ?: 'Upcoming Due');
@@ -539,6 +619,7 @@ class Fees extends MY_Controller {
     // 13. Fee Reminder History
     public function reminder_history()
     {
+        $this->require_permission('fees.view');
         $reminders = $this->Fee_reminder_model->get_all();
         $this->render('pages/fees/reminder_history', array(
             'title'     => 'Fee Reminder History',
@@ -550,7 +631,9 @@ class Fees extends MY_Controller {
     // 14. Fee Adjustments
     public function adjustments()
     {
+        $this->require_permission('fees.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('fees.edit');
             $student_fee_id = (int)$this->input->post('student_fee_id');
             $adjustment_type = trim($this->input->post('adjustment_type') ?: 'Waiver');
             $adjustment_amount = (float)$this->input->post('adjustment_amount');
@@ -617,7 +700,9 @@ class Fees extends MY_Controller {
     // 15. Refunds
     public function refunds()
     {
+        $this->require_permission('fees.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('fees.edit');
             $payment_id = (int)$this->input->post('payment_id');
             $refund_amount = (float)$this->input->post('refund_amount');
             $refund_reason = trim($this->input->post('refund_reason'));
@@ -653,6 +738,7 @@ class Fees extends MY_Controller {
     // 16. Financial Reports
     public function reports()
     {
+        $this->require_permission('fees.view');
         $report_type = $this->input->get('type') ?: 'collection';
         $export = $this->input->get('export');
 
@@ -711,7 +797,9 @@ class Fees extends MY_Controller {
     // 17. Finance Settings
     public function settings()
     {
+        $this->require_permission('fees.view');
         if ($this->input->method() === 'post') {
+            $this->require_permission('fees.edit');
             $data = array(
                 'currency_symbol'            => trim($this->input->post('currency_symbol') ?: '₹'),
                 'currency_code'              => trim($this->input->post('currency_code') ?: 'INR'),

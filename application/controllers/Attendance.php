@@ -17,19 +17,7 @@ class Attendance extends MY_Controller {
         $this->load->model('Class_teacher_model');
     }
 
-    /**
-     * Helper to verify user permissions
-     */
-    private function _check_permission($required_level = 'view')
-    {
-        $role = $this->session->userdata('user_role') ?: 'Super Admin';
-        if ($role === 'Accountant' && $required_level === 'edit') {
-            $this->session->set_flashdata('error', 'Accountants do not have permission to mark or edit student attendance.');
-            redirect('attendance');
-            return FALSE;
-        }
-        return TRUE;
-    }
+    // Permission keys: attendance.view, attendance.mark
 
     /* =========================================================================
        1. Attendance Dashboard
@@ -86,7 +74,7 @@ class Attendance extends MY_Controller {
         }
 
         if ($this->input->method() === 'post') {
-            $this->_check_permission('edit');
+            $this->require_permission('attendance.mark');
 
             $post_attendance = $this->input->post('attendance'); // student_id => ['status' => ..., 'remarks' => ...]
             $post_date       = $this->input->post('date') ?: $date;
@@ -154,7 +142,7 @@ class Attendance extends MY_Controller {
     public function periods($action = NULL, $id = NULL)
     {
         if ($this->input->method() === 'post') {
-            $this->_check_permission('edit');
+            $this->require_permission('attendance.mark');
             $post_action = $this->input->post('action') ?: $action;
 
             if ($post_action === 'add') {
@@ -295,7 +283,7 @@ class Attendance extends MY_Controller {
         }
 
         if ($this->input->method() === 'post') {
-            $this->_check_permission('edit');
+            $this->require_permission('attendance.mark');
 
             $post_attendance = $this->input->post('attendance');
             $post_date       = $this->input->post('date') ?: $date;
@@ -439,7 +427,7 @@ class Attendance extends MY_Controller {
     public function history()
     {
         if ($this->input->method() === 'post') {
-            $this->_check_permission('edit');
+            $this->require_permission('attendance.mark');
             $action = $this->input->post('action');
             if ($action === 'edit_record') {
                 $att_id  = (int)$this->input->post('attendance_id');
@@ -697,7 +685,7 @@ class Attendance extends MY_Controller {
     public function notifications()
     {
         if ($this->input->method() === 'post') {
-            $this->_check_permission('edit');
+            $this->require_permission('attendance.mark');
             $action = $this->input->post('action');
             if ($action === 'update_status') {
                 $id     = (int)$this->input->post('notification_id');
@@ -769,7 +757,7 @@ class Attendance extends MY_Controller {
        ========================================================================= */
     public function settings()
     {
-        $this->_check_permission('edit');
+        $this->require_permission('attendance.edit');
 
         if ($this->input->method() === 'post') {
             $data = array(

@@ -6,7 +6,6 @@ class Examinations extends MY_Controller {
     public function __construct()
     {
         parent::__construct();
-        $this->require_auth();
 
         $this->load->model('Exam_model');
         $this->load->model('Exam_type_model');
@@ -24,24 +23,18 @@ class Examinations extends MY_Controller {
         $this->load->model('Student_model');
     }
 
-    private function _check_permission($allowed_roles = array('Super Admin', 'Principal', 'Teacher'))
-    {
-        if ($this->rbac->is_super_admin()) {
-            return;
-        }
-
-        $role = $this->current_user->role ?? 'Teacher';
-        if (!in_array($role, $allowed_roles)) {
-            $this->session->set_flashdata('error', 'You do not have permission to access this examination feature.');
-            redirect('unauthorized');
-        }
-    }
+    // Permission keys used in this controller (from tbl_permissions):
+    //   exams.view         — view dashboard, results, report cards
+    //   exams.create       — create/edit/delete exams, schedules, grades
+    //   exams.marks_entry  — enter / verify student marks
+    //   exams.publish      — publish results
 
     /* =========================================================================
        1. Examination Dashboard
        ========================================================================= */
     public function index()
     {
+        $this->require_permission('exams.view');
         $year_id = $this->input->get('academic_year_id') ?: NULL;
 
         $data = [
@@ -63,10 +56,11 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function exams()
     {
-        $this->_check_permission(['Super Admin', 'Principal']);
+        $this->require_permission('exams.view');
 
         // Handle POST Create / Edit / Delete
         if ($this->input->method() === 'post') {
+            $this->require_permission('exams.create');
             $action = $this->input->post('action');
             $exam_id = (int)$this->input->post('exam_id');
 
@@ -145,9 +139,10 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function types()
     {
-        $this->_check_permission(['Super Admin', 'Principal']);
+        $this->require_permission('exams.view');
 
         if ($this->input->method() === 'post') {
+            $this->require_permission('exams.create');
             $action = $this->input->post('action');
             $type_id = (int)$this->input->post('exam_type_id');
 
@@ -208,10 +203,10 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function schedules()
     {
-        $this->_check_permission(['Super Admin', 'Principal', 'Teacher']);
+        $this->require_permission('exams.view');
 
         if ($this->input->method() === 'post') {
-            $this->_check_permission(['Super Admin', 'Principal']);
+            $this->require_permission('exams.create');
             $action      = $this->input->post('action');
             $schedule_id = (int)$this->input->post('schedule_id');
 
@@ -320,7 +315,7 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function allocations()
     {
-        $this->_check_permission(['Super Admin', 'Principal']);
+        $this->require_permission('exams.create');
 
         if ($this->input->method() === 'post') {
             $exam_id          = (int)$this->input->post('exam_id');
@@ -408,7 +403,7 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function marks_entry()
     {
-        $this->_check_permission(['Super Admin', 'Principal', 'Teacher']);
+        $this->require_permission('exams.marks_entry');
 
         $schedule_id = (int)$this->input->get('schedule_id');
 
@@ -468,7 +463,7 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function verification()
     {
-        $this->_check_permission(['Super Admin', 'Principal']);
+        $this->require_permission('exams.marks_entry');
 
         if ($this->input->method() === 'post') {
             $schedule_id = (int)$this->input->post('schedule_id');
@@ -509,9 +504,10 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function grades()
     {
-        $this->_check_permission(['Super Admin', 'Principal']);
+        $this->require_permission('exams.view');
 
         if ($this->input->method() === 'post') {
+            $this->require_permission('exams.create');
             $action   = $this->input->post('action');
             $grade_id = (int)$this->input->post('grade_id');
 
@@ -579,7 +575,7 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function calculate()
     {
-        $this->_check_permission(['Super Admin', 'Principal']);
+        $this->require_permission('exams.create');
 
         if ($this->input->method() === 'post') {
             $exam_id    = (int)$this->input->post('exam_id');
@@ -614,6 +610,7 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function results()
     {
+        $this->require_permission('exams.view');
         $filters = [
             'exam_id'          => $this->input->get('exam_id'),
             'academic_year_id' => $this->input->get('academic_year_id'),
@@ -645,6 +642,7 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function result_detail($result_id = NULL)
     {
+        $this->require_permission('exams.view');
         $result = $this->Result_model->get_result_by_id($result_id);
         if (!$result) {
             $this->session->set_flashdata('error', 'Result record not found.');
@@ -665,6 +663,7 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function ranks()
     {
+        $this->require_permission('exams.view');
         $filters = [
             'exam_id'  => $this->input->get('exam_id'),
             'class_id' => $this->input->get('class_id'),
@@ -692,6 +691,7 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function report_cards()
     {
+        $this->require_permission('exams.view');
         $filters = [
             'exam_id'    => $this->input->get('exam_id'),
             'class_id'   => $this->input->get('class_id'),
@@ -715,6 +715,7 @@ class Examinations extends MY_Controller {
 
     public function report_card($result_id = NULL)
     {
+        $this->require_permission('exams.view');
         $result = $this->Result_model->get_result_by_id($result_id);
         if (!$result) {
             $this->session->set_flashdata('error', 'Report card not found.');
@@ -741,6 +742,7 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function progress_reports()
     {
+        $this->require_permission('exams.view');
         $filters = [
             'class_id'   => $this->input->get('class_id'),
             'section_id' => $this->input->get('section_id'),
@@ -763,6 +765,7 @@ class Examinations extends MY_Controller {
 
     public function progress_report($student_id = NULL)
     {
+        $this->require_permission('exams.view');
         $report = $this->Result_model->get_student_progress_report($student_id);
         if (!$report) {
             $this->session->set_flashdata('error', 'Student progress data not found.');
@@ -783,7 +786,7 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function publishing()
     {
-        $this->_check_permission(['Super Admin', 'Principal']);
+        $this->require_permission('exams.publish');
 
         if ($this->input->method() === 'post') {
             $action  = $this->input->post('action');
@@ -816,6 +819,7 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function reports()
     {
+        $this->require_permission('exams.reports');
         $report_type = $this->input->get('type') ?: 'exam_performance';
 
         $filters = [
@@ -875,7 +879,7 @@ class Examinations extends MY_Controller {
        ========================================================================= */
     public function settings()
     {
-        $this->_check_permission(['Super Admin', 'Principal']);
+        $this->require_permission('exams.create');
 
         if ($this->input->method() === 'post') {
             $save_data = [

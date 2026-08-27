@@ -11,7 +11,10 @@ class Settings extends MY_Controller {
 
     public function index()
     {
+        $this->require_permission('settings.view');
+
         if ($this->input->method() === 'post') {
+            $this->require_permission('settings.edit');
             $data = array(
                 'school_name'      => $this->input->post('school_name', TRUE),
                 'school_code'      => $this->input->post('school_code', TRUE),

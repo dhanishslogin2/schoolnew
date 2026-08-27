@@ -26,6 +26,7 @@ class Staff extends MY_Controller {
 
     public function overview()
     {
+        $this->require_permission('staff.view');
         $stats = $this->Staff_model->get_dashboard_stats();
 
         $this->render('pages/staff/overview', array(
@@ -38,6 +39,7 @@ class Staff extends MY_Controller {
 
     public function directory()
     {
+        $this->require_permission('staff.view');
         $dept_id    = $this->input->get('department_id');
         $desig_id   = $this->input->get('designation_id');
         $staff_type = $this->input->get('staff_type');
@@ -65,11 +67,89 @@ class Staff extends MY_Controller {
         ));
     }
 
+    public function ajax_list()
+    {
+        $this->require_permission('staff.view');
+
+        $draw   = (int)$this->input->post('draw');
+        $start  = (int)$this->input->post('start');
+        $length = (int)$this->input->post('length');
+        $order  = $this->input->post('order');
+        $search = $this->input->post('search');
+
+        $order_col_idx = isset($order[0]['column']) ? (int)$order[0]['column'] : 0;
+        $order_dir     = isset($order[0]['dir']) ? $order[0]['dir'] : 'asc';
+        $search_val    = isset($search['value']) ? trim($search['value']) : '';
+
+        $filters = array(
+            'department_id'  => $this->input->post('department_id') ?: $this->input->get('department_id'),
+            'designation_id' => $this->input->post('designation_id') ?: $this->input->get('designation_id'),
+            'staff_type'     => $this->input->post('staff_type') ?: $this->input->get('staff_type'),
+            'status'         => $this->input->post('status') !== NULL ? $this->input->post('status') : $this->input->get('status'),
+            'search'         => $search_val,
+        );
+
+        $records_total    = $this->Staff_model->get_datatables_count_all();
+        $records_filtered = $this->Staff_model->count_filtered($filters);
+        $staff_list       = $this->Staff_model->get_datatables_data($filters, $length, $start, $order_col_idx, $order_dir);
+
+        $data = array();
+        foreach ($staff_list as $s) {
+            $initials = educore_initials($s->full_name);
+
+            $statusBadge = ($s->status == 1)
+                ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-secondary-container text-on-secondary-container">Active</span>'
+                : '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-surface-container-high text-on-surface-variant">Inactive</span>';
+
+            $codeCol = '<a href="' . site_url('staff/profile/' . $s->staff_id) . '" class="text-primary font-medium hover:underline font-mono">' . html_escape($s->employee_code ?: '—') . '</a>';
+
+            $nameCol = '<div class="flex items-center gap-2.5">' .
+                '<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[11px] font-semibold shrink-0">' . html_escape($initials) . '</div>' .
+                '<div>' .
+                    '<div class="font-medium text-on-surface">' . html_escape($s->full_name) . '</div>' .
+                    '<div class="text-[12px] text-on-surface-variant">' . html_escape($s->staff_type ?: 'Staff') . '</div>' .
+                '</div>' .
+            '</div>';
+
+            $contactCol = '<div>' .
+                '<div class="text-on-surface">' . html_escape($s->email ?: '—') . '</div>' .
+                '<div class="text-[12px] text-on-surface-variant">' . html_escape($s->phone ?: '—') . '</div>' .
+            '</div>';
+
+            $actionsCol = '<div class="flex items-center justify-end gap-1.5">' .
+                '<a href="' . site_url('staff/profile/' . $s->staff_id) . '" title="View Profile" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">visibility</span></a>' .
+                '<a href="' . site_url('staff/edit/' . $s->staff_id) . '" title="Edit Staff" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">edit</span></a>' .
+            '</div>';
+
+            $data[] = array(
+                $codeCol,
+                $nameCol,
+                html_escape($s->department_name ?: '—'),
+                html_escape($s->designation_name ?: '—'),
+                $contactCol,
+                $statusBadge,
+                $actionsCol
+            );
+        }
+
+        $output = array(
+            "draw"            => $draw,
+            "recordsTotal"    => $records_total,
+            "recordsFiltered" => $records_filtered,
+            "data"            => $data,
+        );
+
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode($output));
+    }
+
     /* =========================================================================
        2. Teachers Directory
        ========================================================================= */
     public function teachers()
     {
+        $this->require_permission('staff.view');
         $dept_id  = $this->input->get('department_id');
         $desig_id = $this->input->get('designation_id');
         $subject  = $this->input->get('subject');
@@ -100,6 +180,7 @@ class Staff extends MY_Controller {
        ========================================================================= */
     public function non_teaching()
     {
+        $this->require_permission('staff.view');
         $dept_id  = $this->input->get('department_id');
         $desig_id = $this->input->get('designation_id');
         $search   = $this->input->get('search');
@@ -133,6 +214,7 @@ class Staff extends MY_Controller {
 
     public function register()
     {
+        $this->require_permission('staff.create');
         if ($this->input->method() === 'post') {
             $this->form_validation->set_rules('full_name', 'Staff Name', 'required|trim');
             $this->form_validation->set_rules('employee_code', 'Employee ID', 'required|trim');
@@ -192,6 +274,8 @@ class Staff extends MY_Controller {
        ========================================================================= */
     public function edit($staff_id = NULL)
     {
+        $this->require_permission('staff.edit');
+
         if (empty($staff_id)) {
             redirect('staff');
         }
@@ -257,6 +341,8 @@ class Staff extends MY_Controller {
        ========================================================================= */
     public function delete($staff_id = NULL)
     {
+        $this->require_permission('staff.delete');
+
         if (!empty($staff_id)) {
             $this->Staff_model->soft_delete($staff_id);
             $this->session->set_flashdata('success', 'Staff member deactivated safely.');
@@ -269,6 +355,8 @@ class Staff extends MY_Controller {
        ========================================================================= */
     public function profile($staff_id = NULL)
     {
+        $this->require_permission('staff.view');
+
         if (empty($staff_id)) {
             redirect('staff');
         }
@@ -305,6 +393,8 @@ class Staff extends MY_Controller {
        ========================================================================= */
     public function departments_designations()
     {
+        $this->require_permission('staff.edit');
+
         if ($this->input->method() === 'post') {
             $action = $this->input->post('action');
             if ($action === 'add_department') {
@@ -355,6 +445,8 @@ class Staff extends MY_Controller {
        ========================================================================= */
     public function documents()
     {
+        $this->require_permission('staff.view');
+
         $staff_id  = $this->input->get('staff_id');
         $doc_type  = $this->input->get('document_type');
         $dept_id   = $this->input->get('department_id');
@@ -380,6 +472,8 @@ class Staff extends MY_Controller {
 
     public function upload_document()
     {
+        $this->require_permission('staff.edit');
+
         $staff_id = $this->input->post('staff_id');
         $doc_type = $this->input->post('document_type');
         $doc_name = $this->input->post('document_name');
@@ -414,6 +508,8 @@ class Staff extends MY_Controller {
 
     public function delete_document($id = NULL)
     {
+        $this->require_permission('staff.edit');
+
         $redirect = $this->input->get('redirect_to') ?: 'staff/documents';
         if (!empty($id)) {
             $this->Staff_model->delete_document($id);
@@ -427,6 +523,8 @@ class Staff extends MY_Controller {
        ========================================================================= */
     public function workload()
     {
+        $this->require_permission('staff.view');
+
         if ($this->input->method() === 'post') {
             $staff_id = $this->input->post('staff_id');
             // Ensure selected staff is a teacher
@@ -480,6 +578,8 @@ class Staff extends MY_Controller {
 
     public function delete_workload($id = NULL)
     {
+        $this->require_permission('staff.edit');
+
         $redirect = $this->input->get('redirect_to') ?: 'staff/workload';
         if (!empty($id)) {
             $this->Staff_model->delete_workload($id);
@@ -493,6 +593,8 @@ class Staff extends MY_Controller {
        ========================================================================= */
     public function attendance()
     {
+        $this->require_permission('staff.view');
+
         $date    = $this->input->get('date') ?: date('Y-m-d');
         $dept_id = $this->input->get('department_id');
 
@@ -523,6 +625,8 @@ class Staff extends MY_Controller {
        ========================================================================= */
     public function leave()
     {
+        $this->require_permission('staff.view');
+
         if ($this->input->method() === 'post') {
             $action = $this->input->post('action');
             if ($action === 'apply') {

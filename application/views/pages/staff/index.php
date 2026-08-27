@@ -45,82 +45,23 @@
 
     <!-- Staff Table -->
     <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 overflow-hidden">
-      <div class="table-scroll overflow-x-auto">
-        <table class="w-full data-table zebra border-collapse">
+      <div class="table-scroll overflow-x-auto p-2">
+        <table id="staff-table" class="w-full data-table zebra border-collapse text-body-md">
           <thead>
             <tr class="border-b border-outline-variant/60">
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Employee ID</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Staff Member</th>
-              <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Staff Type</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Department</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Designation</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Contact</th>
-              <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Joining Date</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Status</th>
               <th class="text-right px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-outline-variant/40">
-            <?php if (empty($staff)): ?>
-              <tr>
-                <td colspan="9" class="px-4 py-8 text-center text-body-md text-on-surface-variant">No staff members found matching current filters.</td>
-              </tr>
-            <?php endif; ?>
-            <?php foreach ($staff as $st): ?>
-              <?php
-                $nameParts = explode(' ', trim($st->full_name));
-                $initials = '';
-                foreach ($nameParts as $np) { if (!empty($np)) $initials .= strtoupper($np[0]); }
-                if (strlen($initials) > 2) $initials = substr($initials, 0, 2);
-                $isTeacher = ($st->staff_type === 'teacher');
-                $typeBadge = $isTeacher
-                  ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-primary-fixed/30 text-primary">Teacher</span>'
-                  : '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-surface-container-high text-on-surface-variant">Non-Teaching</span>';
-                $statusBadge = ($st->status == 1)
-                  ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-secondary-container text-on-secondary-container">Active</span>'
-                  : '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-surface-container-high text-on-surface-variant">Inactive</span>';
-              ?>
-              <tr class='hover:bg-surface-container-low transition-colors'>
-                <td class="px-4 py-3 text-body-md font-mono text-primary font-medium whitespace-nowrap">
-                  <a href="<?php echo site_url('staff/profile/' . $st->staff_id); ?>" class="hover:underline"><?php echo html_escape($st->employee_code); ?></a>
-                </td>
-                <td class="px-4 py-3 text-body-md font-body-md text-on-surface whitespace-nowrap">
-                  <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[11px] font-semibold shrink-0"><?php echo html_escape($initials); ?></div>
-                    <div>
-                      <div class="font-medium text-on-surface"><?php echo html_escape($st->full_name); ?></div>
-                      <div class="text-[12px] text-on-surface-variant"><?php echo html_escape($st->gender . ($st->qualification ? ' · ' . $st->qualification : '')); ?></div>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-4 py-3 text-body-md whitespace-nowrap"><?php echo $typeBadge; ?></td>
-                <td class="px-4 py-3 text-body-md text-on-surface whitespace-nowrap"><?php echo html_escape($st->department_name ?: '—'); ?></td>
-                <td class="px-4 py-3 text-body-md text-on-surface whitespace-nowrap"><?php echo html_escape($st->designation_name ?: '—'); ?></td>
-                <td class="px-4 py-3 text-body-md text-on-surface whitespace-nowrap">
-                  <div><?php echo html_escape($st->phone); ?></div>
-                  <div class="text-[12px] text-on-surface-variant"><?php echo html_escape($st->email); ?></div>
-                </td>
-                <td class="px-4 py-3 text-body-md text-on-surface whitespace-nowrap"><?php echo date('d M Y', strtotime($st->joining_date)); ?></td>
-                <td class="px-4 py-3 text-body-md whitespace-nowrap"><?php echo $statusBadge; ?></td>
-                <td class="px-4 py-3 text-body-md text-right whitespace-nowrap">
-                  <div class="flex items-center justify-end gap-1.5">
-                    <a href="<?php echo site_url('staff/profile/' . $st->staff_id); ?>" title="View Profile" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">visibility</span></a>
-                    <a href="<?php echo site_url('staff/edit/' . $st->staff_id); ?>" title="Edit Staff" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[18px]">edit</span></a>
-                    <button onclick="confirmDelete(<?php echo $st->staff_id; ?>, '<?php echo html_escape(addslashes($st->full_name)); ?>')" title="Deactivate Staff" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-error-container/20 hover:text-error transition-colors cursor-pointer"><span class="material-symbols-outlined text-[18px]">delete</span></button>
-                  </div>
-                </td>
-              </tr>
-            <?php endforeach; ?>
+            <!-- DataTables Server-Side Populated -->
           </tbody>
         </table>
-      </div>
-      <div class="flex items-center justify-between px-4 py-3 border-t border-outline-variant/50 text-body-md font-body-md text-on-surface-variant">
-        <span>Showing <?php echo count($staff); ?> staff records</span>
-        <div class="flex items-center gap-3">
-          <a href="<?php echo site_url('staff/teachers'); ?>" class="text-label-md text-primary hover:underline">View Teachers</a>
-          <span class="text-outline-variant">·</span>
-          <a href="<?php echo site_url('staff/non_teaching'); ?>" class="text-label-md text-primary hover:underline">View Non-Teaching Staff</a>
-        </div>
       </div>
     </div>
 
@@ -130,9 +71,35 @@
         if (val) { url.searchParams.set(key, val); } else { url.searchParams.delete(key); }
         window.location.href = url.toString();
       }
-      function confirmDelete(id, name) {
-        if (confirm('Are you sure you want to deactivate staff member "' + name + '"?\n\nThis will safely update status to inactive without breaking historical attendance, workload, or leave logs.')) {
-          window.location.href = '<?php echo site_url('staff/delete/'); ?>' + id;
+
+      document.addEventListener("DOMContentLoaded", function() {
+        if (typeof jQuery !== 'undefined' && typeof EduCore !== 'undefined') {
+          EduCore.DataTable.init('#staff-table', {
+            serverSide: true,
+            processing: true,
+            searching: false,
+            ajax: {
+              url: '<?php echo site_url('staff/ajax_list'); ?>',
+              type: 'POST',
+              data: function(d) {
+                d.department_id  = '<?php echo html_escape($this->input->get('department_id')); ?>';
+                d.designation_id = '<?php echo html_escape($this->input->get('designation_id')); ?>';
+                d.staff_type     = '<?php echo html_escape($this->input->get('staff_type')); ?>';
+                d.status         = '<?php echo html_escape($this->input->get('status')); ?>';
+                d.search         = { value: '<?php echo html_escape($this->input->get('search')); ?>' };
+              }
+            },
+            columns: [
+              { data: 0, orderable: true },
+              { data: 1, orderable: true },
+              { data: 2, orderable: true },
+              { data: 3, orderable: true },
+              { data: 4, orderable: false },
+              { data: 5, orderable: true },
+              { data: 6, orderable: false, className: 'text-right' }
+            ]
+          });
         }
-      }
+      });
     </script>
+
