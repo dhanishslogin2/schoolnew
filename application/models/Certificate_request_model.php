@@ -20,6 +20,9 @@ class Certificate_request_model extends CI_Model {
         if (!empty($filters['status'])) {
             $this->db->where('cr.status', $filters['status']);
         }
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('cr.academic_year_id', (int)$filters['academic_year_id']);
+        }
         if (!empty($filters['certificate_type_id'])) {
             $this->db->where('cr.certificate_type_id', $filters['certificate_type_id']);
         }

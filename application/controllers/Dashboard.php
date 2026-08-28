@@ -18,15 +18,16 @@ class Dashboard extends MY_Controller {
 
     public function index()
     {
-        $today = date('Y-m-d');
+        $year_id = $this->academic_year_id;
+        $today   = normalize_date_to_academic_year(date('Y-m-d'), $year_id);
 
         // All data is fetched with minimal DB round-trips via Dashboard_model
-        $stats           = $this->Dashboard_model->get_summary_stats();
-        $attendance      = $this->Dashboard_model->get_today_attendance($today);
-        $fees            = $this->Dashboard_model->get_fees_summary();
+        $stats           = $this->Dashboard_model->get_summary_stats($year_id);
+        $attendance      = $this->Dashboard_model->get_today_attendance($today, $year_id);
+        $fees            = $this->Dashboard_model->get_fees_summary($year_id);
         $upcoming_events = $this->Dashboard_model->get_upcoming_events(5);
-        $recent_notices  = $this->Dashboard_model->get_recent_notices(5);
-        $students_by_class = $this->Dashboard_model->get_students_by_class();
+        $recent_notices  = $this->Dashboard_model->get_recent_notices(5, $year_id);
+        $students_by_class = $this->Dashboard_model->get_students_by_class($year_id);
 
         $this->render('pages/dashboard', [
             'title'             => 'Dashboard',

@@ -30,8 +30,8 @@ class Homework extends MY_Controller {
     public function dashboard()
     {
         $this->require_permission('homework.view');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $active_year ? $active_year->academic_year_id : 1;
+        $year_id = $this->academic_year_id;
+        $active_year = $this->Academic_year_model->get_by_id($year_id);
 
         $data['title'] = 'Homework Dashboard';
         $data['active_year'] = $active_year;
@@ -46,8 +46,7 @@ class Homework extends MY_Controller {
     public function assignments()
     {
         $this->require_permission('homework.view');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
 
         $filters = [
             'academic_year_id'   => $year_id,
@@ -63,7 +62,7 @@ class Homework extends MY_Controller {
 
         $data['title'] = 'Assignments Directory';
         $data['academic_years'] = $this->Academic_year_model->get_all();
-        $data['classes'] = $this->Class_model->get_all(TRUE);
+        $data['classes'] = $this->Class_model->get_all($year_id);
         $data['sections'] = $filters['class_id'] ? $this->Section_model->get_by_class($filters['class_id']) : [];
         $data['subjects'] = $this->Subject_model->get_all(TRUE);
         $data['teachers'] = $this->Staff_model->get_teaching_staff();
@@ -78,8 +77,7 @@ class Homework extends MY_Controller {
     public function create()
     {
         $this->require_permission('homework.create');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $active_year ? $active_year->academic_year_id : 1;
+        $year_id = (int)($this->input->post('academic_year_id') ?: $this->academic_year_id);
 
         if ($this->input->post()) {
             $class_id = (int)$this->input->post('class_id');
@@ -313,8 +311,7 @@ class Homework extends MY_Controller {
     public function subjects()
     {
         $this->require_permission('homework.view');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $subject_id = $this->input->get('subject_id');
 
         $filters = ['academic_year_id' => $year_id];
@@ -334,8 +331,7 @@ class Homework extends MY_Controller {
     public function classes()
     {
         $this->require_permission('homework.view');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $class_id = $this->input->get('class_id');
         $section_id = $this->input->get('section_id');
 
@@ -346,7 +342,7 @@ class Homework extends MY_Controller {
         $data['title'] = 'Class-wise Assignments';
         $data['academic_years'] = $this->Academic_year_model->get_all();
         $data['selected_year'] = $year_id;
-        $data['classes'] = $this->Class_model->get_all(TRUE);
+        $data['classes'] = $this->Class_model->get_all($year_id);
         $data['selected_class'] = $class_id;
         $data['sections'] = $class_id ? $this->Section_model->get_by_class($class_id) : [];
         $data['selected_section'] = $section_id;
@@ -359,8 +355,7 @@ class Homework extends MY_Controller {
     public function calendar()
     {
         $this->require_permission('homework.view');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
 
         $data['title'] = 'Homework Calendar';
         $data['academic_years'] = $this->Academic_year_model->get_all();
@@ -374,18 +369,20 @@ class Homework extends MY_Controller {
     public function submissions()
     {
         $this->require_permission('homework.view');
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $filters = [
-            'assignment_id' => $this->input->get('assignment_id') ?: NULL,
-            'class_id'      => $this->input->get('class_id') ?: NULL,
-            'section_id'    => $this->input->get('section_id') ?: NULL,
-            'status'        => $this->input->get('status') ?: NULL,
-            'search'        => $this->input->get('search') ?: NULL
+            'academic_year_id' => $year_id,
+            'assignment_id'    => $this->input->get('assignment_id') ?: NULL,
+            'class_id'         => $this->input->get('class_id') ?: NULL,
+            'section_id'       => $this->input->get('section_id') ?: NULL,
+            'status'           => $this->input->get('status') ?: NULL,
+            'search'           => $this->input->get('search') ?: NULL
         ];
 
         $data['title'] = 'Submission Tracking';
-        $data['classes'] = $this->Class_model->get_all(TRUE);
+        $data['classes'] = $this->Class_model->get_all($year_id);
         $data['sections'] = $filters['class_id'] ? $this->Section_model->get_by_class($filters['class_id']) : [];
-        $data['assignments'] = $this->Homework_model->get_all(['status' => 'Published']);
+        $data['assignments'] = $this->Homework_model->get_all(['academic_year_id' => $year_id, 'status' => 'Published']);
         $data['filters'] = $filters;
         $data['submissions'] = $this->Homework_submission_model->get_submissions($filters);
 
@@ -551,8 +548,7 @@ class Homework extends MY_Controller {
     public function reports()
     {
         $this->require_permission('homework.view');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $report_type = $this->input->get('type') ?: 'completion';
         $class_id = $this->input->get('class_id');
         $subject_id = $this->input->get('subject_id');
@@ -585,7 +581,7 @@ class Homework extends MY_Controller {
         $data['academic_years'] = $this->Academic_year_model->get_all();
         $data['selected_year'] = $year_id;
         $data['report_type'] = $report_type;
-        $data['classes'] = $this->Class_model->get_all(TRUE);
+        $data['classes'] = $this->Class_model->get_all($year_id);
         $data['subjects'] = $this->Subject_model->get_all(TRUE);
         $data['assignments'] = $assignments;
         $data['filters'] = ['class_id' => $class_id, 'subject_id' => $subject_id];

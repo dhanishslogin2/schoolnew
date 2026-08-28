@@ -3,59 +3,75 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Fee_model extends CI_Model {
 
-    public function get_dashboard_metrics()
+    public function get_dashboard_metrics($academic_year_id = NULL)
     {
+        $academic_year_id = $academic_year_id ? (int)$academic_year_id : get_current_academic_year_id();
         $today = date('Y-m-d');
         $cur_month = date('m');
         $cur_year = date('Y');
 
         // 1. Total Fee Expected (Total final_amount of active assigned fees)
-        $exp_res = $this->db->select('SUM(final_amount) as total')->where('status', 1)->get('tbl_student_fees')->row();
+        $this->db->select('SUM(final_amount) as total')->where('status', 1);
+        if ($academic_year_id) $this->db->where('academic_year_id', $academic_year_id);
+        $exp_res = $this->db->get('tbl_student_fees')->row();
         $total_expected = ($exp_res && $exp_res->total) ? (float)$exp_res->total : 0.00;
 
         // 2. Total Fee Collected (Total amount_paid in tbl_fee_payments)
-        $col_res = $this->db->select('SUM(amount_paid) as total')->where('status', 1)->get('tbl_fee_payments')->row();
+        $this->db->select('SUM(fp.amount_paid) as total')
+                 ->from('tbl_fee_payments fp')
+                 ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'inner')
+                 ->where('fp.status', 1);
+        if ($academic_year_id) $this->db->where('sf.academic_year_id', $academic_year_id);
+        $col_res = $this->db->get()->row();
         $total_collected = ($col_res && $col_res->total) ? (float)$col_res->total : 0.00;
 
         // 3. Total Pending & Overdue
-        $pend_res = $this->db->select('SUM(due_amount) as total')
-                             ->where_in('payment_status', array('Pending', 'Partially Paid', 'Overdue'))
-                             ->where('status', 1)
-                             ->get('tbl_student_fees')
-                             ->row();
+        $this->db->select('SUM(due_amount) as total')
+                 ->where_in('payment_status', array('Pending', 'Partially Paid', 'Overdue'))
+                 ->where('status', 1);
+        if ($academic_year_id) $this->db->where('academic_year_id', $academic_year_id);
+        $pend_res = $this->db->get('tbl_student_fees')->row();
         $total_pending = ($pend_res && $pend_res->total) ? (float)$pend_res->total : max(0.00, $total_expected - $total_collected);
 
-        $over_res = $this->db->select('SUM(due_amount) as total')
-                            ->where('due_date <', $today)
-                            ->where('due_amount >', 0)
-                            ->where('status', 1)
-                            ->get('tbl_student_fees')
-                            ->row();
+        $this->db->select('SUM(due_amount) as total')
+                 ->where('due_date <', $today)
+                 ->where('due_amount >', 0)
+                 ->where('status', 1);
+        if ($academic_year_id) $this->db->where('academic_year_id', $academic_year_id);
+        $over_res = $this->db->get('tbl_student_fees')->row();
         $total_overdue = ($over_res && $over_res->total) ? (float)$over_res->total : 0.00;
 
         // 4. Today's Collection
-        $today_res = $this->db->select('SUM(amount_paid) as total')
-                              ->where('payment_date', $today)
-                              ->where('status', 1)
-                              ->get('tbl_fee_payments')
-                              ->row();
+        $this->db->select('SUM(fp.amount_paid) as total')
+                 ->from('tbl_fee_payments fp')
+                 ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'inner')
+                 ->where('fp.payment_date', $today)
+                 ->where('fp.status', 1);
+        if ($academic_year_id) $this->db->where('sf.academic_year_id', $academic_year_id);
+        $today_res = $this->db->get()->row();
         $today_collection = ($today_res && $today_res->total) ? (float)$today_res->total : 0.00;
 
         // 5. This Month's Collection
-        $month_res = $this->db->select('SUM(amount_paid) as total')
-                              ->where('MONTH(payment_date)', $cur_month)
-                              ->where('YEAR(payment_date)', $cur_year)
-                              ->where('status', 1)
-                              ->get('tbl_fee_payments')
-                              ->row();
+        $this->db->select('SUM(fp.amount_paid) as total')
+                 ->from('tbl_fee_payments fp')
+                 ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'inner')
+                 ->where('MONTH(fp.payment_date)', $cur_month)
+                 ->where('YEAR(fp.payment_date)', $cur_year)
+                 ->where('fp.status', 1);
+        if ($academic_year_id) $this->db->where('sf.academic_year_id', $academic_year_id);
+        $month_res = $this->db->get()->row();
         $monthly_collection = ($month_res && $month_res->total) ? (float)$month_res->total : 0.00;
 
         // 6. Number of Students with Due Fees
-        $due_stu_res = $this->db->query("SELECT COUNT(DISTINCT student_id) as cnt FROM tbl_student_fees WHERE due_amount > 0 AND status = 1")->row();
+        $this->db->select('COUNT(DISTINCT student_id) as cnt')->where('due_amount >', 0)->where('status', 1);
+        if ($academic_year_id) $this->db->where('academic_year_id', $academic_year_id);
+        $due_stu_res = $this->db->get('tbl_student_fees')->row();
         $students_with_dues = ($due_stu_res) ? (int)$due_stu_res->cnt : 0;
 
         // 7. Number of Fully Paid Students
-        $paid_stu_res = $this->db->query("SELECT COUNT(DISTINCT student_id) as cnt FROM tbl_student_fees WHERE payment_status = 'Paid' AND status = 1")->row();
+        $this->db->select('COUNT(DISTINCT student_id) as cnt')->where('payment_status', 'Paid')->where('status', 1);
+        if ($academic_year_id) $this->db->where('academic_year_id', $academic_year_id);
+        $paid_stu_res = $this->db->get('tbl_student_fees')->row();
         $fully_paid_students = ($paid_stu_res) ? (int)$paid_stu_res->cnt : 0;
 
         return array(
@@ -70,17 +86,33 @@ class Fee_model extends CI_Model {
         );
     }
 
-    public function get_collection_summary()
+    public function get_collection_summary($academic_year_id = NULL)
     {
+        $academic_year_id = $academic_year_id ? (int)$academic_year_id : get_current_academic_year_id();
         $today = date('Y-m-d');
         $week_start = date('Y-m-d', strtotime('-7 days'));
         $month_start = date('Y-m-01');
         $year_start = date('Y-01-01');
 
-        $daily = $this->db->select('SUM(amount_paid) as total')->where('payment_date', $today)->where('status', 1)->get('tbl_fee_payments')->row()->total ?: 0.00;
-        $weekly = $this->db->select('SUM(amount_paid) as total')->where('payment_date >=', $week_start)->where('status', 1)->get('tbl_fee_payments')->row()->total ?: 0.00;
-        $monthly = $this->db->select('SUM(amount_paid) as total')->where('payment_date >=', $month_start)->where('status', 1)->get('tbl_fee_payments')->row()->total ?: 0.00;
-        $yearly = $this->db->select('SUM(amount_paid) as total')->where('payment_date >=', $year_start)->where('status', 1)->get('tbl_fee_payments')->row()->total ?: 0.00;
+        $calc_sum = function($where_date) use ($academic_year_id) {
+            $this->db->select('SUM(fp.amount_paid) as total')
+                     ->from('tbl_fee_payments fp')
+                     ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'inner')
+                     ->where('fp.status', 1);
+            if ($academic_year_id) $this->db->where('sf.academic_year_id', $academic_year_id);
+            if (!empty($where_date)) {
+                foreach ($where_date as $k => $v) {
+                    $this->db->where($k, $v);
+                }
+            }
+            $row = $this->db->get()->row();
+            return ($row && $row->total) ? (float)$row->total : 0.00;
+        };
+
+        $daily = $calc_sum(array('fp.payment_date' => $today));
+        $weekly = $calc_sum(array('fp.payment_date >=' => $week_start));
+        $monthly = $calc_sum(array('fp.payment_date >=' => $month_start));
+        $yearly = $calc_sum(array('fp.payment_date >=' => $year_start));
 
         return array(
             'daily'   => (float)$daily,
@@ -90,16 +122,24 @@ class Fee_model extends CI_Model {
         );
     }
 
-    public function get_outstanding_summary()
+    public function get_outstanding_summary($academic_year_id = NULL)
     {
+        $academic_year_id = $academic_year_id ? (int)$academic_year_id : get_current_academic_year_id();
         $today = date('Y-m-d');
-        $total_res = $this->db->select('SUM(due_amount) as total')->where('status', 1)->get('tbl_student_fees')->row();
+
+        $this->db->select('SUM(due_amount) as total')->where('status', 1);
+        if ($academic_year_id) $this->db->where('academic_year_id', $academic_year_id);
+        $total_res = $this->db->get('tbl_student_fees')->row();
         $total_outstanding = ($total_res && $total_res->total) ? (float)$total_res->total : 0.00;
 
-        $over_res = $this->db->select('SUM(due_amount) as total')->where('due_date <', $today)->where('status', 1)->get('tbl_student_fees')->row();
+        $this->db->select('SUM(due_amount) as total')->where('due_date <', $today)->where('status', 1);
+        if ($academic_year_id) $this->db->where('academic_year_id', $academic_year_id);
+        $over_res = $this->db->get('tbl_student_fees')->row();
         $overdue_amount = ($over_res && $over_res->total) ? (float)$over_res->total : 0.00;
 
-        $up_res = $this->db->select('SUM(due_amount) as total')->where('due_date >=', $today)->where('status', 1)->get('tbl_student_fees')->row();
+        $this->db->select('SUM(due_amount) as total')->where('due_date >=', $today)->where('status', 1);
+        if ($academic_year_id) $this->db->where('academic_year_id', $academic_year_id);
+        $up_res = $this->db->get('tbl_student_fees')->row();
         $upcoming_dues = ($up_res && $up_res->total) ? (float)$up_res->total : 0.00;
 
         return array(
@@ -109,18 +149,25 @@ class Fee_model extends CI_Model {
         );
     }
 
-    public function get_recent_payments($limit = 10)
+    public function get_recent_payments($limit = 10, $academic_year_id = NULL)
     {
-        return $this->db->select('fp.*, st.admission_number, st.first_name, st.last_name, c.class_name, sec.section_name, fh.head_name as category_name, sf.invoice_no')
-                        ->from('tbl_fee_payments fp')
-                        ->join('tbl_students st', 'st.student_id = fp.student_id', 'left')
-                        ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'left')
-                        ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
-                        ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left')
-                        ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-                        ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
-                        ->where('fp.status', 1)
-                        ->order_by('fp.payment_id', 'DESC')
+        $academic_year_id = $academic_year_id ? (int)$academic_year_id : get_current_academic_year_id();
+
+        $this->db->select('fp.*, st.admission_number, st.first_name, st.last_name, c.class_name, sec.section_name, fh.head_name as category_name, sf.invoice_no')
+                 ->from('tbl_fee_payments fp')
+                 ->join('tbl_students st', 'st.student_id = fp.student_id', 'left')
+                 ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'left')
+                 ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
+                 ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left')
+                 ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
+                 ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+                 ->where('fp.status', 1);
+
+        if ($academic_year_id) {
+            $this->db->where('sf.academic_year_id', $academic_year_id);
+        }
+
+        return $this->db->order_by('fp.payment_id', 'DESC')
                         ->limit($limit)
                         ->get()
                         ->result();
@@ -136,6 +183,9 @@ class Fee_model extends CI_Model {
                  ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
                  ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left');
 
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('sf.academic_year_id', $filters['academic_year_id']);
+        }
         if (!empty($filters['student_id'])) {
             $this->db->where('sf.student_id', $filters['student_id']);
         }
@@ -385,6 +435,9 @@ class Fee_model extends CI_Model {
                  ->join('tbl_users u', 'u.user_id = fp.collected_by', 'left')
                  ->where('fp.status', 1);
 
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('sf.academic_year_id', $filters['academic_year_id']);
+        }
         if (!empty($filters['student_id'])) {
             $this->db->where('fp.student_id', $filters['student_id']);
         }
@@ -426,6 +479,9 @@ class Fee_model extends CI_Model {
             ->where('fp.is_deleted', 'n')
             ->where('fp.status', 1);
 
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('sf.academic_year_id', (int)$filters['academic_year_id']);
+        }
         if (!empty($filters['student_id'])) {
             $this->db->where('fp.student_id', (int)$filters['student_id']);
         }
@@ -487,6 +543,9 @@ class Fee_model extends CI_Model {
                  ->where('fp.is_deleted', 'n')
                  ->where('fp.status', 1);
 
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('sf.academic_year_id', (int)$filters['academic_year_id']);
+        }
         if (!empty($filters['student_id'])) {
             $this->db->where('fp.student_id', (int)$filters['student_id']);
         }
@@ -523,9 +582,20 @@ class Fee_model extends CI_Model {
         return $this->db->get()->result();
     }
 
-    public function get_payments_count_all()
+    public function get_payments_count_all($academic_year_id = NULL)
     {
-        return $this->db->where('is_deleted', 'n')->where('status', 1)->count_all_results('tbl_fee_payments');
+        $academic_year_id = $academic_year_id ? (int)$academic_year_id : get_current_academic_year_id();
+
+        $this->db->from('tbl_fee_payments fp')
+                 ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'left')
+                 ->where('fp.is_deleted', 'n')
+                 ->where('fp.status', 1);
+
+        if ($academic_year_id) {
+            $this->db->where('sf.academic_year_id', $academic_year_id);
+        }
+
+        return $this->db->count_all_results();
     }
 
     public function get_due_fees($filters = array(), $limit = 100)
@@ -541,6 +611,9 @@ class Fee_model extends CI_Model {
                  ->where('sf.due_amount >', 0)
                  ->where('sf.status', 1);
 
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('sf.academic_year_id', $filters['academic_year_id']);
+        }
         if (!empty($filters['class_id'])) {
             $this->db->where('sf.class_id', $filters['class_id']);
         }

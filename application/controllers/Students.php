@@ -23,7 +23,7 @@ class Students extends MY_Controller {
     public function overview()
     {
         $this->require_permission('students.view');
-        $year_id = $this->input->get('academic_year_id') ?: NULL;
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $stats = $this->Student_model->get_dashboard_stats($year_id);
 
         $this->render('pages/students/overview', array(
@@ -38,7 +38,7 @@ class Students extends MY_Controller {
     {
         $this->require_permission('students.view');
         $filters = array(
-            'academic_year_id' => $this->input->get('academic_year_id'),
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
             'class_id'         => $this->input->get('class_id'),
             'section_id'       => $this->input->get('section_id'),
             'gender'           => $this->input->get('gender'),
@@ -47,7 +47,7 @@ class Students extends MY_Controller {
         );
 
         $students = $this->Student_model->get_all($filters);
-        $classes  = $this->Class_model->get_all();
+        $classes  = $this->Class_model->get_all($filters['academic_year_id']);
         $sections = $this->Section_model->get_all();
         $years    = $this->Academic_year_model->get_all();
 
@@ -77,7 +77,7 @@ class Students extends MY_Controller {
         $search_val    = isset($search['value']) ? trim($search['value']) : '';
 
         $filters = array(
-            'academic_year_id' => $this->input->post('academic_year_id') ?: $this->input->get('academic_year_id'),
+            'academic_year_id' => $this->input->post('academic_year_id') ?: ($this->input->get('academic_year_id') ?: $this->academic_year_id),
             'class_id'         => $this->input->post('class_id') ?: $this->input->get('class_id'),
             'section_id'       => $this->input->post('section_id') ?: $this->input->get('section_id'),
             'gender'           => $this->input->post('gender') ?: $this->input->get('gender'),
@@ -170,7 +170,7 @@ class Students extends MY_Controller {
                     'gender'           => $this->input->post('gender', TRUE),
                     'date_of_birth'    => $this->input->post('date_of_birth', TRUE) ?: date('Y-m-d'),
                     'blood_group'      => $this->input->post('blood_group', TRUE),
-                    'academic_year_id' => $this->input->post('academic_year_id') ?: 1,
+                    'academic_year_id' => $this->input->post('academic_year_id') ?: $this->academic_year_id,
                     'class_id'         => $this->input->post('class_id') ?: 1,
                     'section_id'       => $this->input->post('section_id') ?: 1,
                     'roll_number'      => $this->input->post('roll_number', TRUE),
@@ -189,7 +189,7 @@ class Students extends MY_Controller {
             }
         }
 
-        $classes  = $this->Class_model->get_all();
+        $classes  = $this->Class_model->get_all($this->academic_year_id);
         $sections = $this->Section_model->get_all();
         $years    = $this->Academic_year_model->get_all();
 
@@ -251,7 +251,7 @@ class Students extends MY_Controller {
             }
         }
 
-        $classes  = $this->Class_model->get_all();
+        $classes  = $this->Class_model->get_all($student->academic_year_id);
         $sections = $this->Section_model->get_all();
         $years    = $this->Academic_year_model->get_all();
 
@@ -297,7 +297,7 @@ class Students extends MY_Controller {
     {
         $this->require_permission('students.view');
         if (!$student_id) {
-            $first = $this->Student_model->get_all();
+            $first = $this->Student_model->get_all(array('academic_year_id' => $this->academic_year_id));
             $student_id = !empty($first) ? $first[0]->student_id : 1;
         }
 
@@ -308,7 +308,7 @@ class Students extends MY_Controller {
             return;
         }
 
-        $classes  = $this->Class_model->get_all();
+        $classes  = $this->Class_model->get_all($student->academic_year_id);
         $sections = $this->Section_model->get_all();
         $years    = $this->Academic_year_model->get_all();
 
@@ -341,7 +341,7 @@ class Students extends MY_Controller {
                     'gender'            => $this->input->post('gender', TRUE),
                     'date_of_birth'     => $this->input->post('date_of_birth', TRUE) ?: date('Y-m-d'),
                     'blood_group'       => $this->input->post('blood_group', TRUE),
-                    'academic_year_id'  => $this->input->post('academic_year_id') ?: 1,
+                    'academic_year_id'  => $this->input->post('academic_year_id') ?: $this->academic_year_id,
                     'class_id'          => $this->input->post('class_id') ?: 1,
                     'guardian_name'     => $this->input->post('guardian_name', TRUE),
                     'guardian_relation' => $this->input->post('guardian_relation', TRUE) ?: 'Father',
@@ -382,13 +382,14 @@ class Students extends MY_Controller {
         }
 
         $filters = array(
-            'status'   => $this->input->get('status'),
-            'class_id' => $this->input->get('class_id'),
-            'search'   => $this->input->get('search'),
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
+            'status'           => $this->input->get('status'),
+            'class_id'         => $this->input->get('class_id'),
+            'search'           => $this->input->get('search'),
         );
 
         $admissions = $this->Student_model->get_admissions($filters);
-        $classes    = $this->Class_model->get_all();
+        $classes    = $this->Class_model->get_all($filters['academic_year_id']);
         $sections   = $this->Section_model->get_all();
         $years      = $this->Academic_year_model->get_all();
 
@@ -410,14 +411,15 @@ class Students extends MY_Controller {
     {
         $this->require_permission('students.view');
         $filters = array(
-            'student_id'    => $this->input->get('student_id'),
-            'class_id'      => $this->input->get('class_id'),
-            'document_type' => $this->input->get('document_type'),
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
+            'student_id'       => $this->input->get('student_id'),
+            'class_id'         => $this->input->get('class_id'),
+            'document_type'    => $this->input->get('document_type'),
         );
 
         $documents = $this->Student_model->get_all_documents($filters);
-        $students  = $this->Student_model->get_all();
-        $classes   = $this->Class_model->get_all();
+        $students  = $this->Student_model->get_all(array('academic_year_id' => $filters['academic_year_id']));
+        $classes   = $this->Class_model->get_all($filters['academic_year_id']);
 
         $this->render('pages/students/documents', array(
             'title'     => 'Student Documents',
@@ -491,11 +493,12 @@ class Students extends MY_Controller {
         $section_id = $this->input->get('section_id');
 
         $students = $this->Student_model->get_all(array(
-            'class_id'   => $class_id,
-            'section_id' => $section_id,
-            'status'     => 1
+            'academic_year_id' => $this->academic_year_id,
+            'class_id'         => $class_id,
+            'section_id'       => $section_id,
+            'status'           => 1
         ));
-        $classes  = $this->Class_model->get_all();
+        $classes  = $this->Class_model->get_all($this->academic_year_id);
         $sections = $this->Section_model->get_all();
 
         $this->render('pages/students/id_cards', array(
@@ -538,7 +541,7 @@ class Students extends MY_Controller {
             }
         }
 
-        $from_year  = $this->input->get('from_year') ?: 1;
+        $from_year  = $this->input->get('from_year') ?: $this->academic_year_id;
         $from_class = $this->input->get('from_class') ?: 8;
         $from_sec   = $this->input->get('from_section');
 
@@ -550,7 +553,7 @@ class Students extends MY_Controller {
         ));
 
         $promotions_history = $this->Student_model->get_promotions();
-        $classes  = $this->Class_model->get_all();
+        $classes  = $this->Class_model->get_all($from_year);
         $sections = $this->Section_model->get_all();
         $years    = $this->Academic_year_model->get_all();
 
@@ -602,8 +605,8 @@ class Students extends MY_Controller {
         }
 
         $transfers = $this->Student_model->get_transfers();
-        $students  = $this->Student_model->get_all(array('status' => 1));
-        $classes   = $this->Class_model->get_all();
+        $students  = $this->Student_model->get_all(array('status' => 1, 'academic_year_id' => $this->academic_year_id));
+        $classes   = $this->Class_model->get_all($this->academic_year_id);
 
         $this->render('pages/students/transfers', array(
             'title'     => 'Transfer / TC Management',
@@ -643,7 +646,7 @@ class Students extends MY_Controller {
     {
         $this->require_permission('students.view');
         $filters = array(
-            'academic_year_id' => $this->input->get('academic_year_id'),
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
             'class_id'         => $this->input->get('class_id'),
             'section_id'       => $this->input->get('section_id'),
             'gender'           => $this->input->get('gender'),
@@ -653,10 +656,10 @@ class Students extends MY_Controller {
 
         $hasSearch = !empty($filters['search']) || !empty($filters['class_id']) || !empty($filters['section_id']) || !empty($filters['gender']) || !empty($filters['academic_year_id']) || ($filters['status'] !== '' && $filters['status'] !== NULL);
 
-        $students = $hasSearch ? $this->Student_model->get_all($filters) : $this->Student_model->get_all(array(), 20);
+        $students = $hasSearch ? $this->Student_model->get_all($filters) : $this->Student_model->get_all(array('academic_year_id' => $this->academic_year_id), 20);
         $totalCount = $this->Student_model->count_filtered($filters);
 
-        $classes  = $this->Class_model->get_all();
+        $classes  = $this->Class_model->get_all($filters['academic_year_id']);
         $sections = $this->Section_model->get_all();
         $years    = $this->Academic_year_model->get_all();
 

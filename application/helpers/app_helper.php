@@ -188,3 +188,294 @@ if ( ! function_exists('school_array_get'))
         return isset($arr[$key]) ? $arr[$key] : $default;
     }
 }
+
+// ---------------------------------------------------------------------------
+// Global Academic Year Context Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the currently active / selected academic year ID.
+ * Returns integer ID. Uses per-request caching to eliminate duplicate queries.
+ */
+if ( ! function_exists('get_current_academic_year_id'))
+{
+    function get_current_academic_year_id()
+    {
+        static $cached_year_id = NULL;
+        if ($cached_year_id !== NULL) {
+            return $cached_year_id;
+        }
+
+        $CI =& get_instance();
+        if (!isset($CI->session)) {
+            $CI->load->library('session');
+        }
+
+        $session_year_id = $CI->session->userdata('selected_academic_year_id');
+        if (empty($session_year_id)) {
+            $session_year_id = $CI->session->userdata('academic_year_id');
+        }
+
+        if (!empty($session_year_id)) {
+            $year_id = (int)$session_year_id;
+            // Verify it still exists and is not deleted
+            if (!isset($CI->Academic_year_model)) {
+                $CI->load->model('Academic_year_model');
+            }
+            $year = $CI->Academic_year_model->get_by_id($year_id);
+            if ($year) {
+                $cached_year_id = $year_id;
+                return $cached_year_id;
+            }
+        }
+
+        // Fallback to active academic year
+        if (!isset($CI->Academic_year_model)) {
+            $CI->load->model('Academic_year_model');
+        }
+        $active_year = $CI->Academic_year_model->get_active_year();
+        if ($active_year) {
+            $year_id = (int)$active_year->academic_year_id;
+            $CI->session->set_userdata('selected_academic_year_id', $year_id);
+            $CI->session->set_userdata('academic_year_id', $year_id);
+            $cached_year_id = $year_id;
+            return $cached_year_id;
+        }
+
+        return 1; // Default fallback if no years configured
+    }
+}
+
+/**
+ * Get the full record object for the currently active / selected academic year.
+ */
+if ( ! function_exists('get_current_academic_year'))
+{
+    function get_current_academic_year()
+    {
+        $CI =& get_instance();
+        if (!isset($CI->Academic_year_model)) {
+            $CI->load->model('Academic_year_model');
+        }
+
+        $year_id = get_current_academic_year_id();
+        $year = $CI->Academic_year_model->get_by_id($year_id);
+        if (!$year) {
+            $year = $CI->Academic_year_model->get_active_year();
+        }
+
+        return $year;
+    }
+}
+
+/**
+ * Get the full record object for a specific or current academic year.
+ *
+ * @param  int|null $academic_year_id
+ * @return object|null
+ */
+if ( ! function_exists('get_academic_year_record'))
+{
+    function get_academic_year_record($academic_year_id = NULL)
+    {
+        $CI =& get_instance();
+        if (!isset($CI->Academic_year_model)) {
+            $CI->load->model('Academic_year_model');
+        }
+
+        if ($academic_year_id !== NULL && (int)$academic_year_id > 0) {
+            return $CI->Academic_year_model->get_by_id((int)$academic_year_id);
+        }
+
+        return get_current_academic_year();
+    }
+}
+
+/**
+ * Get the default / synchronized date for an academic year.
+ * Rule:
+ *   If today's server date falls within [start_date, end_date] of the academic year:
+ *       return today's date (Y-m-d)
+ *   Else:
+ *       return academic_year_start_date (Y-m-d)
+ *
+ * @param  int|object|null $academic_year
+ * @return string (Y-m-d)
+ */
+if ( ! function_exists('get_academic_year_default_date'))
+{
+    function get_academic_year_default_date($academic_year = NULL)
+    {
+        $today = date('Y-m-d');
+        $year_obj = is_object($academic_year) ? $academic_year : get_academic_year_record($academic_year);
+
+        if (!$year_obj || empty($year_obj->start_date) || empty($year_obj->end_date)) {
+            return $today;
+        }
+
+        $start_date = $year_obj->start_date;
+        $end_date   = $year_obj->end_date;
+
+        if ($today >= $start_date && $today <= $end_date) {
+            return $today;
+        }
+
+        return $start_date;
+    }
+}
+
+/**
+ * Check if a given date falls within the start_date and end_date of an academic year.
+ *
+ * @param  string          $date (Y-m-d or parseable string)
+ * @param  int|object|null $academic_year
+ * @return bool
+ */
+if ( ! function_exists('is_date_within_academic_year'))
+{
+    function is_date_within_academic_year($date, $academic_year = NULL)
+    {
+        if (empty($date)) {
+            return FALSE;
+        }
+
+        $formatted_date = date('Y-m-d', strtotime($date));
+        if ($formatted_date === '1970-01-01' && $date !== '1970-01-01') {
+            return FALSE;
+        }
+
+        $year_obj = is_object($academic_year) ? $academic_year : get_academic_year_record($academic_year);
+        if (!$year_obj || empty($year_obj->start_date) || empty($year_obj->end_date)) {
+            return TRUE;
+        }
+
+        return ($formatted_date >= $year_obj->start_date && $formatted_date <= $year_obj->end_date);
+    }
+}
+
+/**
+ * Normalize and validate a date against an academic year.
+ * Rule:
+ *   If user selected a date and it falls within [start_date, end_date], keep it.
+ *   If user selected a date and it falls OUTSIDE [start_date, end_date], or date is empty/invalid,
+ *   safely normalize to the academic year's default date (today if in-range, else start_date).
+ *
+ * @param  string|null     $date
+ * @param  int|object|null $academic_year
+ * @return string (Y-m-d)
+ */
+if ( ! function_exists('normalize_date_to_academic_year'))
+{
+    function normalize_date_to_academic_year($date = NULL, $academic_year = NULL)
+    {
+        $year_obj = is_object($academic_year) ? $academic_year : get_academic_year_record($academic_year);
+        $default_date = get_academic_year_default_date($year_obj);
+
+        if (empty($date)) {
+            return $default_date;
+        }
+
+        $formatted_date = date('Y-m-d', strtotime($date));
+        if ($formatted_date === '1970-01-01' && $date !== '1970-01-01') {
+            return $default_date;
+        }
+
+        if (!$year_obj || empty($year_obj->start_date) || empty($year_obj->end_date)) {
+            return $formatted_date;
+        }
+
+        if ($formatted_date >= $year_obj->start_date && $formatted_date <= $year_obj->end_date) {
+            return $formatted_date;
+        }
+
+        return $default_date;
+    }
+}
+
+/**
+ * Set the currently selected academic year in session context.
+ *
+ * @param  int $academic_year_id
+ * @return bool
+ */
+if ( ! function_exists('set_current_academic_year'))
+{
+    function set_current_academic_year($academic_year_id)
+    {
+        $CI =& get_instance();
+        if (!isset($CI->Academic_year_model)) {
+            $CI->load->model('Academic_year_model');
+        }
+
+        $year = $CI->Academic_year_model->get_by_id((int)$academic_year_id);
+        if (!$year || $year->is_deleted === 'y' || (int)$year->status !== 1) {
+            return FALSE;
+        }
+
+        $CI->session->set_userdata('selected_academic_year_id', (int)$year->academic_year_id);
+        $CI->session->set_userdata('academic_year_id', (int)$year->academic_year_id);
+        return TRUE;
+    }
+}
+
+/**
+ * Retrieve all available (active & non-deleted) academic years for dropdown selector.
+ */
+if ( ! function_exists('get_available_academic_years'))
+{
+    function get_available_academic_years()
+    {
+        $CI =& get_instance();
+        if (!isset($CI->Academic_year_model)) {
+            $CI->load->model('Academic_year_model');
+        }
+        return $CI->Academic_year_model->get_available_years();
+    }
+}
+
+/**
+ * Check if the user has permission to change the active global academic year.
+ *
+ * @param  int|null $user_id
+ * @return bool
+ */
+if ( ! function_exists('can_change_academic_year'))
+{
+    function can_change_academic_year($user_id = NULL)
+    {
+        $CI =& get_instance();
+        if (!isset($CI->rbac)) {
+            $CI->load->library('Rbac');
+        }
+
+        if ($CI->rbac->is_super_admin($user_id)) {
+            return TRUE;
+        }
+
+        if ($user_id === NULL) {
+            $user_data = $CI->session->userdata('user');
+            $user_id   = (int)($user_data['user_id'] ?? $CI->session->userdata('user_id') ?? 0);
+            $role_name = $user_data['role'] ?? $CI->session->userdata('user_role') ?? '';
+            $role_code = $user_data['role_code'] ?? '';
+        } else {
+            if (!isset($CI->User_model)) {
+                $CI->load->model('User_model');
+            }
+            $user = $CI->User_model->get_by_id($user_id);
+            $role_name = $user ? $user->role_name : '';
+            $role_code = $user ? $user->role_code : '';
+        }
+
+        $role_name_clean = strtolower(trim((string)$role_name));
+        $role_code_clean = strtoupper(trim((string)$role_code));
+
+        if (in_array($role_name_clean, ['super admin', 'principal', 'admin']) || in_array($role_code_clean, ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN'])) {
+            return TRUE;
+        }
+
+        return $CI->rbac->has_permission('academics.edit', $user_id)
+            || $CI->rbac->has_permission('academics.manage', $user_id)
+            || $CI->rbac->has_permission('academic_year.change', $user_id);
+    }
+}
+

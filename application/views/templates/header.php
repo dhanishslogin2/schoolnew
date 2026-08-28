@@ -60,10 +60,16 @@ tailwind.config = {
 <body class="bg-background text-on-background font-body-lg" data-page="<?php echo html_escape($page_key); ?>"<?php echo $breadcrumb ? ' data-breadcrumb=\'' . $breadcrumb . '\'' : ''; ?> >
 <script>
 window.APP_BASE_URL = "<?php echo base_url(); ?>";
+window.CSRF_TOKEN_NAME = "<?php echo $this->security->get_csrf_token_name(); ?>";
+window.CSRF_HASH = "<?php echo $this->security->get_csrf_hash(); ?>";
 <?php if (isset($current_user)): ?>
 window.CURRENT_USER = <?php echo json_encode($current_user); ?>;
 window.IS_SUPER_ADMIN = <?php echo (!empty($is_super_admin)) ? 'true' : 'false'; ?>;
 window.USER_PERMISSIONS = <?php echo json_encode($effective_permissions ?? []); ?>;
+window.CURRENT_ACADEMIC_YEAR_ID = <?php echo (int)($current_academic_year_id ?? 1); ?>;
+window.CURRENT_ACADEMIC_YEAR = <?php echo json_encode($current_academic_year ?? null); ?>;
+window.AVAILABLE_ACADEMIC_YEARS = <?php echo json_encode($available_academic_years ?? []); ?>;
+window.CAN_CHANGE_ACADEMIC_YEAR = <?php echo (!empty($can_change_academic_year)) ? 'true' : 'false'; ?>;
 <?php endif; ?>
 </script>
 <div class="flex min-h-screen">

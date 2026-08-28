@@ -107,6 +107,7 @@ class Exam_model extends CI_Model {
        ========================================================================= */
     public function get_dashboard_stats($year_id = NULL)
     {
+        $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
         $today = date('Y-m-d');
 
         $this->db->from($this->table)->where('is_deleted', 'n');
@@ -145,6 +146,7 @@ class Exam_model extends CI_Model {
 
     public function get_upcoming_exam_schedules($year_id = NULL, $limit = 6)
     {
+        $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
         $today = date('Y-m-d');
         $this->db
             ->select('s.*, e.exam_name, c.class_name, sec.section_name, sub.subject_name, st.full_name as teacher_name')
@@ -166,6 +168,7 @@ class Exam_model extends CI_Model {
 
     public function get_recent_published_results($year_id = NULL, $limit = 5)
     {
+        $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
         $this->db
             ->select('e.exam_id, e.exam_name, c.class_name, sec.section_name, r.published_at, COUNT(r.result_id) as total_students,
                 SUM(CASE WHEN r.pass_status = "Pass" THEN 1 ELSE 0 END) as passed_count')
@@ -183,8 +186,10 @@ class Exam_model extends CI_Model {
         return $this->db->get()->result();
     }
 
-    public function get_marks_entry_progress_summary($exam_id = NULL)
+    public function get_marks_entry_progress_summary($exam_id = NULL, $year_id = NULL)
     {
+        $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
+
         $this->db
             ->select('s.schedule_id, s.exam_id, e.exam_name, c.class_id, c.class_name, sec.section_id, sec.section_name, sub.subject_name,
                 COUNT(st.student_id) as total_students,
@@ -197,8 +202,9 @@ class Exam_model extends CI_Model {
             ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
             ->join('tbl_sections sec', 'sec.section_id = s.section_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = s.subject_id', 'left')
-            ->join('tbl_students st', 'st.class_id = s.class_id AND st.section_id = s.section_id AND st.status = 1', 'left')
+            ->join('tbl_students st', 'st.class_id = s.class_id AND st.section_id = s.section_id AND st.status = 1 AND st.academic_year_id = ' . (int)$year_id, 'left')
             ->join('tbl_exam_marks m', 'm.schedule_id = s.schedule_id AND m.student_id = st.student_id', 'left')
+            ->where('s.academic_year_id', $year_id)
             ->group_by('s.schedule_id')
             ->order_by('c.class_id', 'ASC')
             ->order_by('sec.section_id', 'ASC')

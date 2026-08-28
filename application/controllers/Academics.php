@@ -119,11 +119,100 @@ class Academics extends MY_Controller {
         ));
     }
 
+    public function switch_year()
+    {
+        $year_id = (int)($this->input->post('academic_year_id') ?: $this->input->get('academic_year_id'));
+
+        if (!can_change_academic_year()) {
+            if ($this->input->is_ajax_request()) {
+                $this->output
+                    ->set_status_header(403)
+                    ->set_content_type('application/json')
+                    ->set_output(json_encode([
+                        'status'          => false,
+                        'message'         => 'You do not have permission to change the active academic year.',
+                        'csrf_token_name' => $this->security->get_csrf_token_name(),
+                        'csrf_hash'       => $this->security->get_csrf_hash(),
+                    ]));
+                return;
+            }
+            $this->session->set_flashdata('error', 'You do not have permission to change the academic year.');
+            $redirect_url = $this->input->post('redirect_url') ?: ($this->input->server('HTTP_REFERER') ?: 'dashboard');
+            redirect($redirect_url);
+            return;
+        }
+
+        if ($year_id <= 0) {
+            if ($this->input->is_ajax_request()) {
+                $this->output
+                    ->set_status_header(400)
+                    ->set_content_type('application/json')
+                    ->set_output(json_encode([
+                        'status'          => false,
+                        'message'         => 'Please provide a valid academic year ID.',
+                        'csrf_token_name' => $this->security->get_csrf_token_name(),
+                        'csrf_hash'       => $this->security->get_csrf_hash(),
+                    ]));
+                return;
+            }
+            $this->session->set_flashdata('error', 'Please provide a valid academic year ID.');
+            $redirect_url = $this->input->post('redirect_url') ?: ($this->input->server('HTTP_REFERER') ?: 'dashboard');
+            redirect($redirect_url);
+            return;
+        }
+
+        $year = $this->Academic_year_model->get_by_id($year_id);
+        if (!$year || $year->is_deleted === 'y' || (int)$year->status !== 1) {
+            if ($this->input->is_ajax_request()) {
+                $this->output
+                    ->set_status_header(400)
+                    ->set_content_type('application/json')
+                    ->set_output(json_encode([
+                        'status'          => false,
+                        'message'         => 'The selected academic year is invalid or inactive.',
+                        'csrf_token_name' => $this->security->get_csrf_token_name(),
+                        'csrf_hash'       => $this->security->get_csrf_hash(),
+                    ]));
+                return;
+            }
+            $this->session->set_flashdata('error', 'Invalid academic year selected.');
+            $redirect_url = $this->input->post('redirect_url') ?: ($this->input->server('HTTP_REFERER') ?: 'dashboard');
+            redirect($redirect_url);
+            return;
+        }
+
+        set_current_academic_year($year_id);
+        $selected_date = get_academic_year_default_date($year);
+
+        if ($this->input->is_ajax_request()) {
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode([
+                    'status'             => true,
+                    'message'            => 'Active academic year switched to ' . $year->year_name,
+                    'academic_year_id'   => (int)$year->academic_year_id,
+                    'academic_year_name' => $year->year_name,
+                    'year_name'          => $year->year_name,
+                    'start_date'         => $year->start_date,
+                    'end_date'           => $year->end_date,
+                    'selected_date'      => $selected_date,
+                    'csrf_token_name'    => $this->security->get_csrf_token_name(),
+                    'csrf_hash'          => $this->security->get_csrf_hash(),
+                ]));
+            return;
+        }
+
+        $this->session->set_flashdata('success', 'Academic year context changed to ' . $year->year_name);
+        $redirect_url = $this->input->post('redirect_url') ?: ($this->input->server('HTTP_REFERER') ?: 'dashboard');
+        redirect($redirect_url);
+    }
+
     public function set_active_year($id = NULL)
     {
         $this->require_permission('academics.edit');
         if (!empty($id)) {
             $this->Academic_year_model->set_active($id);
+            set_current_academic_year((int)$id);
             $this->session->set_flashdata('success', 'Active academic session updated!');
         }
         redirect('academics/years');

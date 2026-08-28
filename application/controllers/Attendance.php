@@ -24,20 +24,21 @@ class Attendance extends MY_Controller {
        ========================================================================= */
     public function index()
     {
-        $date       = $this->input->get('date') ?: date('Y-m-d');
-        $class_id   = $this->input->get('class_id') ?: NULL;
-        $section_id = $this->input->get('section_id') ?: NULL;
-        $year_id    = $this->input->get('academic_year_id') ?: NULL;
-
-        if (!$year_id) {
-            $active_year = $this->Academic_year_model->get_active();
-            $year_id = $active_year ? $active_year->academic_year_id : 1;
+        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        if ($this->input->get('academic_year_id')) {
+            set_current_academic_year($year_id);
+            $this->academic_year_id = $year_id;
         }
 
+        $date       = normalize_date_to_academic_year($this->input->get('date'), $year_id);
+        $class_id   = $this->input->get('class_id') ?: NULL;
+        $section_id = $this->input->get('section_id') ?: NULL;
+
+        $current_year    = get_academic_year_record($year_id);
         $stats           = $this->Attendance_model->get_dashboard_stats($date, $class_id, $section_id, $year_id);
         $class_overview  = $this->Attendance_model->get_class_overview($date, $year_id, $class_id, $section_id);
-        $recent_activity = $this->Attendance_model->get_recent_activity(8);
-        $classes         = $this->Class_model->get_all();
+        $recent_activity = $this->Attendance_model->get_recent_activity(8, $year_id);
+        $classes         = $this->Class_model->get_all($year_id);
         $sections        = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
         $years           = $this->Academic_year_model->get_all();
 
@@ -51,6 +52,7 @@ class Attendance extends MY_Controller {
             'classes'         => $classes,
             'sections'        => $sections,
             'years'           => $years,
+            'current_year'    => $current_year,
             'date'            => $date,
             'class_id'        => $class_id,
             'section_id'      => $section_id,
@@ -63,24 +65,24 @@ class Attendance extends MY_Controller {
        ========================================================================= */
     public function daily()
     {
-        $date       = $this->input->get('date') ?: date('Y-m-d');
+        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        if ($this->input->get('academic_year_id')) {
+            set_current_academic_year($year_id);
+            $this->academic_year_id = $year_id;
+        }
+
+        $date       = normalize_date_to_academic_year($this->input->get('date'), $year_id);
         $class_id   = $this->input->get('class_id') ?: NULL;
         $section_id = $this->input->get('section_id') ?: NULL;
-        $year_id    = $this->input->get('academic_year_id') ?: NULL;
-
-        if (!$year_id) {
-            $active_year = $this->Academic_year_model->get_active();
-            $year_id = $active_year ? $active_year->academic_year_id : 1;
-        }
 
         if ($this->input->method() === 'post') {
             $this->require_permission('attendance.mark');
 
+            $post_year_id    = (int)($this->input->post('academic_year_id') ?: $year_id);
             $post_attendance = $this->input->post('attendance'); // student_id => ['status' => ..., 'remarks' => ...]
-            $post_date       = $this->input->post('date') ?: $date;
+            $post_date       = normalize_date_to_academic_year($this->input->post('date') ?: $date, $post_year_id);
             $post_class_id   = $this->input->post('class_id') ?: $class_id;
             $post_section_id = $this->input->post('section_id') ?: $section_id;
-            $post_year_id    = $this->input->post('academic_year_id') ?: $year_id;
             $user_id         = $this->session->userdata('user_id');
 
             if (is_array($post_attendance) && !empty($post_attendance)) {
@@ -114,7 +116,8 @@ class Attendance extends MY_Controller {
             $is_already_marked = $this->Attendance_model->check_daily_marked($date, $class_id, $section_id, $year_id);
         }
 
-        $classes  = $this->Class_model->get_all();
+        $current_year = get_academic_year_record($year_id);
+        $classes  = $this->Class_model->get_all($year_id);
         $sections = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
         $years    = $this->Academic_year_model->get_all();
         $settings = $this->Attendance_setting_model->get_settings();
@@ -127,6 +130,7 @@ class Attendance extends MY_Controller {
             'classes'            => $classes,
             'sections'           => $sections,
             'years'              => $years,
+            'current_year'       => $current_year,
             'date'               => $date,
             'class_id'           => $class_id,
             'section_id'         => $section_id,
@@ -271,26 +275,26 @@ class Attendance extends MY_Controller {
        ========================================================================= */
     public function period_wise()
     {
-        $date       = $this->input->get('date') ?: date('Y-m-d');
+        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        if ($this->input->get('academic_year_id')) {
+            set_current_academic_year($year_id);
+            $this->academic_year_id = $year_id;
+        }
+
+        $date       = normalize_date_to_academic_year($this->input->get('date'), $year_id);
         $class_id   = $this->input->get('class_id') ?: NULL;
         $section_id = $this->input->get('section_id') ?: NULL;
         $period_id  = $this->input->get('period_id') ?: NULL;
-        $year_id    = $this->input->get('academic_year_id') ?: NULL;
-
-        if (!$year_id) {
-            $active_year = $this->Academic_year_model->get_active();
-            $year_id = $active_year ? $active_year->academic_year_id : 1;
-        }
 
         if ($this->input->method() === 'post') {
             $this->require_permission('attendance.mark');
 
+            $post_year_id    = (int)($this->input->post('academic_year_id') ?: $year_id);
             $post_attendance = $this->input->post('attendance');
-            $post_date       = $this->input->post('date') ?: $date;
+            $post_date       = normalize_date_to_academic_year($this->input->post('date') ?: $date, $post_year_id);
             $post_period_id  = $this->input->post('period_id') ?: $period_id;
             $post_class_id   = $this->input->post('class_id') ?: $class_id;
             $post_section_id = $this->input->post('section_id') ?: $section_id;
-            $post_year_id    = $this->input->post('academic_year_id') ?: $year_id;
             $user_id         = $this->session->userdata('user_id');
 
             if (is_array($post_attendance) && !empty($post_attendance) && $post_period_id) {
@@ -325,7 +329,8 @@ class Attendance extends MY_Controller {
             $is_already_marked = $this->Attendance_model->check_period_marked($date, $period_id, $class_id, $section_id, $year_id);
         }
 
-        $classes  = $this->Class_model->get_all();
+        $current_year = get_academic_year_record($year_id);
+        $classes  = $this->Class_model->get_all($year_id);
         $sections = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
         $periods  = $this->Period_model->get_all(TRUE);
         $years    = $this->Academic_year_model->get_all();
@@ -340,6 +345,7 @@ class Attendance extends MY_Controller {
             'sections'          => $sections,
             'periods'           => $periods,
             'years'             => $years,
+            'current_year'      => $current_year,
             'date'              => $date,
             'class_id'          => $class_id,
             'section_id'        => $section_id,
@@ -355,16 +361,17 @@ class Attendance extends MY_Controller {
        ========================================================================= */
     public function class_attendance()
     {
-        $date     = $this->input->get('date') ?: date('Y-m-d');
-        $class_id = $this->input->get('class_id') ?: 1;
-        $year_id  = $this->input->get('academic_year_id') ?: NULL;
-
-        if (!$year_id) {
-            $active_year = $this->Academic_year_model->get_active();
-            $year_id = $active_year ? $active_year->academic_year_id : 1;
+        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        if ($this->input->get('academic_year_id')) {
+            set_current_academic_year($year_id);
+            $this->academic_year_id = $year_id;
         }
 
-        $classes   = $this->Class_model->get_all();
+        $date     = normalize_date_to_academic_year($this->input->get('date'), $year_id);
+        $class_id = $this->input->get('class_id') ?: 1;
+
+        $current_year = get_academic_year_record($year_id);
+        $classes   = $this->Class_model->get_all($year_id);
         $years     = $this->Academic_year_model->get_all();
         $sections_overview = $this->Attendance_model->get_class_overview($date, $year_id, $class_id);
 
@@ -376,6 +383,7 @@ class Attendance extends MY_Controller {
             'breadcrumb'        => array('Attendance', 'Class Attendance'),
             'classes'           => $classes,
             'years'             => $years,
+            'current_year'      => $current_year,
             'sections_overview' => $sections_overview,
             'selected_class'    => $selected_class,
             'class_id'          => $class_id,
@@ -389,18 +397,19 @@ class Attendance extends MY_Controller {
        ========================================================================= */
     public function section_attendance()
     {
-        $date       = $this->input->get('date') ?: date('Y-m-d');
-        $class_id   = $this->input->get('class_id') ?: 1;
-        $section_id = $this->input->get('section_id') ?: 1;
-        $year_id    = $this->input->get('academic_year_id') ?: NULL;
-
-        if (!$year_id) {
-            $active_year = $this->Academic_year_model->get_active();
-            $year_id = $active_year ? $active_year->academic_year_id : 1;
+        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        if ($this->input->get('academic_year_id')) {
+            set_current_academic_year($year_id);
+            $this->academic_year_id = $year_id;
         }
 
+        $date       = normalize_date_to_academic_year($this->input->get('date'), $year_id);
+        $class_id   = $this->input->get('class_id') ?: 1;
+        $section_id = $this->input->get('section_id') ?: 1;
+
+        $current_year = get_academic_year_record($year_id);
         $students = $this->Attendance_model->get_daily_sheet($date, $class_id, $section_id, $year_id);
-        $classes  = $this->Class_model->get_all();
+        $classes  = $this->Class_model->get_all($year_id);
         $sections = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
         $years    = $this->Academic_year_model->get_all();
         $stats    = $this->Attendance_model->get_dashboard_stats($date, $class_id, $section_id, $year_id);
@@ -413,6 +422,7 @@ class Attendance extends MY_Controller {
             'classes'    => $classes,
             'sections'   => $sections,
             'years'      => $years,
+            'current_year'=> $current_year,
             'stats'      => $stats,
             'date'       => $date,
             'class_id'   => $class_id,
@@ -426,6 +436,12 @@ class Attendance extends MY_Controller {
        ========================================================================= */
     public function history()
     {
+        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        if ($this->input->get('academic_year_id')) {
+            set_current_academic_year($year_id);
+            $this->academic_year_id = $year_id;
+        }
+
         if ($this->input->method() === 'post') {
             $this->require_permission('attendance.mark');
             $action = $this->input->post('action');
@@ -448,15 +464,18 @@ class Attendance extends MY_Controller {
             }
         }
 
+        $from_date = $this->input->get('from_date') ? normalize_date_to_academic_year($this->input->get('from_date'), $year_id) : normalize_date_to_academic_year(NULL, $year_id);
+        $to_date   = $this->input->get('to_date') ? normalize_date_to_academic_year($this->input->get('to_date'), $year_id) : normalize_date_to_academic_year(NULL, $year_id);
+
         $filters = array(
-            'academic_year_id'  => $this->input->get('academic_year_id') ?: NULL,
+            'academic_year_id'  => $year_id,
             'class_id'          => $this->input->get('class_id') ?: NULL,
             'section_id'        => $this->input->get('section_id') ?: NULL,
             'student_id'        => $this->input->get('student_id') ?: NULL,
             'attendance_type'   => $this->input->get('attendance_type') ?: NULL,
             'attendance_status' => $this->input->get('attendance_status') ?: NULL,
-            'from_date'         => $this->input->get('from_date') ?: date('Y-m-01'),
-            'to_date'           => $this->input->get('to_date') ?: date('Y-m-d'),
+            'from_date'         => $from_date,
+            'to_date'           => $to_date,
             'search'            => $this->input->get('search') ?: NULL,
         );
 
@@ -464,24 +483,26 @@ class Attendance extends MY_Controller {
         $page   = (int)($this->input->get('page') ?: 1);
         $offset = ($page - 1) * $limit;
 
-        $records     = $this->Attendance_model->get_history($filters, $limit, $offset);
-        $total_count = $this->Attendance_model->count_history($filters);
-        $classes     = $this->Class_model->get_all();
-        $sections    = $filters['class_id'] ? $this->Section_model->get_by_class($filters['class_id']) : $this->Section_model->get_all();
-        $years       = $this->Academic_year_model->get_all();
+        $records      = $this->Attendance_model->get_history($filters, $limit, $offset);
+        $total_count  = $this->Attendance_model->count_history($filters);
+        $classes      = $this->Class_model->get_all($filters['academic_year_id']);
+        $sections     = $filters['class_id'] ? $this->Section_model->get_by_class($filters['class_id']) : $this->Section_model->get_all();
+        $years        = $this->Academic_year_model->get_all();
+        $current_year = get_academic_year_record($year_id);
 
         $this->render('pages/attendance/history', array(
-            'title'       => 'Attendance History',
-            'page_key'    => 'attendance-history',
-            'breadcrumb'  => array('Attendance', 'Attendance History'),
-            'records'     => $records,
-            'total_count' => $total_count,
-            'filters'     => $filters,
-            'classes'     => $classes,
-            'sections'    => $sections,
-            'years'       => $years,
-            'page'        => $page,
-            'limit'       => $limit,
+            'title'        => 'Attendance History',
+            'page_key'     => 'attendance-history',
+            'breadcrumb'   => array('Attendance', 'Attendance History'),
+            'records'      => $records,
+            'total_count'  => $total_count,
+            'filters'      => $filters,
+            'classes'      => $classes,
+            'sections'     => $sections,
+            'years'        => $years,
+            'current_year' => $current_year,
+            'page'         => $page,
+            'limit'        => $limit,
         ));
     }
 
@@ -490,27 +511,39 @@ class Attendance extends MY_Controller {
        ========================================================================= */
     public function tracking()
     {
+        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        if ($this->input->get('academic_year_id')) {
+            set_current_academic_year($year_id);
+            $this->academic_year_id = $year_id;
+        }
+
+        $from_date = $this->input->get('from_date') ? normalize_date_to_academic_year($this->input->get('from_date'), $year_id) : normalize_date_to_academic_year(NULL, $year_id);
+        $to_date   = $this->input->get('to_date') ? normalize_date_to_academic_year($this->input->get('to_date'), $year_id) : normalize_date_to_academic_year(NULL, $year_id);
+
         $filters = array(
-            'status_filter' => $this->input->get('status') ?: 'All',
-            'class_id'      => $this->input->get('class_id') ?: NULL,
-            'section_id'    => $this->input->get('section_id') ?: NULL,
-            'student_id'    => $this->input->get('student_id') ?: NULL,
-            'from_date'     => $this->input->get('from_date') ?: date('Y-m-01'),
-            'to_date'       => $this->input->get('to_date') ?: date('Y-m-d'),
+            'academic_year_id' => $year_id,
+            'status_filter'    => $this->input->get('status') ?: 'All',
+            'class_id'         => $this->input->get('class_id') ?: NULL,
+            'section_id'       => $this->input->get('section_id') ?: NULL,
+            'student_id'       => $this->input->get('student_id') ?: NULL,
+            'from_date'        => $from_date,
+            'to_date'          => $to_date,
         );
 
-        $records  = $this->Attendance_model->get_tracking_records($filters);
-        $classes  = $this->Class_model->get_all();
-        $sections = $filters['class_id'] ? $this->Section_model->get_by_class($filters['class_id']) : $this->Section_model->get_all();
+        $records      = $this->Attendance_model->get_tracking_records($filters);
+        $classes      = $this->Class_model->get_all($filters['academic_year_id']);
+        $sections     = $filters['class_id'] ? $this->Section_model->get_by_class($filters['class_id']) : $this->Section_model->get_all();
+        $current_year = get_academic_year_record($year_id);
 
         $this->render('pages/attendance/tracking', array(
-            'title'      => 'Absent / Late / Excused Tracking',
-            'page_key'   => 'attendance-tracking',
-            'breadcrumb' => array('Attendance', 'Absent / Late Tracking'),
-            'records'    => $records,
-            'filters'    => $filters,
-            'classes'    => $classes,
-            'sections'   => $sections,
+            'title'        => 'Absent / Late / Excused Tracking',
+            'page_key'     => 'attendance-tracking',
+            'breadcrumb'   => array('Attendance', 'Absent / Late Tracking'),
+            'records'      => $records,
+            'filters'      => $filters,
+            'classes'      => $classes,
+            'sections'     => $sections,
+            'current_year' => $current_year,
         ));
     }
 
@@ -519,22 +552,29 @@ class Attendance extends MY_Controller {
        ========================================================================= */
     public function calendar()
     {
-        $month      = (int)($this->input->get('month') ?: date('n'));
-        $year       = (int)($this->input->get('year') ?: date('Y'));
-        $class_id   = $this->input->get('class_id') ?: NULL;
-        $section_id = $this->input->get('section_id') ?: NULL;
-        $student_id = $this->input->get('student_id') ?: NULL;
-        $type       = $this->input->get('attendance_type') ?: 'Daily';
+        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        if ($this->input->get('academic_year_id')) {
+            set_current_academic_year($year_id);
+            $this->academic_year_id = $year_id;
+        }
 
-        $matrix   = $this->Attendance_model->get_calendar_data($year, $month, $class_id, $section_id, $student_id, $type);
-        $classes  = $this->Class_model->get_all();
+        $current_year = get_academic_year_record($year_id);
+        $month        = (int)($this->input->get('month') ?: date('n'));
+        $year         = (int)($this->input->get('year') ?: ($current_year ? date('Y', strtotime($current_year->start_date)) : date('Y')));
+        $class_id     = $this->input->get('class_id') ?: NULL;
+        $section_id   = $this->input->get('section_id') ?: NULL;
+        $student_id   = $this->input->get('student_id') ?: NULL;
+        $type         = $this->input->get('attendance_type') ?: 'Daily';
+
+        $matrix   = $this->Attendance_model->get_calendar_data($year, $month, $class_id, $section_id, $student_id, $type, $year_id);
+        $classes  = $this->Class_model->get_all($year_id);
         $sections = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
-        $students = ($class_id && $section_id) ? $this->Student_model->get_by_section($section_id) : array();
+        $students = ($class_id && $section_id) ? $this->Student_model->get_all(array('section_id' => $section_id, 'academic_year_id' => $year_id, 'status' => 1)) : array();
 
-        $selected_date = $this->input->get('date') ?: NULL;
+        $selected_date = $this->input->get('date') ? normalize_date_to_academic_year($this->input->get('date'), $year_id) : NULL;
         $day_details = array();
         if ($selected_date) {
-            $day_details = $this->Attendance_model->get_date_attendance_details($selected_date, $class_id, $section_id, $student_id, $type);
+            $day_details = $this->Attendance_model->get_date_attendance_details($selected_date, $class_id, $section_id, $student_id, $type, $year_id);
         }
 
         $this->render('pages/attendance/calendar', array(
@@ -551,6 +591,7 @@ class Attendance extends MY_Controller {
             'classes'       => $classes,
             'sections'      => $sections,
             'students'      => $students,
+            'current_year'  => $current_year,
             'selected_date' => $selected_date,
             'day_details'   => $day_details,
         ));
@@ -561,42 +602,49 @@ class Attendance extends MY_Controller {
        ========================================================================= */
     public function reports()
     {
+        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        if ($this->input->get('academic_year_id')) {
+            set_current_academic_year($year_id);
+            $this->academic_year_id = $year_id;
+        }
+
         $report_type = $this->input->get('type') ?: 'class_summary'; // class_summary, daily, student, section, monthly, period
         $class_id    = $this->input->get('class_id') ?: NULL;
         $section_id  = $this->input->get('section_id') ?: NULL;
         $student_id  = $this->input->get('student_id') ?: NULL;
-        $date        = $this->input->get('date') ?: date('Y-m-d');
-        $from_date   = $this->input->get('from_date') ?: date('Y-m-01');
-        $to_date     = $this->input->get('to_date') ?: date('Y-m-d');
+        $date        = normalize_date_to_academic_year($this->input->get('date'), $year_id);
+        $from_date   = $this->input->get('from_date') ? normalize_date_to_academic_year($this->input->get('from_date'), $year_id) : normalize_date_to_academic_year(NULL, $year_id);
+        $to_date     = $this->input->get('to_date') ? normalize_date_to_academic_year($this->input->get('to_date'), $year_id) : normalize_date_to_academic_year(NULL, $year_id);
         $month       = (int)($this->input->get('month') ?: date('n'));
         $year        = (int)($this->input->get('year') ?: date('Y'));
 
         $filters = array(
-            'class_id'   => $class_id,
-            'section_id' => $section_id,
-            'student_id' => $student_id,
-            'date'       => $date,
-            'from_date'  => $from_date,
-            'to_date'    => $to_date,
-            'month'      => $month,
-            'year'       => $year,
+            'academic_year_id' => $year_id,
+            'class_id'         => $class_id,
+            'section_id'       => $section_id,
+            'student_id'       => $student_id,
+            'date'             => $date,
+            'from_date'        => $from_date,
+            'to_date'          => $to_date,
+            'month'            => $month,
+            'year'             => $year,
         );
 
         $data_results = array();
 
         if ($report_type === 'daily') {
-            $data_results = $this->Attendance_model->get_daily_sheet($date, $class_id, $section_id);
+            $data_results = $this->Attendance_model->get_daily_sheet($date, $class_id, $section_id, $year_id);
         } elseif ($report_type === 'student') {
             $data_results = $this->Attendance_model->get_student_report($filters);
         } elseif ($report_type === 'section') {
-            $data_results = $this->Attendance_model->get_reports_summary(NULL, $class_id);
+            $data_results = $this->Attendance_model->get_reports_summary($year_id, $class_id);
         } elseif ($report_type === 'monthly') {
             $data_results = $this->Attendance_model->get_monthly_report($filters);
         } elseif ($report_type === 'period') {
             $data_results = $this->Attendance_model->get_period_wise_report($filters);
         } else {
             // Default class overview
-            $data_results = $this->Attendance_model->get_reports_summary(NULL, $class_id);
+            $data_results = $this->Attendance_model->get_reports_summary($year_id, $class_id);
         }
 
         // Export CSV if requested
@@ -605,7 +653,8 @@ class Attendance extends MY_Controller {
             return;
         }
 
-        $classes  = $this->Class_model->get_all();
+        $current_year = get_academic_year_record($year_id);
+        $classes  = $this->Class_model->get_all($year_id);
         $sections = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
         $students = ($class_id && $section_id) ? $this->Student_model->get_by_section($section_id) : array();
 
@@ -618,6 +667,8 @@ class Attendance extends MY_Controller {
             'classes'      => $classes,
             'sections'     => $sections,
             'students'     => $students,
+            'current_year' => $current_year,
+            'year_id'      => $year_id,
             'filters'      => $filters,
         ));
     }

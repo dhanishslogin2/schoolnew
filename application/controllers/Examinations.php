@@ -35,7 +35,7 @@ class Examinations extends MY_Controller {
     public function index()
     {
         $this->require_permission('exams.view');
-        $year_id = $this->input->get('academic_year_id') ?: NULL;
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
 
         $data = [
             'title'             => 'Examination Dashboard',
@@ -43,7 +43,7 @@ class Examinations extends MY_Controller {
             'stats'             => $this->Exam_model->get_dashboard_stats($year_id),
             'upcoming_exams'    => $this->Exam_model->get_upcoming_exam_schedules($year_id, 6),
             'recent_results'    => $this->Exam_model->get_recent_published_results($year_id, 5),
-            'progress_summary'  => $this->Exam_model->get_marks_entry_progress_summary(),
+            'progress_summary'  => $this->Exam_model->get_marks_entry_progress_summary(NULL, $year_id),
             'academic_years'    => $this->Academic_year_model->get_all(),
             'selected_year'     => $year_id
         ];
@@ -73,7 +73,7 @@ class Examinations extends MY_Controller {
 
             $exam_name        = trim($this->input->post('exam_name'));
             $exam_type_id     = (int)$this->input->post('exam_type_id');
-            $academic_year_id = (int)$this->input->post('academic_year_id');
+            $academic_year_id = (int)($this->input->post('academic_year_id') ?: $this->academic_year_id);
             $description      = trim($this->input->post('description'));
             $start_date       = $this->input->post('start_date');
             $end_date         = $this->input->post('end_date');
@@ -115,7 +115,7 @@ class Examinations extends MY_Controller {
         }
 
         $filters = [
-            'academic_year_id' => $this->input->get('academic_year_id'),
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
             'exam_type_id'     => $this->input->get('exam_type_id'),
             'status'           => $this->input->get('status'),
             'search'           => $this->input->get('search'),
@@ -127,7 +127,7 @@ class Examinations extends MY_Controller {
             'exams'          => $this->Exam_model->get_all($filters),
             'exam_types'     => $this->Exam_type_model->get_all(TRUE),
             'academic_years' => $this->Academic_year_model->get_all(),
-            'classes'        => $this->Class_model->get_all(),
+            'classes'        => $this->Class_model->get_all($filters['academic_year_id']),
             'filters'        => $filters
         ];
 
@@ -217,7 +217,7 @@ class Examinations extends MY_Controller {
             }
 
             $exam_id          = (int)$this->input->post('exam_id');
-            $academic_year_id = (int)$this->input->post('academic_year_id');
+            $academic_year_id = (int)($this->input->post('academic_year_id') ?: $this->academic_year_id);
             $class_id         = (int)$this->input->post('class_id');
             $section_id       = (int)$this->input->post('section_id');
             $subject_id       = (int)$this->input->post('subject_id');
@@ -286,7 +286,7 @@ class Examinations extends MY_Controller {
 
         $filters = [
             'exam_id'          => $this->input->get('exam_id'),
-            'academic_year_id' => $this->input->get('academic_year_id'),
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
             'class_id'         => $this->input->get('class_id'),
             'section_id'       => $this->input->get('section_id'),
             'subject_id'       => $this->input->get('subject_id'),
@@ -298,9 +298,9 @@ class Examinations extends MY_Controller {
             'title'          => 'Exam Schedules',
             'page_key'       => 'exam-schedules',
             'schedules'      => $this->Exam_schedule_model->get_all($filters),
-            'exams'          => $this->Exam_model->get_all(),
+            'exams'          => $this->Exam_model->get_all(['academic_year_id' => $filters['academic_year_id']]),
             'academic_years' => $this->Academic_year_model->get_all(),
-            'classes'        => $this->Class_model->get_all(),
+            'classes'        => $this->Class_model->get_all($filters['academic_year_id']),
             'sections'       => $this->Section_model->get_all(),
             'subjects'       => $this->Subject_model->get_all(),
             'teachers'       => $this->Staff_model->get_teachers(),
@@ -319,7 +319,7 @@ class Examinations extends MY_Controller {
 
         if ($this->input->method() === 'post') {
             $exam_id          = (int)$this->input->post('exam_id');
-            $academic_year_id = (int)$this->input->post('academic_year_id');
+            $academic_year_id = (int)($this->input->post('academic_year_id') ?: $this->academic_year_id);
             $class_id         = (int)$this->input->post('class_id');
             $section_id       = (int)$this->input->post('section_id');
             $subjects         = $this->input->post('subjects') ?: [];
@@ -384,8 +384,8 @@ class Examinations extends MY_Controller {
         $data = [
             'title'          => 'Subject Allocation',
             'page_key'       => 'exam-allocations',
-            'exams'          => $this->Exam_model->get_all(),
-            'classes'        => $this->Class_model->get_all(),
+            'exams'          => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
+            'classes'        => $this->Class_model->get_all($this->academic_year_id),
             'sections'       => $this->Section_model->get_all(),
             'subjects'       => $this->Subject_model->get_all(),
             'teachers'       => $this->Staff_model->get_teachers(),
@@ -445,8 +445,8 @@ class Examinations extends MY_Controller {
             'page_key'       => 'marks-entry',
             'marksheet'      => $marksheet,
             'schedule_id'    => $schedule_id,
-            'exams'          => $this->Exam_model->get_all(),
-            'classes'        => $this->Class_model->get_all(),
+            'exams'          => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
+            'classes'        => $this->Class_model->get_all($this->academic_year_id),
             'sections'       => $this->Section_model->get_all(),
             'subjects'       => $this->Subject_model->get_all(),
             'selected_exam'  => $exam_id,
@@ -480,18 +480,19 @@ class Examinations extends MY_Controller {
         }
 
         $filters = [
-            'exam_id'       => $this->input->get('exam_id'),
-            'class_id'      => $this->input->get('class_id'),
-            'section_id'    => $this->input->get('section_id'),
-            'status_filter' => $this->input->get('status_filter')
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
+            'exam_id'          => $this->input->get('exam_id'),
+            'class_id'         => $this->input->get('class_id'),
+            'section_id'       => $this->input->get('section_id'),
+            'status_filter'    => $this->input->get('status_filter')
         ];
 
         $data = [
             'title'          => 'Marks Verification',
             'page_key'       => 'marks-verification',
             'marksheets'     => $this->Exam_mark_model->get_marksheets_for_verification($filters),
-            'exams'          => $this->Exam_model->get_all(),
-            'classes'        => $this->Class_model->get_all(),
+            'exams'          => $this->Exam_model->get_all(['academic_year_id' => $filters['academic_year_id']]),
+            'classes'        => $this->Class_model->get_all($filters['academic_year_id']),
             'sections'       => $this->Section_model->get_all(),
             'filters'        => $filters
         ];
@@ -596,8 +597,8 @@ class Examinations extends MY_Controller {
         $data = [
             'title'          => 'Result Calculation',
             'page_key'       => 'result-calculation',
-            'exams'          => $this->Exam_model->get_all(),
-            'classes'        => $this->Class_model->get_all(),
+            'exams'          => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
+            'classes'        => $this->Class_model->get_all($this->academic_year_id),
             'sections'       => $this->Section_model->get_all(),
             'settings'       => $this->Exam_setting_model->get_settings()
         ];
@@ -613,7 +614,7 @@ class Examinations extends MY_Controller {
         $this->require_permission('exams.view');
         $filters = [
             'exam_id'          => $this->input->get('exam_id'),
-            'academic_year_id' => $this->input->get('academic_year_id'),
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
             'class_id'         => $this->input->get('class_id'),
             'section_id'       => $this->input->get('section_id'),
             'pass_status'      => $this->input->get('pass_status'),
@@ -627,9 +628,9 @@ class Examinations extends MY_Controller {
             'title'          => 'Student Results',
             'page_key'       => 'results',
             'results'        => $results,
-            'exams'          => $this->Exam_model->get_all(),
+            'exams'          => $this->Exam_model->get_all(['academic_year_id' => $filters['academic_year_id']]),
             'academic_years' => $this->Academic_year_model->get_all(),
-            'classes'        => $this->Class_model->get_all(),
+            'classes'        => $this->Class_model->get_all($filters['academic_year_id']),
             'sections'       => $this->Section_model->get_all(),
             'filters'        => $filters
         ];
@@ -665,9 +666,10 @@ class Examinations extends MY_Controller {
     {
         $this->require_permission('exams.view');
         $filters = [
-            'exam_id'  => $this->input->get('exam_id'),
-            'class_id' => $this->input->get('class_id'),
-            'section_id' => $this->input->get('section_id')
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
+            'exam_id'          => $this->input->get('exam_id'),
+            'class_id'         => $this->input->get('class_id'),
+            'section_id'       => $this->input->get('section_id')
         ];
 
         $ranks_data = $filters['exam_id'] ? $this->Result_model->get_results_list($filters) : [];
@@ -676,8 +678,8 @@ class Examinations extends MY_Controller {
             'title'      => 'Rank & Positions',
             'page_key'   => 'exam-ranks',
             'results'    => $ranks_data,
-            'exams'      => $this->Exam_model->get_all(),
-            'classes'    => $this->Class_model->get_all(),
+            'exams'      => $this->Exam_model->get_all(['academic_year_id' => $filters['academic_year_id']]),
+            'classes'    => $this->Class_model->get_all($filters['academic_year_id']),
             'sections'   => $this->Section_model->get_all(),
             'filters'    => $filters,
             'settings'   => $this->Exam_setting_model->get_settings()
@@ -693,9 +695,10 @@ class Examinations extends MY_Controller {
     {
         $this->require_permission('exams.view');
         $filters = [
-            'exam_id'    => $this->input->get('exam_id'),
-            'class_id'   => $this->input->get('class_id'),
-            'section_id' => $this->input->get('section_id')
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
+            'exam_id'          => $this->input->get('exam_id'),
+            'class_id'         => $this->input->get('class_id'),
+            'section_id'       => $this->input->get('section_id')
         ];
 
         $results = ($filters['exam_id'] && $filters['class_id']) ? $this->Result_model->get_results_list($filters) : [];
@@ -704,8 +707,8 @@ class Examinations extends MY_Controller {
             'title'      => 'Report Cards',
             'page_key'   => 'report-cards',
             'results'    => $results,
-            'exams'      => $this->Exam_model->get_all(),
-            'classes'    => $this->Class_model->get_all(),
+            'exams'      => $this->Exam_model->get_all(['academic_year_id' => $filters['academic_year_id']]),
+            'classes'    => $this->Class_model->get_all($filters['academic_year_id']),
             'sections'   => $this->Section_model->get_all(),
             'filters'    => $filters
         ];
@@ -744,9 +747,10 @@ class Examinations extends MY_Controller {
     {
         $this->require_permission('exams.view');
         $filters = [
-            'class_id'   => $this->input->get('class_id'),
-            'section_id' => $this->input->get('section_id'),
-            'search'     => $this->input->get('search')
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
+            'class_id'         => $this->input->get('class_id'),
+            'section_id'       => $this->input->get('section_id'),
+            'search'           => $this->input->get('search')
         ];
 
         $students = ($filters['class_id']) ? $this->Student_model->get_all($filters) : [];
@@ -755,7 +759,7 @@ class Examinations extends MY_Controller {
             'title'      => 'Progress Reports',
             'page_key'   => 'progress-reports',
             'students'   => $students,
-            'classes'    => $this->Class_model->get_all(),
+            'classes'    => $this->Class_model->get_all($filters['academic_year_id']),
             'sections'   => $this->Section_model->get_all(),
             'filters'    => $filters
         ];
@@ -807,7 +811,7 @@ class Examinations extends MY_Controller {
         $data = [
             'title'    => 'Result Publishing',
             'page_key' => 'result-publishing',
-            'exams'    => $this->Exam_model->get_all(),
+            'exams'    => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
             'logs'     => $this->Exam_audit_model->get_logs(20, 'tbl_exams')
         ];
 
@@ -823,9 +827,10 @@ class Examinations extends MY_Controller {
         $report_type = $this->input->get('type') ?: 'exam_performance';
 
         $filters = [
-            'exam_id'    => $this->input->get('exam_id'),
-            'class_id'   => $this->input->get('class_id'),
-            'section_id' => $this->input->get('section_id')
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
+            'exam_id'          => $this->input->get('exam_id'),
+            'class_id'         => $this->input->get('class_id'),
+            'section_id'       => $this->input->get('section_id')
         ];
 
         $results = [];
@@ -865,8 +870,8 @@ class Examinations extends MY_Controller {
             'page_key'    => 'exam-reports',
             'report_type' => $report_type,
             'results'     => $results,
-            'exams'       => $this->Exam_model->get_all(),
-            'classes'     => $this->Class_model->get_all(),
+            'exams'       => $this->Exam_model->get_all(['academic_year_id' => $filters['academic_year_id']]),
+            'classes'     => $this->Class_model->get_all($filters['academic_year_id']),
             'sections'    => $this->Section_model->get_all(),
             'filters'     => $filters
         ];

@@ -49,11 +49,18 @@ class Auth extends CI_Controller {
                 {
                     $initials = school_initials($user->name);
 
+                    // Initialize active academic year in user session
+                    $this->load->model('Academic_year_model');
+                    $active_year = $this->Academic_year_model->get_active_year();
+                    $active_year_id = $active_year ? (int)$active_year->academic_year_id : 1;
+
                     // Store the canonical nested 'user' array plus essential
                     // top-level keys for backward compatibility with controllers
                     // and models that read userdata('user_id') / userdata('user_role')
                     $this->session->set_userdata([
                         'logged_in'  => TRUE,
+                        'selected_academic_year_id' => $active_year_id,
+                        'academic_year_id'          => $active_year_id,
                         // Legacy flat keys (still read by 30+ controller/model locations)
                         'user_id'    => (int)$user->user_id,
                         'user_name'  => $user->name,
@@ -73,7 +80,6 @@ class Auth extends CI_Controller {
                             'initials'  => $initials,
                         ],
                     ]);
-
 
                     redirect('dashboard');
                     return;

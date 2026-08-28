@@ -33,10 +33,11 @@ class Certificates extends MY_Controller {
     public function index()
     {
         $this->require_permission('certificates.view');
-        $stats               = $this->Certificate_model->get_dashboard_stats();
-        $recent_certificates = $this->Certificate_model->get_all(array());
+        $year_id             = $this->academic_year_id;
+        $stats               = $this->Certificate_model->get_dashboard_stats($year_id);
+        $recent_certificates = $this->Certificate_model->get_all(array('academic_year_id' => $year_id));
         $recent_certificates = array_slice($recent_certificates, 0, 8);
-        $pending_requests    = $this->Certificate_request_model->get_all(array('status' => 'Pending'));
+        $pending_requests    = $this->Certificate_request_model->get_all(array('status' => 'Pending', 'academic_year_id' => $year_id));
         $pending_requests    = array_slice($pending_requests, 0, 5);
 
         $this->render('pages/certificates/dashboard', array(
@@ -54,7 +55,9 @@ class Certificates extends MY_Controller {
     public function requests()
     {
         $this->require_permission('certificates.view');
+        $year_id = $this->input->get('academic_year_id', TRUE) ?: $this->academic_year_id;
         $filters = array(
+            'academic_year_id'    => $year_id,
             'status'              => $this->input->get('status', TRUE),
             'certificate_type_id' => $this->input->get('certificate_type_id', TRUE),
             'class_id'            => $this->input->get('class_id', TRUE),
@@ -63,8 +66,8 @@ class Certificates extends MY_Controller {
 
         $requests          = $this->Certificate_request_model->get_all($filters);
         $certificate_types = $this->Certificate_type_model->get_all('Active');
-        $classes           = $this->Class_model->get_all();
-        $students          = $this->Student_model->get_all();
+        $classes           = $this->Class_model->get_all($year_id);
+        $students          = $this->Student_model->get_all(array('academic_year_id' => $year_id, 'status' => 1));
 
         $this->render('pages/certificates/requests', array(
             'title'             => 'Certificate Requests',
@@ -118,7 +121,7 @@ class Certificates extends MY_Controller {
 
             $req_data = array(
                 'student_id'          => $student_id,
-                'academic_year_id'    => $student->academic_year_id ?: 1,
+                'academic_year_id'    => $student->academic_year_id ?: $this->academic_year_id,
                 'certificate_type_id' => $certificate_type_id,
                 'reason'              => $reason,
                 'requested_date'      => date('Y-m-d'),
@@ -210,8 +213,8 @@ class Certificates extends MY_Controller {
     public function bonafide()
     {
         $this->require_permission('certificates.view');
-        $certificates = $this->Certificate_model->get_all(array('type_code' => 'BONAFIDE'));
-        $students     = $this->Student_model->get_all();
+        $certificates = $this->Certificate_model->get_all(array('type_code' => 'BONAFIDE', 'academic_year_id' => $this->academic_year_id));
+        $students     = $this->Student_model->get_all(array('academic_year_id' => $this->academic_year_id, 'status' => 1));
 
         $this->render('pages/certificates/bonafide', array(
             'title'        => 'Bonafide Certificates',
@@ -227,8 +230,8 @@ class Certificates extends MY_Controller {
     public function transfer_certificate()
     {
         $this->require_permission('certificates.view');
-        $certificates = $this->Certificate_model->get_all(array('type_code' => 'TC'));
-        $students     = $this->Student_model->get_all();
+        $certificates = $this->Certificate_model->get_all(array('type_code' => 'TC', 'academic_year_id' => $this->academic_year_id));
+        $students     = $this->Student_model->get_all(array('academic_year_id' => $this->academic_year_id, 'status' => 1));
         $settings     = $this->Certificate_setting_model->get_settings();
 
         $this->render('pages/certificates/transfer_certificate', array(
@@ -246,8 +249,8 @@ class Certificates extends MY_Controller {
     public function study_certificate()
     {
         $this->require_permission('certificates.view');
-        $certificates = $this->Certificate_model->get_all(array('type_code' => 'STUDY'));
-        $students     = $this->Student_model->get_all();
+        $certificates = $this->Certificate_model->get_all(array('type_code' => 'STUDY', 'academic_year_id' => $this->academic_year_id));
+        $students     = $this->Student_model->get_all(array('academic_year_id' => $this->academic_year_id, 'status' => 1));
 
         $this->render('pages/certificates/study_certificate', array(
             'title'        => 'Study Certificates',
@@ -263,8 +266,8 @@ class Certificates extends MY_Controller {
     public function conduct_certificate()
     {
         $this->require_permission('certificates.view');
-        $certificates = $this->Certificate_model->get_all(array('type_code' => 'CONDUCT'));
-        $students     = $this->Student_model->get_all();
+        $certificates = $this->Certificate_model->get_all(array('type_code' => 'CONDUCT', 'academic_year_id' => $this->academic_year_id));
+        $students     = $this->Student_model->get_all(array('academic_year_id' => $this->academic_year_id, 'status' => 1));
 
         $this->render('pages/certificates/conduct_certificate', array(
             'title'        => 'Conduct Certificates',
@@ -317,7 +320,7 @@ class Certificates extends MY_Controller {
                 'certificate_no'        => $cert_no,
                 'request_id'            => $request_id,
                 'student_id'            => $student_id,
-                'academic_year_id'      => $student->academic_year_id ?: 1,
+                'academic_year_id'      => $student->academic_year_id ?: $this->academic_year_id,
                 'certificate_type_id'   => $certificate_type_id,
                 'certificate_type'      => $type->type_name,
                 'template_id'           => $tmpl->template_id,
@@ -353,7 +356,7 @@ class Certificates extends MY_Controller {
         // Form View
         $types     = $this->Certificate_type_model->get_all('Active');
         $templates = $this->Certificate_template_model->get_all('Active');
-        $students  = $this->Student_model->get_all();
+        $students  = $this->Student_model->get_all(array('academic_year_id' => $this->academic_year_id, 'status' => 1));
         $selected_student_id = null;
         $selected_type_id = null;
         $request = null;

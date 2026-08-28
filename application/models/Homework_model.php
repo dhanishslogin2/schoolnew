@@ -113,8 +113,9 @@ class Homework_model extends CI_Model {
         ];
     }
 
-    public function get_dashboard_stats($year_id = 1)
+    public function get_dashboard_stats($year_id = NULL)
     {
+        $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
         $total = (int)$this->db->where('academic_year_id', $year_id)->where('status !=', 'Archived')->count_all_results('tbl_assignments');
         $active = (int)$this->db->where('academic_year_id', $year_id)->where('status', 'Published')->where('due_date >=', date('Y-m-d'))->count_all_results('tbl_assignments');
         
@@ -136,7 +137,7 @@ class Homework_model extends CI_Model {
         $total_expected = 0;
         $active_asgns = $this->db->select('assignment_id, class_id, section_id')->where('academic_year_id', $year_id)->where('status', 'Published')->get('tbl_assignments')->result();
         foreach ($active_asgns as $as) {
-            $total_expected += (int)$this->db->where('class_id', $as->class_id)->where('section_id', $as->section_id)->where('status', 1)->count_all_results('tbl_students');
+            $total_expected += (int)$this->db->where('class_id', $as->class_id)->where('section_id', $as->section_id)->where('status', 1)->where('academic_year_id', $year_id)->count_all_results('tbl_students');
         }
         $pending = max(0, $total_expected - $submitted);
         $completion_pct = ($total_expected > 0) ? round(($submitted / $total_expected) * 100, 1) : 0;
@@ -152,8 +153,9 @@ class Homework_model extends CI_Model {
         ];
     }
 
-    public function get_upcoming_deadlines($year_id = 1, $limit = 5)
+    public function get_upcoming_deadlines($year_id = NULL, $limit = 5)
     {
+        $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
         return $this->db
             ->select('a.*, sub.subject_name, c.class_name, sec.section_name, s.full_name as teacher_name')
             ->from('tbl_assignments a')

@@ -13,20 +13,22 @@ class Leave_model extends CI_Model {
         $this->load->model('Communication_model');
     }
 
-    public function get_dashboard_stats()
+    public function get_dashboard_stats($year_id = NULL)
     {
+        $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
         $today = date('Y-m-d');
 
-        $total_requests = (int)$this->db->where('is_deleted', 'n')->count_all_results($this->table);
-        $pending = (int)$this->db->where('status', 'Pending')->where('is_deleted', 'n')->count_all_results($this->table);
-        $approved = (int)$this->db->where('status', 'Approved')->where('is_deleted', 'n')->count_all_results($this->table);
-        $rejected = (int)$this->db->where('status', 'Rejected')->where('is_deleted', 'n')->count_all_results($this->table);
-        $cancelled = (int)$this->db->where('status', 'Cancelled')->where('is_deleted', 'n')->count_all_results($this->table);
+        $total_requests = (int)$this->db->where('is_deleted', 'n')->where('academic_year_id', $year_id)->count_all_results($this->table);
+        $pending = (int)$this->db->where('status', 'Pending')->where('academic_year_id', $year_id)->where('is_deleted', 'n')->count_all_results($this->table);
+        $approved = (int)$this->db->where('status', 'Approved')->where('academic_year_id', $year_id)->where('is_deleted', 'n')->count_all_results($this->table);
+        $rejected = (int)$this->db->where('status', 'Rejected')->where('academic_year_id', $year_id)->where('is_deleted', 'n')->count_all_results($this->table);
+        $cancelled = (int)$this->db->where('status', 'Cancelled')->where('academic_year_id', $year_id)->where('is_deleted', 'n')->count_all_results($this->table);
 
         // On leave today
         $students_on_leave_today = (int)$this->db
             ->where('applicant_type', 'Student')
             ->where('status', 'Approved')
+            ->where('academic_year_id', $year_id)
             ->where('from_date <=', $today)
             ->where('to_date >=', $today)
             ->where('is_deleted', 'n')
@@ -67,6 +69,9 @@ class Leave_model extends CI_Model {
             ->order_by('a.applied_date', 'DESC')
             ->order_by('a.application_id', 'DESC');
 
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('a.academic_year_id', (int)$filters['academic_year_id']);
+        }
         if (!empty($filters['applicant_type'])) $this->db->where('a.applicant_type', $filters['applicant_type']);
         if (!empty($filters['status'])) $this->db->where('a.status', $filters['status']);
         if (!empty($filters['class_id'])) $this->db->where('a.class_id', $filters['class_id']);

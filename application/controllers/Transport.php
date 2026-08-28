@@ -316,7 +316,7 @@ class Transport extends MY_Controller {
 
             $st = $this->Student_model->get_by_id($student_id);
             $assignData = [
-                'academic_year_id' => 1,
+                'academic_year_id' => $this->academic_year_id,
                 'student_id'       => $student_id,
                 'class_id'         => $st ? $st->class_id : NULL,
                 'section_id'       => $st ? $st->section_id : NULL,
@@ -335,12 +335,14 @@ class Transport extends MY_Controller {
             return;
         }
 
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $filters = [
-            'route_id'   => $this->input->get('route_id') ?: NULL,
-            'class_id'   => $this->input->get('class_id') ?: NULL,
-            'section_id' => $this->input->get('section_id') ?: NULL,
-            'status'     => $this->input->get('status') ?: 'Active',
-            'search'     => $this->input->get('search') ?: NULL,
+            'academic_year_id' => $year_id,
+            'route_id'         => $this->input->get('route_id') ?: NULL,
+            'class_id'         => $this->input->get('class_id') ?: NULL,
+            'section_id'       => $this->input->get('section_id') ?: NULL,
+            'status'           => $this->input->get('status') ?: 'Active',
+            'search'           => $this->input->get('search') ?: NULL,
         ];
 
         $data['title'] = 'Student Transport Assignments';
@@ -349,8 +351,8 @@ class Transport extends MY_Controller {
         $data['routes'] = $this->Route_model->get_all(TRUE);
         $data['vehicles'] = $this->Vehicle_model->get_all(TRUE);
         $data['stops'] = $this->Stop_model->get_all_by_route();
-        $data['classes'] = $this->Class_model->get_all(TRUE);
-        $data['students'] = $this->Student_model->get_all(60);
+        $data['classes'] = $this->Class_model->get_all($year_id);
+        $data['students'] = $this->Student_model->get_all(['academic_year_id' => $year_id, 'status' => 1], 60);
 
         $this->render('pages/transport/assignments', $data);
     }
@@ -390,7 +392,7 @@ class Transport extends MY_Controller {
             foreach ($student_ids as $sid) {
                 $st = $this->Student_model->get_by_id($sid);
                 $this->Transport_assignment_model->assign_student([
-                    'academic_year_id' => 1,
+                    'academic_year_id' => $this->academic_year_id,
                     'student_id'       => $sid,
                     'class_id'         => $st ? $st->class_id : NULL,
                     'section_id'       => $st ? $st->section_id : NULL,
@@ -409,13 +411,14 @@ class Transport extends MY_Controller {
             return;
         }
 
+        $year_id = $this->academic_year_id;
         $class_id = $this->input->get('class_id') ?: NULL;
         $section_id = $this->input->get('section_id') ?: NULL;
 
         $data['title'] = 'Bulk Transport Assignment';
         $data['class_id'] = $class_id;
         $data['section_id'] = $section_id;
-        $data['classes'] = $this->Class_model->get_all(TRUE);
+        $data['classes'] = $this->Class_model->get_all($year_id);
         $data['routes'] = $this->Route_model->get_all(TRUE);
         $data['vehicles'] = $this->Vehicle_model->get_all(TRUE);
         $data['stops'] = $this->Stop_model->get_all_by_route();

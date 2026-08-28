@@ -16,21 +16,45 @@ class MY_Controller extends CI_Controller {
     /** @var object  The authenticated user from session */
     public $current_user;
 
+    /** @var int  The active/selected academic year ID */
+    public $academic_year_id;
+
+    /** @var object  The active/selected academic year record */
+    public $current_academic_year;
+
     public function __construct()
     {
         parent::__construct();
         $this->load->library('Rbac');
         $this->load->model('User_model');
+        $this->load->model('Academic_year_model');
 
-        // Enforce authentication — redirect to login if no valid session
+        // Enforce authentication — return 401 for AJAX, redirect for web
         $user_data = $this->session->userdata('user');
         if (!$this->session->userdata('logged_in') || empty($user_data)) {
+            if ($this->input->is_ajax_request()) {
+                $this->output
+                    ->set_status_header(401)
+                    ->set_content_type('application/json')
+                    ->set_output(json_encode([
+                        'status'          => false,
+                        'message'         => 'Session expired. Please log in again.',
+                        'csrf_token_name' => $this->security->get_csrf_token_name(),
+                        'csrf_hash'       => $this->security->get_csrf_hash(),
+                    ]));
+                $this->output->_display();
+                exit;
+            }
             redirect('auth/login');
             exit;
         }
 
         // Build a consistent current_user object from the session 'user' array
         $this->current_user = (object)$user_data;
+
+        // Initialize global academic year context
+        $this->academic_year_id      = get_current_academic_year_id();
+        $this->current_academic_year = get_current_academic_year();
     }
 
     // -------------------------------------------------------------------------
@@ -128,6 +152,12 @@ class MY_Controller extends CI_Controller {
         $data['effective_permissions'] = $this->rbac->is_super_admin()
             ? ['*']
             : $this->User_model->get_effective_permissions($uid);
+
+        // Global Academic Year Context
+        $data['current_academic_year']    = $this->current_academic_year;
+        $data['current_academic_year_id'] = $this->academic_year_id;
+        $data['available_academic_years'] = get_available_academic_years();
+        $data['can_change_academic_year'] = can_change_academic_year($uid);
 
         $this->load->view('templates/header', $data);
         $this->load->view($view, $data);

@@ -273,12 +273,17 @@ const PAGE_URLS = {
   "unauthorized": "unauthorized",
   "login": "auth/login",
   "logout": "auth/logout",
+  "academic-year-switch": "academic-year/switch",
+  "academic-year/switch": "academic-year/switch",
+  "academics/switch_year": "academics/switch_year",
 };
 
-// Builds an absolute app URL for a given page key
+// Builds an absolute app URL for a given page key or relative route
 function url(pageKey) {
   const base = window.APP_BASE_URL || "";
-  const uri = PAGE_URLS[pageKey] || "";
+  if (!pageKey) return base;
+  if (pageKey.startsWith("http://") || pageKey.startsWith("https://")) return pageKey;
+  const uri = PAGE_URLS[pageKey] !== undefined ? PAGE_URLS[pageKey] : pageKey.replace(/^\//, '');
   return base + uri;
 }
 
@@ -1179,6 +1184,39 @@ function renderHeader(pageKey, breadcrumb) {
       : `<span>${c}</span><span class="text-outline">/</span>`))
     .join(" ");
 
+  const currentYearId = window.CURRENT_ACADEMIC_YEAR_ID || 1;
+  const currentYear = window.CURRENT_ACADEMIC_YEAR || {};
+  const currentYearName = currentYear.year_name || "2026-2027";
+  const availableYears = window.AVAILABLE_ACADEMIC_YEARS || [];
+  const canChangeYear = (window.CAN_CHANGE_ACADEMIC_YEAR === true);
+
+  let yearSelectorHtml = "";
+  if (canChangeYear && availableYears.length > 0) {
+    const options = availableYears.map(y => `
+      <option value="${y.academic_year_id}" ${Number(y.academic_year_id) === Number(currentYearId) ? "selected" : ""}>
+        ${y.year_name}${y.is_active == 1 ? " (Active)" : ""}
+      </option>
+    `).join("");
+
+    yearSelectorHtml = `
+      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-low border border-outline-variant/70 text-on-surface">
+        <span class="material-symbols-outlined text-[18px] text-secondary">calendar_month</span>
+        <label for="global-academic-year-select" class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant hidden sm:inline">Academic Year:</label>
+        <select id="global-academic-year-select" data-current-year="${CURRENT_ACADEMIC_YEAR_ID}" class="bg-transparent border-0 py-0.5 pl-1 pr-6 text-[13px] font-semibold text-secondary focus:ring-0 focus:outline-none cursor-pointer transition-opacity">
+          ${options}
+        </select>
+      </div>
+    `;
+  } else {
+    yearSelectorHtml = `
+      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-low border border-outline-variant/60 text-on-surface">
+        <span class="material-symbols-outlined text-[18px] text-secondary">calendar_month</span>
+        <span class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant hidden sm:inline">Academic Year:</span>
+        <span class="text-[13px] font-semibold text-on-surface">${currentYearName}</span>
+      </div>
+    `;
+  }
+
   return `
   <header class="sticky top-0 z-20 h-16 bg-surface-container-lowest/90 backdrop-blur border-b border-outline-variant/60 flex items-center gap-3 px-4 lg:px-6">
     <button id="sidebar-open-btn" type="button" class="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg hover:bg-surface-container-high text-on-surface-variant shrink-0">
@@ -1189,15 +1227,17 @@ function renderHeader(pageKey, breadcrumb) {
       <h1 class="font-headline-lg-mobile text-headline-lg-mobile lg:font-headline-lg lg:text-headline-lg text-on-surface truncate">${title}</h1>
     </div>
 
-    <div class="hidden md:flex items-center flex-1 max-w-sm ml-4">
+    <div class="hidden xl:flex items-center flex-1 max-w-xs ml-4">
       <div class="relative w-full">
         <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 text-[20px]">search</span>
         <input type="text" placeholder="Search students, staff, records..."
-          class="w-full pl-10 pr-3 py-2 rounded-lg border border-outline-variant bg-surface-container-low text-body-md font-body-md text-on-surface placeholder-on-surface-variant/50 focus:ring-2 focus:ring-primary/10 focus:border-primary transition-colors" />
+          class="w-full pl-10 pr-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-low text-body-md font-body-md text-on-surface placeholder-on-surface-variant/50 focus:ring-2 focus:ring-primary/10 focus:border-primary transition-colors" />
       </div>
     </div>
 
-    <div class="ml-auto flex items-center gap-1.5 shrink-0">
+    <div class="ml-auto flex items-center gap-2.5 shrink-0">
+      ${yearSelectorHtml}
+
       <button type="button" class="relative flex items-center justify-center w-9 h-9 rounded-lg hover:bg-surface-container-high text-on-surface-variant">
         ${iconSpan("notifications", "text-[22px]")}
         <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error ring-2 ring-surface-container-lowest"></span>
@@ -1356,6 +1396,94 @@ function initShell() {
     });
   });
 
+  // Academic Year Switch Dropdown
+  const yearSelect = document.getElementById("global-academic-year-select");
+  if (yearSelect) {
+    yearSelect.addEventListener("change", (e) => {
+      const newYearId = parseInt(e.target.value, 10);
+      if (!newYearId || isNaN(newYearId)) return;
+
+      const previousYearId = yearSelect.getAttribute("data-current-year") || window.CURRENT_ACADEMIC_YEAR_ID;
+      yearSelect.disabled = true;
+      yearSelect.classList.add("opacity-50", "cursor-wait");
+
+      const postData = {
+        academic_year_id: newYearId,
+        redirect_url: window.location.href
+      };
+
+      if (window.CSRF_TOKEN_NAME && window.CSRF_HASH) {
+        postData[window.CSRF_TOKEN_NAME] = window.CSRF_HASH;
+      }
+
+      $.ajax({
+        url: url("academic-year/switch"),
+        type: "POST",
+        dataType: "json",
+        data: postData,
+        success: function(res) {
+          if (res && res.csrf_hash) {
+            window.CSRF_HASH = res.csrf_hash;
+          }
+          if (res && (res.status === true || res.status === 'success')) {
+            // Update URL search parameters to synchronized date if present
+            try {
+              const currentUrl = new URL(window.location.href);
+              let hasModified = false;
+              if (currentUrl.searchParams.has('date') && res.selected_date) {
+                currentUrl.searchParams.set('date', res.selected_date);
+                hasModified = true;
+              }
+              if (currentUrl.searchParams.has('from_date') && res.selected_date) {
+                currentUrl.searchParams.set('from_date', res.selected_date);
+                hasModified = true;
+              }
+              if (currentUrl.searchParams.has('to_date') && res.selected_date) {
+                currentUrl.searchParams.set('to_date', res.selected_date);
+                hasModified = true;
+              }
+              if (currentUrl.searchParams.has('academic_year_id')) {
+                currentUrl.searchParams.set('academic_year_id', res.academic_year_id);
+                hasModified = true;
+              }
+              if (hasModified) {
+                window.location.href = currentUrl.toString();
+                return;
+              }
+            } catch(err) {}
+
+            // Keep user on the same page and reload to refresh in-place with new active year context
+            window.location.reload();
+          } else {
+            const errorMsg = (res && res.message) ? res.message : "Failed to switch academic year.";
+            alert(errorMsg);
+            if (previousYearId) yearSelect.value = previousYearId;
+            yearSelect.disabled = false;
+            yearSelect.classList.remove("opacity-50", "cursor-wait");
+          }
+        },
+        error: function(xhr) {
+          let msg = "Failed to switch academic year.";
+          try {
+            const json = JSON.parse(xhr.responseText);
+            if (json) {
+              if (json.csrf_hash) window.CSRF_HASH = json.csrf_hash;
+              if (json.message) msg = json.message;
+            }
+          } catch(e) {
+            if (xhr.status === 403) msg = "You do not have permission to change the academic year.";
+            else if (xhr.status === 401) msg = "Session expired. Please log in again.";
+            else if (xhr.status === 400 || xhr.status === 422) msg = "Invalid academic year selected.";
+          }
+          alert(msg);
+          if (previousYearId) yearSelect.value = previousYearId;
+          yearSelect.disabled = false;
+          yearSelect.classList.remove("opacity-50", "cursor-wait");
+        }
+      });
+    });
+  }
+
   // Profile dropdown
   const profileBtn = document.getElementById("profile-menu-btn");
   const profileMenu = document.getElementById("profile-menu");
@@ -1412,6 +1540,13 @@ School.ajax = {
       return;
     }
 
+    // Attach CSRF token if POST/PUT/DELETE and not already present
+    if (typeof config.data === 'object' && config.method.toUpperCase() !== 'GET') {
+      if (window.CSRF_TOKEN_NAME && window.CSRF_HASH && !config.data[window.CSRF_TOKEN_NAME]) {
+        config.data[window.CSRF_TOKEN_NAME] = window.CSRF_HASH;
+      }
+    }
+
     return jQuery.ajax({
       url: config.url,
       type: config.method,
@@ -1426,6 +1561,9 @@ School.ajax = {
         }
       },
       success: function(response, status, xhr) {
+        if (response && response.csrf_hash) {
+          window.CSRF_HASH = response.csrf_hash;
+        }
         if (typeof config.success === 'function') {
           config.success(response, status, xhr);
         }
@@ -1434,13 +1572,19 @@ School.ajax = {
         let msg = 'An unexpected error occurred. Please try again.';
         if (xhr.status === 403) {
           msg = 'Access Denied: You do not have permission for this action.';
+        } else if (xhr.status === 401) {
+          msg = 'Session expired. Please log in again.';
         } else if (xhr.status === 404) {
           msg = 'The requested resource was not found.';
         } else if (xhr.status === 500) {
           msg = 'A server error occurred. Please contact the administrator.';
-        } else if (xhr.responseJSON && xhr.responseJSON.message) {
-          msg = xhr.responseJSON.message;
         }
+        try {
+          const res = xhr.responseJSON || JSON.parse(xhr.responseText);
+          if (res && res.csrf_hash) window.CSRF_HASH = res.csrf_hash;
+          if (res && res.message) msg = res.message;
+        } catch(e) {}
+
         if (typeof config.error === 'function') {
           config.error(xhr, status, error, msg);
         } else {

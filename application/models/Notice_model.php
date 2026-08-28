@@ -41,11 +41,13 @@ class Notice_model extends CI_Model {
         return $this->db->get()->result();
     }
 
-    public function get_recent($limit = 5)
+    public function get_recent($limit = 5, $academic_year_id = NULL)
     {
+        $academic_year_id = $academic_year_id ? (int)$academic_year_id : get_current_academic_year_id();
         return $this->db
             ->select('n.*, n.posted_by AS posted_by_name, n.publish_date AS date')
             ->from('tbl_notices n')
+            ->where('n.academic_year_id', $academic_year_id)
             ->where('n.status', 'Published')
             ->order_by('n.publish_date', 'DESC')
             ->limit($limit)

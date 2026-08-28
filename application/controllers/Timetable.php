@@ -27,8 +27,8 @@ class Timetable extends MY_Controller {
     public function dashboard()
     {
         $this->require_permission('timetable.view');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $active_year ? $active_year->academic_year_id : 1;
+        $year_id = $this->academic_year_id;
+        $active_year = $this->Academic_year_model->get_by_id($year_id);
 
         $data['title'] = 'Timetable Dashboard';
         $data['active_year'] = $active_year;
@@ -36,7 +36,7 @@ class Timetable extends MY_Controller {
         $data['recent_entries'] = $this->Timetable_model->get_entries(['academic_year_id' => $year_id]);
         $data['periods'] = $this->Period_model->get_all(TRUE);
         $data['conflicts'] = $this->Timetable_model->detect_all_conflicts($year_id);
-        $data['classes'] = $this->Class_model->get_all(TRUE);
+        $data['classes'] = $this->Class_model->get_all($year_id);
 
         $this->render('pages/timetable/dashboard', $data);
     }
@@ -45,10 +45,9 @@ class Timetable extends MY_Controller {
     public function classes()
     {
         $this->require_permission('timetable.view');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         
-        $classes = $this->Class_model->get_all(TRUE);
+        $classes = $this->Class_model->get_all($year_id);
         $class_id = $this->input->get('class_id') ?: ($classes[0]->class_id ?? 1);
         
         $sections = $this->Section_model->get_by_class($class_id);
@@ -100,8 +99,7 @@ class Timetable extends MY_Controller {
     public function teachers()
     {
         $this->require_permission('timetable.view');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         
         $teachers = $this->Staff_model->get_teaching_staff();
         $teacher_id = $this->input->get('teacher_id') ?: ($teachers[0]->staff_id ?? 1);
@@ -127,8 +125,7 @@ class Timetable extends MY_Controller {
     public function allocations()
     {
         $this->require_permission('timetable.view');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $class_id = $this->input->get('class_id');
         $section_id = $this->input->get('section_id');
 
@@ -160,7 +157,7 @@ class Timetable extends MY_Controller {
         $data['title'] = 'Subject Allocation';
         $data['academic_years'] = $this->Academic_year_model->get_all();
         $data['selected_year'] = $year_id;
-        $data['classes'] = $this->Class_model->get_all(TRUE);
+        $data['classes'] = $this->Class_model->get_all($year_id);
         $data['selected_class'] = $class_id;
         $data['sections'] = $class_id ? $this->Section_model->get_by_class($class_id) : [];
         $data['selected_section'] = $section_id;
@@ -175,10 +172,9 @@ class Timetable extends MY_Controller {
     public function builder()
     {
         $this->require_permission('timetable.manage');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         
-        $classes = $this->Class_model->get_all(TRUE);
+        $classes = $this->Class_model->get_all($year_id);
         $class_id = $this->input->get('class_id') ?: ($classes[0]->class_id ?? 1);
         
         $sections = $this->Section_model->get_by_class($class_id);
@@ -228,8 +224,7 @@ class Timetable extends MY_Controller {
     public function free_periods()
     {
         $this->require_permission('timetable.view');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $active_year ? $active_year->academic_year_id : 1;
+        $year_id = $this->academic_year_id;
         $date = $this->input->get('date') ?: date('Y-m-d');
         $day = date('l', strtotime($date));
         $period_id = $this->input->get('period_id');
@@ -267,8 +262,7 @@ class Timetable extends MY_Controller {
     public function conflicts()
     {
         $this->require_permission('timetable.view');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
 
         $data['title'] = 'Timetable Conflicts';
         $data['academic_years'] = $this->Academic_year_model->get_all();
@@ -282,8 +276,7 @@ class Timetable extends MY_Controller {
     public function publish_lock()
     {
         $this->require_permission('timetable.manage');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
 
         if ($this->input->post()) {
             $class_id = $this->input->post('class_id');
@@ -301,7 +294,7 @@ class Timetable extends MY_Controller {
         $data['title'] = 'Publish & Lock Timetable';
         $data['academic_years'] = $this->Academic_year_model->get_all();
         $data['selected_year'] = $year_id;
-        $data['classes'] = $this->Class_model->get_all(TRUE);
+        $data['classes'] = $this->Class_model->get_all($year_id);
         $data['publish_records'] = $this->Timetable_setting_model->get_publish_records($year_id);
 
         $this->render('pages/timetable/publish_lock', $data);
@@ -311,8 +304,7 @@ class Timetable extends MY_Controller {
     public function reports()
     {
         $this->require_permission('timetable.view');
-        $active_year = $this->Academic_year_model->get_active();
-        $year_id = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $report_type = $this->input->get('type') ?: 'master';
         $class_id = $this->input->get('class_id');
         $teacher_id = $this->input->get('teacher_id');
@@ -343,7 +335,7 @@ class Timetable extends MY_Controller {
         $data['academic_years'] = $this->Academic_year_model->get_all();
         $data['selected_year'] = $year_id;
         $data['report_type'] = $report_type;
-        $data['classes'] = $this->Class_model->get_all(TRUE);
+        $data['classes'] = $this->Class_model->get_all($year_id);
         $data['teachers'] = $this->Staff_model->get_teaching_staff();
         $data['periods'] = $this->Period_model->get_all(TRUE);
         $data['working_days'] = $this->Timetable_setting_model->get_working_days_array();

@@ -8,24 +8,17 @@ class Student_model extends CI_Model {
 
     public function get_dashboard_stats($year_id = NULL)
     {
-        if (!$year_id) {
-            $active_year = $this->db->where('is_active', 1)->where('status', 1)->get('tbl_academic_years')->row();
-            $year_id = $active_year ? (int)$active_year->academic_year_id : NULL;
-        }
+        $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
 
-        $total_students = $this->db->where('is_deleted', 'n')->count_all_results('tbl_students');
-        $active_students = $this->db->where('status', 1)->where('is_deleted', 'n')->count_all_results('tbl_students');
-        $inactive_students = $this->db->where('status', 0)->where('is_deleted', 'n')->count_all_results('tbl_students');
+        $total_students = $this->db->where('is_deleted', 'n')->where('academic_year_id', $year_id)->count_all_results('tbl_students');
+        $active_students = $this->db->where('status', 1)->where('is_deleted', 'n')->where('academic_year_id', $year_id)->count_all_results('tbl_students');
+        $inactive_students = $this->db->where('status', 0)->where('is_deleted', 'n')->where('academic_year_id', $year_id)->count_all_results('tbl_students');
         
-        $male_students = $this->db->where('gender', 'Male')->where('status', 1)->where('is_deleted', 'n')->count_all_results('tbl_students');
-        $female_students = $this->db->where('gender', 'Female')->where('status', 1)->where('is_deleted', 'n')->count_all_results('tbl_students');
+        $male_students = $this->db->where('gender', 'Male')->where('status', 1)->where('is_deleted', 'n')->where('academic_year_id', $year_id)->count_all_results('tbl_students');
+        $female_students = $this->db->where('gender', 'Female')->where('status', 1)->where('is_deleted', 'n')->where('academic_year_id', $year_id)->count_all_results('tbl_students');
 
         // New admissions
-        $this->db->where('status', 1)->where('is_deleted', 'n');
-        if ($year_id) {
-            $this->db->where('academic_year_id', $year_id);
-        }
-        $new_admissions_count = $this->db->count_all_results('tbl_students');
+        $new_admissions_count = $this->db->where('status', 1)->where('is_deleted', 'n')->where('academic_year_id', $year_id)->count_all_results('tbl_students');
 
         // Class-wise breakdown
         $class_counts = $this->db->query("
@@ -34,11 +27,11 @@ class Student_model extends CI_Model {
                    SUM(CASE WHEN st.gender = 'Male' THEN 1 ELSE 0 END) as male_count,
                    SUM(CASE WHEN st.gender = 'Female' THEN 1 ELSE 0 END) as female_count
             FROM tbl_classes c
-            LEFT JOIN tbl_students st ON st.class_id = c.class_id AND st.status = 1 AND st.is_deleted = 'n'
-            WHERE c.status = 1 AND c.is_deleted = 'n'
+            LEFT JOIN tbl_students st ON st.class_id = c.class_id AND st.status = 1 AND st.is_deleted = 'n' AND st.academic_year_id = ?
+            WHERE c.status = 1 AND c.is_deleted = 'n' AND c.academic_year_id = ?
             GROUP BY c.class_id
             ORDER BY c.class_id ASC
-        ")->result();
+        ", [$year_id, $year_id])->result();
 
         // Recent admissions
         $recent_admissions = $this->db
@@ -48,6 +41,7 @@ class Student_model extends CI_Model {
             ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
             ->where('st.status', 1)
             ->where('st.is_deleted', 'n')
+            ->where('st.academic_year_id', $year_id)
             ->order_by('st.student_id', 'DESC')
             ->limit(8)
             ->get()
@@ -305,8 +299,17 @@ class Student_model extends CI_Model {
         if (!empty($filters['document_type'])) {
             $this->db->where('d.document_type', $filters['document_type']);
         }
+        if (!empty($filters['student_id'])) {
+            $this->db->where('d.student_id', $filters['student_id']);
+        }
+        if (!empty($filters['document_type'])) {
+            $this->db->where('d.document_type', $filters['document_type']);
+        }
         if (!empty($filters['class_id'])) {
             $this->db->where('st.class_id', $filters['class_id']);
+        }
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('st.academic_year_id', $filters['academic_year_id']);
         }
 
         return $this->db->get()->result();
@@ -379,6 +382,12 @@ class Student_model extends CI_Model {
         if (!empty($filters['student_id'])) {
             $this->db->where('p.student_id', $filters['student_id']);
         }
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->group_start()
+                ->where('p.from_academic_year_id', $filters['academic_year_id'])
+                ->or_where('p.to_academic_year_id', $filters['academic_year_id'])
+                ->group_end();
+        }
 
         return $this->db->get()->result();
     }
@@ -398,6 +407,9 @@ class Student_model extends CI_Model {
 
         if (!empty($filters['status'])) {
             $this->db->where('t.status', $filters['status']);
+        }
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('t.academic_year_id', $filters['academic_year_id']);
         }
 
         return $this->db->get()->result();
@@ -462,6 +474,9 @@ class Student_model extends CI_Model {
         }
         if (!empty($filters['class_id'])) {
             $this->db->where('a.class_id', $filters['class_id']);
+        }
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('a.academic_year_id', $filters['academic_year_id']);
         }
         if (!empty($filters['search'])) {
             $s = trim($filters['search']);

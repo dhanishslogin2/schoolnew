@@ -8,6 +8,12 @@ class Class_model extends CI_Model {
 
     public function get_all($academic_year_id = NULL)
     {
+        if ($academic_year_id === TRUE || $academic_year_id === NULL) {
+            $academic_year_id = get_current_academic_year_id();
+        } elseif ($academic_year_id === 'all' || $academic_year_id === FALSE) {
+            $academic_year_id = NULL;
+        }
+
         $this->db
             ->select('c.*, y.year_name, s.full_name as class_teacher_name, (SELECT COUNT(student_id) FROM tbl_students WHERE class_id = c.class_id AND status = 1 AND is_deleted = \'n\') as student_count')
             ->from('tbl_classes c')
@@ -18,7 +24,7 @@ class Class_model extends CI_Model {
             ->order_by('c.class_id', 'ASC');
 
         if ($academic_year_id) {
-            $this->db->where('c.academic_year_id', $academic_year_id);
+            $this->db->where('c.academic_year_id', (int)$academic_year_id);
         }
 
         return $this->db->get()->result();
@@ -26,6 +32,12 @@ class Class_model extends CI_Model {
 
     public function get_dropdown($academic_year_id = NULL)
     {
+        if ($academic_year_id === TRUE || $academic_year_id === NULL) {
+            $academic_year_id = get_current_academic_year_id();
+        } elseif ($academic_year_id === 'all' || $academic_year_id === FALSE) {
+            $academic_year_id = NULL;
+        }
+
         $this->db
             ->select('class_id, class_name')
             ->where('status', 1)
@@ -53,8 +65,14 @@ class Class_model extends CI_Model {
 
     public function count_classes($academic_year_id = NULL)
     {
+        if ($academic_year_id === TRUE || $academic_year_id === NULL) {
+            $academic_year_id = get_current_academic_year_id();
+        } elseif ($academic_year_id === 'all' || $academic_year_id === FALSE) {
+            $academic_year_id = NULL;
+        }
+
         if ($academic_year_id) {
-            $this->db->where('academic_year_id', $academic_year_id);
+            $this->db->where('academic_year_id', (int)$academic_year_id);
         }
         return $this->db
             ->where('status', 1)

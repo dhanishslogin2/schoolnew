@@ -80,7 +80,8 @@ class Attendance_model extends CI_Model {
 
     public function get_class_overview($date = NULL, $year_id = NULL, $class_id = NULL, $section_id = NULL)
     {
-        if (!$date) $date = date('Y-m-d');
+        if (!$date) $date = normalize_date_to_academic_year(NULL, $year_id);
+        $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
 
         $this->db
             ->select('c.class_id, c.class_name, sec.section_id, sec.section_name,
@@ -92,13 +93,14 @@ class Attendance_model extends CI_Model {
                 COUNT(a.attendance_id) as marked_count')
             ->from('tbl_classes c')
             ->join('tbl_sections sec', 'sec.class_id = c.class_id AND sec.status = 1', 'inner')
-            ->join('tbl_students st', 'st.class_id = c.class_id AND st.section_id = sec.section_id AND st.status = 1', 'left')
-            ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_date = ' . $this->db->escape($date) . ' AND a.attendance_type = "Daily"', 'left')
+            ->join('tbl_students st', 'st.class_id = c.class_id AND st.section_id = sec.section_id AND st.status = 1 AND (st.academic_year_id = ' . (int)$year_id . ' OR st.academic_year_id IS NULL)', 'left')
+            ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_date = ' . $this->db->escape($date) . ' AND a.attendance_type = "Daily" AND (a.academic_year_id = ' . (int)$year_id . ' OR a.academic_year_id IS NULL)', 'left')
             ->where('c.status', 1)
             ->group_by(array('c.class_id', 'sec.section_id'))
             ->order_by('c.class_id', 'ASC')
             ->order_by('sec.section_name', 'ASC');
 
+        if ($year_id) $this->db->where('c.academic_year_id', $year_id);
         if ($class_id) $this->db->where('c.class_id', $class_id);
         if ($section_id) $this->db->where('sec.section_id', $section_id);
 
@@ -113,16 +115,24 @@ class Attendance_model extends CI_Model {
         return $results;
     }
 
-    public function get_recent_activity($limit = 10)
+    public function get_recent_activity($limit = 10, $year_id = NULL)
     {
-        return $this->db
+        $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
+
+        $this->db
             ->select('a.*, st.first_name, st.last_name, st.admission_number, st.roll_number, c.class_name, sec.section_name, p.period_name, u.name as marked_by_name')
             ->from($this->table . ' a')
             ->join('tbl_students st', 'st.student_id = a.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = a.class_id', 'left')
             ->join('tbl_sections sec', 'sec.section_id = a.section_id', 'left')
             ->join('tbl_periods p', 'p.period_id = a.period_id', 'left')
-            ->join('tbl_users u', 'u.user_id = a.marked_by', 'left')
+            ->join('tbl_users u', 'u.user_id = a.marked_by', 'left');
+
+        if ($year_id) {
+            $this->db->where('a.academic_year_id', $year_id);
+        }
+
+        return $this->db
             ->order_by('a.updated_at', 'DESC')
             ->order_by('a.attendance_id', 'DESC')
             ->limit($limit)
@@ -421,6 +431,7 @@ class Attendance_model extends CI_Model {
         if (!empty($filters['class_id'])) $this->db->where('a.class_id', $filters['class_id']);
         if (!empty($filters['section_id'])) $this->db->where('a.section_id', $filters['section_id']);
         if (!empty($filters['student_id'])) $this->db->where('a.student_id', $filters['student_id']);
+        if (!empty($filters['academic_year_id'])) $this->db->where('a.academic_year_id', $filters['academic_year_id']);
         if (!empty($filters['from_date'])) $this->db->where('a.attendance_date >=', $filters['from_date']);
         if (!empty($filters['to_date'])) $this->db->where('a.attendance_date <=', $filters['to_date']);
 
@@ -434,7 +445,7 @@ class Attendance_model extends CI_Model {
     /* =========================================================================
        5. Calendar Matrix & Aggregation
        ========================================================================= */
-    public function get_calendar_data($year, $month, $class_id = NULL, $section_id = NULL, $student_id = NULL, $type = 'Daily')
+    public function get_calendar_data($year, $month, $class_id = NULL, $section_id = NULL, $student_id = NULL, $type = 'Daily', $academic_year_id = NULL)
     {
         $start_date = sprintf('%04d-%02d-01', $year, $month);
         $end_date   = date('Y-m-t', strtotime($start_date));
@@ -449,6 +460,7 @@ class Attendance_model extends CI_Model {
         if ($student_id) $this->db->where('a.student_id', $student_id);
         if ($class_id) $this->db->where('a.class_id', $class_id);
         if ($section_id) $this->db->where('a.section_id', $section_id);
+        if ($academic_year_id) $this->db->where('a.academic_year_id', $academic_year_id);
 
         $records = $this->db
             ->group_by(array('a.attendance_date', 'a.attendance_status'))
@@ -471,7 +483,7 @@ class Attendance_model extends CI_Model {
         return $matrix;
     }
 
-    public function get_date_attendance_details($date, $class_id = NULL, $section_id = NULL, $student_id = NULL, $type = 'Daily')
+    public function get_date_attendance_details($date, $class_id = NULL, $section_id = NULL, $student_id = NULL, $type = 'Daily', $academic_year_id = NULL)
     {
         $this->db
             ->select('a.*, st.first_name, st.last_name, st.admission_number, st.roll_number, c.class_name, sec.section_name, p.period_name')
@@ -489,6 +501,7 @@ class Attendance_model extends CI_Model {
         if ($student_id) $this->db->where('a.student_id', $student_id);
         if ($class_id) $this->db->where('a.class_id', $class_id);
         if ($section_id) $this->db->where('a.section_id', $section_id);
+        if ($academic_year_id) $this->db->where('a.academic_year_id', $academic_year_id);
 
         return $this->db->get()->result();
     }
@@ -498,6 +511,8 @@ class Attendance_model extends CI_Model {
        ========================================================================= */
     public function get_reports_summary($academic_year_id = NULL, $class_id = NULL)
     {
+        $academic_year_id = $academic_year_id ? (int)$academic_year_id : get_current_academic_year_id();
+
         $this->db
             ->select('c.class_name, sec.section_name,
                 SUM(CASE WHEN a.attendance_status = "Present" THEN 1 ELSE 0 END) as present_count,
@@ -507,8 +522,9 @@ class Attendance_model extends CI_Model {
                 COUNT(a.attendance_id) as total_count')
             ->from('tbl_sections sec')
             ->join('tbl_classes c', 'c.class_id = sec.class_id', 'inner')
-            ->join('tbl_attendance a', 'a.section_id = sec.section_id AND a.attendance_type = "Daily"', 'left')
+            ->join('tbl_attendance a', 'a.section_id = sec.section_id AND a.attendance_type = "Daily" AND a.academic_year_id = ' . (int)$academic_year_id, 'left')
             ->where('sec.status', 1)
+            ->where('c.academic_year_id', $academic_year_id)
             ->group_by('sec.section_id')
             ->order_by('c.class_id', 'ASC')
             ->order_by('sec.section_name', 'ASC');
@@ -527,6 +543,8 @@ class Attendance_model extends CI_Model {
 
     public function get_student_report($filters = array())
     {
+        $year_id = !empty($filters['academic_year_id']) ? (int)$filters['academic_year_id'] : get_current_academic_year_id();
+
         $this->db
             ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, c.class_name, sec.section_name,
                 SUM(CASE WHEN a.attendance_status = "Present" THEN 1 ELSE 0 END) as present_count,
@@ -537,8 +555,9 @@ class Attendance_model extends CI_Model {
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
             ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
-            ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_type = "Daily"', 'left')
+            ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_type = "Daily" AND a.academic_year_id = ' . (int)$year_id, 'left')
             ->where('st.status', 1)
+            ->where('st.academic_year_id', $year_id)
             ->group_by('st.student_id')
             ->order_by('c.class_id', 'ASC')
             ->order_by('sec.section_id', 'ASC')
@@ -562,6 +581,7 @@ class Attendance_model extends CI_Model {
 
     public function get_monthly_report($filters = array())
     {
+        $year_id = !empty($filters['academic_year_id']) ? (int)$filters['academic_year_id'] : get_current_academic_year_id();
         $month = !empty($filters['month']) ? (int)$filters['month'] : (int)date('m');
         $year  = !empty($filters['year']) ? (int)$filters['year'] : (int)date('Y');
         $start_date = sprintf('%04d-%02d-01', $year, $month);
@@ -577,8 +597,9 @@ class Attendance_model extends CI_Model {
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
             ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
-            ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_type = "Daily" AND a.attendance_date >= ' . $this->db->escape($start_date) . ' AND a.attendance_date <= ' . $this->db->escape($end_date), 'left')
+            ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_type = "Daily" AND a.academic_year_id = ' . (int)$year_id . ' AND a.attendance_date >= ' . $this->db->escape($start_date) . ' AND a.attendance_date <= ' . $this->db->escape($end_date), 'left')
             ->where('st.status', 1)
+            ->where('st.academic_year_id', $year_id)
             ->group_by('st.student_id')
             ->order_by('c.class_id', 'ASC')
             ->order_by('sec.section_id', 'ASC')
@@ -599,6 +620,8 @@ class Attendance_model extends CI_Model {
 
     public function get_period_wise_report($filters = array())
     {
+        $year_id = !empty($filters['academic_year_id']) ? (int)$filters['academic_year_id'] : get_current_academic_year_id();
+
         $this->db
             ->select('p.period_id, p.period_number, p.period_name, p.start_time, p.end_time,
                 SUM(CASE WHEN a.attendance_status = "Present" THEN 1 ELSE 0 END) as present_count,
@@ -607,7 +630,7 @@ class Attendance_model extends CI_Model {
                 SUM(CASE WHEN a.attendance_status IN ("Excused", "Leave") THEN 1 ELSE 0 END) as excused_count,
                 COUNT(a.attendance_id) as total_count')
             ->from('tbl_periods p')
-            ->join($this->table . ' a', 'a.period_id = p.period_id AND a.attendance_type = "Period-wise"', 'left')
+            ->join($this->table . ' a', 'a.period_id = p.period_id AND a.attendance_type = "Period-wise" AND a.academic_year_id = ' . (int)$year_id, 'left')
             ->where('p.status', 1)
             ->group_by('p.period_id')
             ->order_by('p.period_number', 'ASC')
@@ -634,6 +657,8 @@ class Attendance_model extends CI_Model {
        ========================================================================= */
     public function get_student_profile_attendance($student_id, $academic_year_id = NULL)
     {
+        $academic_year_id = $academic_year_id ?: get_current_academic_year_id();
+
         // 1. Overall Summary
         $this->db->where('student_id', $student_id)->where('attendance_type', 'Daily');
         if ($academic_year_id) $this->db->where('academic_year_id', $academic_year_id);

@@ -10,6 +10,7 @@ class Academic_year_model extends CI_Model {
     {
         return $this->db
             ->where('status', 1)
+            ->where('is_deleted', 'n')
             ->order_by('start_date', 'DESC')
             ->get($this->table)
             ->result();
@@ -18,17 +19,24 @@ class Academic_year_model extends CI_Model {
     public function get_dropdown()
     {
         return $this->db
-            ->select('academic_year_id, year_name, is_active')
+            ->select('academic_year_id, year_name, is_active, start_date, end_date')
             ->where('status', 1)
+            ->where('is_deleted', 'n')
             ->order_by('start_date', 'DESC')
             ->get($this->table)
             ->result();
     }
 
+    public function get_available_years()
+    {
+        return $this->get_dropdown();
+    }
+
     public function get_by_id($id)
     {
         return $this->db
-            ->where($this->primaryKey, $id)
+            ->where($this->primaryKey, (int)$id)
+            ->where('is_deleted', 'n')
             ->get($this->table)
             ->row();
     }
@@ -38,13 +46,15 @@ class Academic_year_model extends CI_Model {
         $active = $this->db
             ->where('is_active', 1)
             ->where('status', 1)
+            ->where('is_deleted', 'n')
             ->get($this->table)
             ->row();
 
         if (!$active) {
-            // Fallback to latest
+            // Fallback to latest valid academic year
             $active = $this->db
                 ->where('status', 1)
+                ->where('is_deleted', 'n')
                 ->order_by('start_date', 'DESC')
                 ->limit(1)
                 ->get($this->table)

@@ -26,11 +26,12 @@ class Leave extends MY_Controller {
     public function dashboard()
     {
         $this->require_permission('leave.view');
+        $year_id = $this->academic_year_id;
         $data['title'] = 'Leave Dashboard';
-        $data['stats'] = $this->Leave_model->get_dashboard_stats();
-        $data['recent_student_leaves'] = $this->Leave_model->get_applications(['applicant_type' => 'Student'], 5);
+        $data['stats'] = $this->Leave_model->get_dashboard_stats($year_id);
+        $data['recent_student_leaves'] = $this->Leave_model->get_applications(['applicant_type' => 'Student', 'academic_year_id' => $year_id], 5);
         $data['recent_staff_leaves'] = $this->Leave_model->get_applications(['applicant_type' => 'Staff'], 5);
-        $data['pending_approvals'] = $this->Leave_model->get_applications(['status' => 'Pending'], 6);
+        $data['pending_approvals'] = $this->Leave_model->get_applications(['status' => 'Pending', 'academic_year_id' => $year_id], 6);
 
         $this->render('pages/leave/dashboard', $data);
     }
@@ -39,18 +40,20 @@ class Leave extends MY_Controller {
     public function student_leave()
     {
         $this->require_permission('leave.view');
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $filters = [
-            'applicant_type' => 'Student',
-            'class_id'       => $this->input->get('class_id') ?: NULL,
-            'section_id'     => $this->input->get('section_id') ?: NULL,
-            'leave_type_id'  => $this->input->get('leave_type_id') ?: NULL,
-            'status'         => $this->input->get('status') ?: NULL,
-            'search'         => $this->input->get('search') ?: NULL,
+            'academic_year_id' => $year_id,
+            'applicant_type'   => 'Student',
+            'class_id'         => $this->input->get('class_id') ?: NULL,
+            'section_id'       => $this->input->get('section_id') ?: NULL,
+            'leave_type_id'    => $this->input->get('leave_type_id') ?: NULL,
+            'status'           => $this->input->get('status') ?: NULL,
+            'search'           => $this->input->get('search') ?: NULL,
         ];
 
         $data['title'] = 'Student Leave Management';
         $data['filters'] = $filters;
-        $data['classes'] = $this->Class_model->get_all(TRUE);
+        $data['classes'] = $this->Class_model->get_all($year_id);
         $data['leave_types'] = $this->Leave_type_model->get_all('Students');
         $data['applications'] = $this->Leave_model->get_applications($filters);
 
@@ -178,7 +181,7 @@ class Leave extends MY_Controller {
                 'applicant_type'   => $applicant_type,
                 'student_id'       => ($applicant_type === 'Student') ? $entity_id : NULL,
                 'staff_id'         => ($applicant_type === 'Staff') ? $entity_id : NULL,
-                'academic_year_id' => 1,
+                'academic_year_id' => $this->academic_year_id,
                 'class_id'         => $class_id,
                 'section_id'       => $section_id,
                 'leave_type_id'    => $leave_type_id,
@@ -201,7 +204,7 @@ class Leave extends MY_Controller {
 
         $data['title'] = 'Apply for Leave';
         $data['leave_types'] = $this->Leave_type_model->get_all(NULL, TRUE);
-        $data['students'] = $this->Student_model->get_all(50);
+        $data['students'] = $this->Student_model->get_all(['academic_year_id' => $this->academic_year_id, 'status' => 1], 50);
         $data['staff'] = $this->Staff_model->get_all();
 
         $this->render('pages/leave/request', $data);
@@ -269,7 +272,7 @@ class Leave extends MY_Controller {
         $type = $this->input->get('type') ?: 'Staff';
         $data['title'] = 'Leave Balances Matrix';
         $data['type'] = $type;
-        $data['balances'] = $this->Leave_balance_model->get_all_balances(1, $type, 100);
+        $data['balances'] = $this->Leave_balance_model->get_all_balances($this->academic_year_id, $type, 100);
 
         $this->render('pages/leave/balances', $data);
     }
@@ -279,7 +282,7 @@ class Leave extends MY_Controller {
     {
         $this->require_permission('leave.view');
         $data['title'] = 'Leave Calendar';
-        $data['leaves'] = $this->Leave_model->get_applications(['status' => 'Approved'], 100);
+        $data['leaves'] = $this->Leave_model->get_applications(['status' => 'Approved', 'academic_year_id' => $this->academic_year_id], 100);
 
         $this->render('pages/leave/calendar', $data);
     }
@@ -322,10 +325,12 @@ class Leave extends MY_Controller {
     public function reports()
     {
         $this->require_permission('leave.view');
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $filters = [
-            'applicant_type' => $this->input->get('applicant_type') ?: NULL,
-            'status'         => $this->input->get('status') ?: NULL,
-            'class_id'       => $this->input->get('class_id') ?: NULL,
+            'academic_year_id' => $year_id,
+            'applicant_type'   => $this->input->get('applicant_type') ?: NULL,
+            'status'           => $this->input->get('status') ?: NULL,
+            'class_id'         => $this->input->get('class_id') ?: NULL,
         ];
 
         $applications = $this->Leave_model->get_applications($filters, 500);
@@ -346,9 +351,9 @@ class Leave extends MY_Controller {
         }
 
         $data['title'] = 'Leave Analytics & Reports';
-        $data['stats'] = $this->Leave_model->get_dashboard_stats();
+        $data['stats'] = $this->Leave_model->get_dashboard_stats($year_id);
         $data['filters'] = $filters;
-        $data['classes'] = $this->Class_model->get_all(TRUE);
+        $data['classes'] = $this->Class_model->get_all($year_id);
         $data['applications'] = $applications;
 
         $this->render('pages/leave/reports', $data);

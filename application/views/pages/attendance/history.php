@@ -106,14 +106,14 @@
           <!-- From Date -->
           <div>
             <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">From Date</label>
-            <input type="date" name="from_date" value="<?php echo html_escape($filters['from_date']); ?>" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+            <input type="date" name="from_date" value="<?php echo html_escape($filters['from_date']); ?>" min="<?php echo html_escape($current_year->start_date ?? ''); ?>" max="<?php echo html_escape($current_year->end_date ?? ''); ?>" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
           </div>
 
           <!-- To Date & Submit -->
           <div>
             <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">To Date</label>
             <div class="flex items-center gap-2">
-              <input type="date" name="to_date" value="<?php echo html_escape($filters['to_date']); ?>" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+              <input type="date" name="to_date" value="<?php echo html_escape($filters['to_date']); ?>" min="<?php echo html_escape($current_year->start_date ?? ''); ?>" max="<?php echo html_escape($current_year->end_date ?? ''); ?>" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
               <button type="submit" class="px-4 py-2 rounded-lg bg-primary text-on-primary text-label-md font-semibold hover:bg-primary/90 transition-colors shrink-0 cursor-pointer">
                 Filter
               </button>

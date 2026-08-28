@@ -26,10 +26,12 @@ class Fees extends MY_Controller {
     public function index()
     {
         $this->require_permission('fees.view');
-        $metrics = $this->Fee_model->get_dashboard_metrics();
-        $collection_summary = $this->Fee_model->get_collection_summary();
-        $outstanding_summary = $this->Fee_model->get_outstanding_summary();
-        $recent_payments = $this->Fee_model->get_recent_payments(10);
+        $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
+
+        $metrics = $this->Fee_model->get_dashboard_metrics($year_id);
+        $collection_summary = $this->Fee_model->get_collection_summary($year_id);
+        $outstanding_summary = $this->Fee_model->get_outstanding_summary($year_id);
+        $recent_payments = $this->Fee_model->get_recent_payments(10, $year_id);
         $settings = $this->Finance_setting_model->get_settings();
 
         $this->render('pages/fees/dashboard', array(
@@ -40,6 +42,7 @@ class Fees extends MY_Controller {
             'outstanding_summary' => $outstanding_summary,
             'recent_payments'     => $recent_payments,
             'settings'            => $settings,
+            'selected_year_id'    => $year_id,
         ));
     }
 
@@ -128,7 +131,7 @@ class Fees extends MY_Controller {
 
             $struct_id = (int)$this->input->post('fee_structure_id');
             $fee_head_id = (int)$this->input->post('fee_head_id');
-            $academic_year_id = (int)$this->input->post('academic_year_id');
+            $academic_year_id = (int)($this->input->post('academic_year_id') ?: $this->academic_year_id);
             $class_id = (int)$this->input->post('class_id');
             $amount = (float)$this->input->post('amount');
             $frequency = trim($this->input->post('frequency') ?: 'Yearly');
@@ -181,12 +184,12 @@ class Fees extends MY_Controller {
         $filters = array(
             'class_id'         => $this->input->get('class_id'),
             'fee_head_id'      => $this->input->get('fee_head_id'),
-            'academic_year_id' => $this->input->get('academic_year_id'),
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
         );
 
         $structures = $this->Fee_structure_model->get_all($filters);
         $categories = $this->Fee_category_model->get_all(true);
-        $classes = $this->Class_model->get_all(true);
+        $classes = $this->Class_model->get_all($filters['academic_year_id']);
         $academic_years = $this->Academic_year_model->get_all();
 
         $this->render('pages/fees/structures', array(
@@ -231,7 +234,7 @@ class Fees extends MY_Controller {
                 $class_id = (int)$this->input->post('class_id');
                 $section_id = (int)$this->input->post('section_id');
                 $fee_structure_id = (int)$this->input->post('fee_structure_id');
-                $academic_year_id = (int)$this->input->post('academic_year_id') ?: 1;
+                $academic_year_id = (int)($this->input->post('academic_year_id') ?: $this->academic_year_id);
 
                 if ($class_id <= 0 || $fee_structure_id <= 0) {
                     $this->session->set_flashdata('error', 'Class and Fee Structure are required for bulk assignment.');
@@ -246,11 +249,11 @@ class Fees extends MY_Controller {
             }
         }
 
-        $classes = $this->Class_model->get_all(true);
+        $classes = $this->Class_model->get_all($this->academic_year_id);
         $sections = $this->Section_model->get_all(true);
-        $structures = $this->Fee_structure_model->get_all();
+        $structures = $this->Fee_structure_model->get_all(array('academic_year_id' => $this->academic_year_id));
         $academic_years = $this->Academic_year_model->get_all();
-        $students = $this->Student_model->get_all(array('status' => 1), 500);
+        $students = $this->Student_model->get_all(array('academic_year_id' => $this->academic_year_id, 'status' => 1), 500);
 
         $this->render('pages/fees/assignments', array(
             'title'          => 'Student Fee Assignment',
@@ -268,16 +271,17 @@ class Fees extends MY_Controller {
     {
         $this->require_permission('fees.view');
         $filters = array(
-            'student_id'     => $student_id ?: $this->input->get('student_id'),
-            'class_id'       => $this->input->get('class_id'),
-            'section_id'     => $this->input->get('section_id'),
-            'fee_head_id'    => $this->input->get('fee_head_id'),
-            'payment_status' => $this->input->get('payment_status'),
-            'search'         => $this->input->get('search'),
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
+            'student_id'       => $student_id ?: $this->input->get('student_id'),
+            'class_id'         => $this->input->get('class_id'),
+            'section_id'       => $this->input->get('section_id'),
+            'fee_head_id'      => $this->input->get('fee_head_id'),
+            'payment_status'   => $this->input->get('payment_status'),
+            'search'           => $this->input->get('search'),
         );
 
         $fees = $this->Fee_model->get_student_fees($filters);
-        $classes = $this->Class_model->get_all(true);
+        $classes = $this->Class_model->get_all($filters['academic_year_id']);
         $sections = $this->Section_model->get_all(true);
         $categories = $this->Fee_category_model->get_all(true);
 
@@ -332,13 +336,13 @@ class Fees extends MY_Controller {
         if ($selected_student_id > 0) {
             $student_info = $this->Student_model->get_by_id($selected_student_id);
             if ($student_info) {
-                $student_fees = $this->Fee_model->get_student_fees(array('student_id' => $selected_student_id));
+                $student_fees = $this->Fee_model->get_student_fees(array('student_id' => $selected_student_id, 'academic_year_id' => $this->academic_year_id));
             }
         } elseif (!empty($search)) {
-            $matched_students = $this->Student_model->get_all(array('search' => $search), 1);
+            $matched_students = $this->Student_model->get_all(array('search' => $search, 'academic_year_id' => $this->academic_year_id), 1);
             if (!empty($matched_students)) {
                 $student_info = $matched_students[0];
-                $student_fees = $this->Fee_model->get_student_fees(array('student_id' => $student_info->student_id));
+                $student_fees = $this->Fee_model->get_student_fees(array('student_id' => $student_info->student_id, 'academic_year_id' => $this->academic_year_id));
             }
         }
 
@@ -356,15 +360,16 @@ class Fees extends MY_Controller {
     {
         $this->require_permission('fees.view');
         $filters = array(
-            'class_id'     => $this->input->get('class_id'),
-            'payment_mode' => $this->input->get('payment_mode'),
-            'date_from'    => $this->input->get('date_from'),
-            'date_to'      => $this->input->get('date_to'),
-            'search'       => $this->input->get('search'),
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
+            'class_id'         => $this->input->get('class_id'),
+            'payment_mode'     => $this->input->get('payment_mode'),
+            'date_from'        => $this->input->get('date_from'),
+            'date_to'          => $this->input->get('date_to'),
+            'search'           => $this->input->get('search'),
         );
 
         $payments = $this->Fee_model->get_payments($filters);
-        $classes = $this->Class_model->get_all(true);
+        $classes = $this->Class_model->get_all($filters['academic_year_id']);
 
         $this->render('pages/fees/payments', array(
             'title'    => 'Payment Transaction History',
@@ -390,14 +395,15 @@ class Fees extends MY_Controller {
         $search_val    = isset($search['value']) ? trim($search['value']) : '';
 
         $filters = array(
-            'class_id'     => $this->input->post('class_id') ?: $this->input->get('class_id'),
-            'payment_mode' => $this->input->post('payment_mode') ?: $this->input->get('payment_mode'),
-            'date_from'    => $this->input->post('date_from') ?: $this->input->get('date_from'),
-            'date_to'      => $this->input->post('date_to') ?: $this->input->get('date_to'),
-            'search'       => $search_val,
+            'academic_year_id' => $this->input->post('academic_year_id') ?: ($this->input->get('academic_year_id') ?: $this->academic_year_id),
+            'class_id'         => $this->input->post('class_id') ?: $this->input->get('class_id'),
+            'payment_mode'     => $this->input->post('payment_mode') ?: $this->input->get('payment_mode'),
+            'date_from'        => $this->input->post('date_from') ?: $this->input->get('date_from'),
+            'date_to'          => $this->input->post('date_to') ?: $this->input->get('date_to'),
+            'search'           => $search_val,
         );
 
-        $records_total    = $this->Fee_model->get_payments_count_all();
+        $records_total    = $this->Fee_model->get_payments_count_all($filters['academic_year_id']);
         $records_filtered = $this->Fee_model->count_filtered_payments($filters);
         $payments_list    = $this->Fee_model->get_payments_datatables($filters, $length, $start, $order_col_idx, $order_dir);
 
@@ -444,15 +450,16 @@ class Fees extends MY_Controller {
     {
         $this->require_permission('fees.view');
         $filters = array(
-            'class_id'     => $this->input->get('class_id'),
-            'payment_mode' => $this->input->get('payment_mode'),
-            'date_from'    => $this->input->get('date_from'),
-            'date_to'      => $this->input->get('date_to'),
-            'search'       => $this->input->get('search'),
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
+            'class_id'         => $this->input->get('class_id'),
+            'payment_mode'     => $this->input->get('payment_mode'),
+            'date_from'        => $this->input->get('date_from'),
+            'date_to'          => $this->input->get('date_to'),
+            'search'           => $this->input->get('search'),
         );
 
         $payments = $this->Fee_model->get_payments($filters);
-        $classes = $this->Class_model->get_all(true);
+        $classes = $this->Class_model->get_all($filters['academic_year_id']);
 
         $this->render('pages/fees/receipts', array(
             'title'    => 'Receipt History',
@@ -545,15 +552,16 @@ class Fees extends MY_Controller {
     {
         $this->require_permission('fees.view');
         $filters = array(
-            'class_id'    => $this->input->get('class_id'),
-            'section_id'  => $this->input->get('section_id'),
-            'fee_head_id' => $this->input->get('fee_head_id'),
-            'status'      => $this->input->get('status'),
-            'search'      => $this->input->get('search'),
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
+            'class_id'         => $this->input->get('class_id'),
+            'section_id'       => $this->input->get('section_id'),
+            'fee_head_id'      => $this->input->get('fee_head_id'),
+            'status'           => $this->input->get('status'),
+            'search'           => $this->input->get('search'),
         );
 
         $due_fees = $this->Fee_model->get_due_fees($filters);
-        $classes = $this->Class_model->get_all(true);
+        $classes = $this->Class_model->get_all($filters['academic_year_id']);
         $sections = $this->Section_model->get_all(true);
         $categories = $this->Fee_category_model->get_all(true);
 
@@ -605,7 +613,7 @@ class Fees extends MY_Controller {
             redirect('fees/reminder_history');
         }
 
-        $due_fees = $this->Fee_model->get_due_fees(array(), 100);
+        $due_fees = $this->Fee_model->get_due_fees(array('academic_year_id' => $this->academic_year_id), 100);
         $settings = $this->Finance_setting_model->get_settings();
 
         $this->render('pages/fees/reminders', array(
@@ -687,7 +695,7 @@ class Fees extends MY_Controller {
         }
 
         $adjustments = $this->Fee_adjustment_model->get_adjustments();
-        $student_fees = $this->Fee_model->get_student_fees(array('payment_status' => 'Pending'), 100);
+        $student_fees = $this->Fee_model->get_student_fees(array('payment_status' => 'Pending', 'academic_year_id' => $this->academic_year_id), 100);
 
         $this->render('pages/fees/adjustments', array(
             'title'        => 'Fee Adjustments & Waivers',
@@ -725,7 +733,7 @@ class Fees extends MY_Controller {
         }
 
         $refunds = $this->Fee_adjustment_model->get_refunds();
-        $recent_payments = $this->Fee_model->get_payments(array(), 100);
+        $recent_payments = $this->Fee_model->get_payments(array('academic_year_id' => $this->academic_year_id), 100);
 
         $this->render('pages/fees/refunds', array(
             'title'           => 'Payment Refunds',
@@ -743,12 +751,13 @@ class Fees extends MY_Controller {
         $export = $this->input->get('export');
 
         $filters = array(
-            'class_id'  => $this->input->get('class_id'),
-            'date_from' => $this->input->get('date_from'),
-            'date_to'   => $this->input->get('date_to'),
+            'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
+            'class_id'         => $this->input->get('class_id'),
+            'date_from'        => $this->input->get('date_from'),
+            'date_to'          => $this->input->get('date_to'),
         );
 
-        $classes = $this->Class_model->get_all(true);
+        $classes = $this->Class_model->get_all($filters['academic_year_id']);
         $report_data = array();
 
         if ($report_type === 'collection') {
