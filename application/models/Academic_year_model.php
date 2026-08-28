@@ -34,15 +34,29 @@ class Academic_year_model extends CI_Model {
 
     public function get_by_id($id)
     {
-        return $this->db
-            ->where($this->primaryKey, (int)$id)
+        static $cached_ids = [];
+        $id = (int)$id;
+        if (isset($cached_ids[$id])) {
+            return $cached_ids[$id];
+        }
+
+        $res = $this->db
+            ->where($this->primaryKey, $id)
             ->where('is_deleted', 'n')
             ->get($this->table)
             ->row();
+
+        $cached_ids[$id] = $res;
+        return $res;
     }
 
     public function get_active_year()
     {
+        static $cached_active = NULL;
+        if ($cached_active !== NULL) {
+            return $cached_active;
+        }
+
         $active = $this->db
             ->where('is_active', 1)
             ->where('status', 1)
@@ -61,6 +75,7 @@ class Academic_year_model extends CI_Model {
                 ->row();
         }
 
+        $cached_active = $active;
         return $active;
     }
 

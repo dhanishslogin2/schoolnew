@@ -150,7 +150,13 @@ class User_model extends CI_Model {
 
     public function get_by_id($id)
     {
-        return $this->db
+        static $cached_users = [];
+        $id = (int)$id;
+        if (isset($cached_users[$id])) {
+            return $cached_users[$id];
+        }
+
+        $res = $this->db
             ->select('u.user_id, u.name, u.username, u.email, u.phone, u.role_id, u.staff_id, u.student_id,
                       u.user_type, u.status, u.created_at, u.updated_at, u.is_deleted,
                       r.role_name, r.role_code,
@@ -164,6 +170,9 @@ class User_model extends CI_Model {
             ->where('u.is_deleted', 'n')
             ->get()
             ->row();
+
+        $cached_users[$id] = $res;
+        return $res;
     }
 
     /**
@@ -336,13 +345,21 @@ class User_model extends CI_Model {
      */
     public function get_effective_permissions($user_id)
     {
-        $user = $this->get_by_id($user_id);
+        static $_perm_cache = [];
+        $uid = (int)$user_id;
+        if (isset($_perm_cache[$uid])) {
+            return $_perm_cache[$uid];
+        }
+
+        $user = $this->get_by_id($uid);
         if (!$user) return [];
 
         // Super Admin has all system permissions enabled
         if ($user->role_name === 'Super Admin' || $user->role_code === 'SUPER_ADMIN' || (int)$user->role_id === 1) {
-            $all = $this->db->select('permission_key')->get('tbl_permissions')->result();
-            return array_map(function($r) { return $r->permission_key; }, $all);
+            $all = $this->db->select('permission_key')->where('is_deleted', 'n')->get('tbl_permissions')->result();
+            $res = array_map(function($r) { return $r->permission_key; }, $all);
+            $_perm_cache[$uid] = $res;
+            return $res;
         }
 
         // 1. Get Base Role Permissions
@@ -351,6 +368,7 @@ class User_model extends CI_Model {
             ->from('tbl_role_permissions rp')
             ->join('tbl_permissions p', 'p.permission_id = rp.permission_id')
             ->where('rp.role_id', $user->role_id)
+            ->where('rp.is_deleted', 'n')
             ->get()
             ->result();
         $permissions = array_map(function($r) { return $r->permission_key; }, $role_perms);
@@ -360,7 +378,8 @@ class User_model extends CI_Model {
             ->select('p.permission_key, up.override_type')
             ->from('tbl_user_permissions up')
             ->join('tbl_permissions p', 'p.permission_id = up.permission_id')
-            ->where('up.user_id', $user_id)
+            ->where('up.user_id', $uid)
+            ->where('up.is_deleted', 'n')
             ->get()
             ->result();
 
@@ -374,7 +393,9 @@ class User_model extends CI_Model {
             }
         }
 
-        return array_values(array_unique($permissions));
+        $result = array_values(array_unique($permissions));
+        $_perm_cache[$uid] = $result;
+        return $result;
     }
 
     public function get_user_overrides($user_id)

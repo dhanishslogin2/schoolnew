@@ -39,16 +39,29 @@ class Exam_model extends CI_Model {
 
         $results = $this->db->get()->result();
 
-        // Decode applicable classes
-        foreach ($results as $row) {
-            $row->class_ids = !empty($row->applicable_classes) ? json_decode($row->applicable_classes, TRUE) : [];
-            if (!is_array($row->class_ids)) $row->class_ids = [];
-            
-            if (!empty($row->class_ids)) {
-                $c_rows = $this->db->select('class_name')->where_in('class_id', $row->class_ids)->get('tbl_classes')->result();
-                $row->class_names = array_map(function($c) { return $c->class_name; }, $c_rows);
-            } else {
-                $row->class_names = ['All Classes'];
+        // Decode applicable classes efficiently without N+1 queries
+        if (!empty($results)) {
+            $class_lookup = [];
+            $all_classes = $this->db->select('class_id, class_name')->where('is_deleted', 'n')->get('tbl_classes')->result();
+            foreach ($all_classes as $cls) {
+                $class_lookup[$cls->class_id] = $cls->class_name;
+            }
+
+            foreach ($results as $row) {
+                $row->class_ids = !empty($row->applicable_classes) ? json_decode($row->applicable_classes, TRUE) : [];
+                if (!is_array($row->class_ids)) $row->class_ids = [];
+                
+                if (!empty($row->class_ids)) {
+                    $names = [];
+                    foreach ($row->class_ids as $cid) {
+                        if (isset($class_lookup[$cid])) {
+                            $names[] = $class_lookup[$cid];
+                        }
+                    }
+                    $row->class_names = !empty($names) ? $names : ['All Classes'];
+                } else {
+                    $row->class_names = ['All Classes'];
+                }
             }
         }
 

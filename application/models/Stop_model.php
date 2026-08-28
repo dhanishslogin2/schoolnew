@@ -21,14 +21,28 @@ class Stop_model extends CI_Model {
 
         $stops = $this->db->get()->result();
 
-        foreach ($stops as &$st) {
-            $st->students_count = (int)$this->db
-                ->where('status', 'Active')
-                ->group_start()
-                    ->where('pickup_stop_id', $st->stop_id)
-                    ->or_where('drop_stop_id', $st->stop_id)
-                ->group_end()
-                ->count_all_results('tbl_student_transport_assignments');
+        if (!empty($stops)) {
+            $student_counts = [];
+            $assign_res = $this->db->query("
+                SELECT pickup_stop_id as stop_id, COUNT(*) as cnt 
+                FROM tbl_student_transport_assignments 
+                WHERE status = 'Active' AND is_deleted = 'n' AND pickup_stop_id IS NOT NULL 
+                GROUP BY pickup_stop_id
+                UNION ALL
+                SELECT drop_stop_id as stop_id, COUNT(*) as cnt 
+                FROM tbl_student_transport_assignments 
+                WHERE status = 'Active' AND is_deleted = 'n' AND drop_stop_id IS NOT NULL AND drop_stop_id != pickup_stop_id 
+                GROUP BY drop_stop_id
+            ")->result();
+
+            foreach ($assign_res as $ar) {
+                $sid = (int)$ar->stop_id;
+                $student_counts[$sid] = ($student_counts[$sid] ?? 0) + (int)$ar->cnt;
+            }
+
+            foreach ($stops as &$st) {
+                $st->students_count = $student_counts[$st->stop_id] ?? 0;
+            }
         }
 
         return $stops;

@@ -21,16 +21,25 @@ class Route_model extends CI_Model {
 
         $routes = $this->db->get()->result();
 
-        foreach ($routes as &$r) {
-            $r->stops_count = (int)$this->db
-                ->where('route_id', $r->route_id)
-                ->where('status', 1)
-                ->count_all_results('tbl_route_stops');
+        if (!empty($routes)) {
+            // Batch calculate stops count
+            $stops_map = [];
+            $stops_res = $this->db->query("SELECT route_id, COUNT(*) as cnt FROM tbl_route_stops WHERE status = 1 AND is_deleted = 'n' GROUP BY route_id")->result();
+            foreach ($stops_res as $sr) {
+                $stops_map[$sr->route_id] = (int)$sr->cnt;
+            }
 
-            $r->students_count = (int)$this->db
-                ->where('route_id', $r->route_id)
-                ->where('status', 'Active')
-                ->count_all_results('tbl_student_transport_assignments');
+            // Batch calculate students count
+            $students_map = [];
+            $students_res = $this->db->query("SELECT route_id, COUNT(*) as cnt FROM tbl_student_transport_assignments WHERE status = 'Active' AND is_deleted = 'n' GROUP BY route_id")->result();
+            foreach ($students_res as $str) {
+                $students_map[$str->route_id] = (int)$str->cnt;
+            }
+
+            foreach ($routes as &$r) {
+                $r->stops_count = $stops_map[$r->route_id] ?? 0;
+                $r->students_count = $students_map[$r->route_id] ?? 0;
+            }
         }
 
         return $routes;
@@ -43,7 +52,8 @@ class Route_model extends CI_Model {
             ->from('tbl_transport_routes r')
             ->join('tbl_vehicles v', 'v.vehicle_id = r.assigned_vehicle_id', 'left')
             ->join('tbl_transport_drivers d', 'd.driver_id = r.assigned_driver_id', 'left')
-            ->where('r.' . $this->primaryKey, $id)
+            ->where('r.' . $this->primaryKey, (int)$id)
+            ->where('r.is_deleted', 'n')
             ->get()
             ->row();
 
@@ -51,11 +61,13 @@ class Route_model extends CI_Model {
             $r->stops_count = (int)$this->db
                 ->where('route_id', $r->route_id)
                 ->where('status', 1)
+                ->where('is_deleted', 'n')
                 ->count_all_results('tbl_route_stops');
 
             $r->students_count = (int)$this->db
                 ->where('route_id', $r->route_id)
                 ->where('status', 'Active')
+                ->where('is_deleted', 'n')
                 ->count_all_results('tbl_student_transport_assignments');
         }
 

@@ -389,8 +389,16 @@ class Transport extends MY_Controller {
                 return;
             }
 
+            $st_map = [];
+            if (!empty($student_ids)) {
+                $st_rows = $this->db->select('student_id, class_id, section_id')->where_in('student_id', $student_ids)->where('is_deleted', 'n')->get('tbl_students')->result();
+                foreach ($st_rows as $sr) {
+                    $st_map[$sr->student_id] = $sr;
+                }
+            }
+
             foreach ($student_ids as $sid) {
-                $st = $this->Student_model->get_by_id($sid);
+                $st = $st_map[$sid] ?? NULL;
                 $this->Transport_assignment_model->assign_student([
                     'academic_year_id' => $this->academic_year_id,
                     'student_id'       => $sid,

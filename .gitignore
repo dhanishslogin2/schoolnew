@@ -1,0 +1,15 @@
+# CodeIgniter gitignore
+/application/cache/*
+!/application/cache/index.html
+!/application/cache/sessions
+/application/cache/sessions/*
+!/application/cache/sessions/.htaccess
+!/application/cache/sessions/index.html
+
+/application/logs/*
+!/application/logs/index.html
+
+/uploads/*
+!/uploads/index.html
+
+scratch/cookie.txt

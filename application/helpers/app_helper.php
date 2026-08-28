@@ -253,6 +253,11 @@ if ( ! function_exists('get_current_academic_year'))
 {
     function get_current_academic_year()
     {
+        static $cached_year = NULL;
+        if ($cached_year !== NULL) {
+            return $cached_year;
+        }
+
         $CI =& get_instance();
         if (!isset($CI->Academic_year_model)) {
             $CI->load->model('Academic_year_model');
@@ -264,7 +269,8 @@ if ( ! function_exists('get_current_academic_year'))
             $year = $CI->Academic_year_model->get_active_year();
         }
 
-        return $year;
+        $cached_year = $year;
+        return $cached_year;
     }
 }
 
@@ -425,11 +431,17 @@ if ( ! function_exists('get_available_academic_years'))
 {
     function get_available_academic_years()
     {
+        static $cached_years = NULL;
+        if ($cached_years !== NULL) {
+            return $cached_years;
+        }
+
         $CI =& get_instance();
         if (!isset($CI->Academic_year_model)) {
             $CI->load->model('Academic_year_model');
         }
-        return $CI->Academic_year_model->get_available_years();
+        $cached_years = $CI->Academic_year_model->get_available_years();
+        return $cached_years;
     }
 }
 
@@ -443,12 +455,19 @@ if ( ! function_exists('can_change_academic_year'))
 {
     function can_change_academic_year($user_id = NULL)
     {
+        static $cached_can_change = [];
+        $cache_key = ($user_id === NULL) ? 'current' : (int)$user_id;
+        if (isset($cached_can_change[$cache_key])) {
+            return $cached_can_change[$cache_key];
+        }
+
         $CI =& get_instance();
         if (!isset($CI->rbac)) {
             $CI->load->library('Rbac');
         }
 
         if ($CI->rbac->is_super_admin($user_id)) {
+            $cached_can_change[$cache_key] = TRUE;
             return TRUE;
         }
 
@@ -470,12 +489,16 @@ if ( ! function_exists('can_change_academic_year'))
         $role_code_clean = strtoupper(trim((string)$role_code));
 
         if (in_array($role_name_clean, ['super admin', 'principal', 'admin']) || in_array($role_code_clean, ['SUPER_ADMIN', 'PRINCIPAL', 'ADMIN'])) {
+            $cached_can_change[$cache_key] = TRUE;
             return TRUE;
         }
 
-        return $CI->rbac->has_permission('academics.edit', $user_id)
+        $res = ($CI->rbac->has_permission('academics.edit', $user_id)
             || $CI->rbac->has_permission('academics.manage', $user_id)
-            || $CI->rbac->has_permission('academic_year.change', $user_id);
+            || $CI->rbac->has_permission('academic_year.change', $user_id));
+
+        $cached_can_change[$cache_key] = $res;
+        return $res;
     }
 }
 

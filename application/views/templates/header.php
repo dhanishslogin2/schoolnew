@@ -2,16 +2,15 @@
 <html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title><?php echo html_escape($title); ?> - School Management</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script src="<?php echo base_url('assets/vendor/tailwind.min.js'); ?>"></script>
+<link href="<?php echo base_url('assets/fonts/material-symbols.css'); ?>" rel="stylesheet"/>
+<link href="<?php echo base_url('assets/fonts/inter.css'); ?>" rel="stylesheet"/>
+<link href="<?php echo base_url('assets/vendor/datatables/jquery.dataTables.min.css'); ?>" rel="stylesheet"/>
+<link href="<?php echo base_url('assets/vendor/datatables/responsive.dataTables.min.css'); ?>" rel="stylesheet"/>
 <link href="<?php echo base_url('assets/app.css'); ?>" rel="stylesheet"/>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css"/>
-<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css"/>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="<?php echo base_url('assets/vendor/jquery.min.js'); ?>"></script>
+<script src="<?php echo base_url('assets/vendor/datatables/jquery.dataTables.min.js'); ?>"></script>
+<script src="<?php echo base_url('assets/vendor/datatables/dataTables.responsive.min.js'); ?>"></script>
 <script id="tailwind-config">
 tailwind.config = {
     darkMode: "class",

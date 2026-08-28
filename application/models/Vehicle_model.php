@@ -21,14 +21,19 @@ class Vehicle_model extends CI_Model {
 
         $vehicles = $this->db->get()->result();
 
-        // Calculate occupancy for each vehicle
-        foreach ($vehicles as &$v) {
-            $v->occupied_seats = (int)$this->db
-                ->where('vehicle_id', $v->vehicle_id)
-                ->where('status', 'Active')
-                ->count_all_results('tbl_student_transport_assignments');
-            $v->available_seats = max(0, (int)$v->seating_capacity - $v->occupied_seats);
-            $v->occupancy_rate = ($v->seating_capacity > 0) ? round(($v->occupied_seats / $v->seating_capacity) * 100, 1) : 0;
+        if (!empty($vehicles)) {
+            // Batch calculate occupied seats
+            $occupied_map = [];
+            $assign_res = $this->db->query("SELECT vehicle_id, COUNT(*) as cnt FROM tbl_student_transport_assignments WHERE status = 'Active' AND is_deleted = 'n' GROUP BY vehicle_id")->result();
+            foreach ($assign_res as $ar) {
+                $occupied_map[$ar->vehicle_id] = (int)$ar->cnt;
+            }
+
+            foreach ($vehicles as &$v) {
+                $v->occupied_seats = $occupied_map[$v->vehicle_id] ?? 0;
+                $v->available_seats = max(0, (int)$v->seating_capacity - $v->occupied_seats);
+                $v->occupancy_rate = ($v->seating_capacity > 0) ? round(($v->occupied_seats / $v->seating_capacity) * 100, 1) : 0;
+            }
         }
 
         return $vehicles;

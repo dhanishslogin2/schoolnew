@@ -4,9 +4,9 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Login - School Management</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script src="<?php echo base_url('assets/vendor/tailwind.min.js'); ?>"></script>
+<link href="<?php echo base_url('assets/fonts/material-symbols.css'); ?>" rel="stylesheet"/>
+<link href="<?php echo base_url('assets/fonts/inter.css'); ?>" rel="stylesheet"/>
 <link href="<?php echo base_url('assets/app.css'); ?>" rel="stylesheet"/>
 <script id="tailwind-config">
         tailwind.config = {
