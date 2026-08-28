@@ -54,7 +54,7 @@
 </head>
 <body class="bg-background text-on-background min-h-screen flex items-center justify-center login-bg p-4 font-body-lg" data-page="login">
 <?php if ($this->session->flashdata('error')): ?>
-<div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-error-container text-on-error-container px-4 py-2.5 rounded-lg shadow-sm text-body-md font-body-md">
+<div data-testid="login-error" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-error-container text-on-error-container px-4 py-2.5 rounded-lg shadow-sm text-body-md font-body-md">
   <?php echo html_escape($this->session->flashdata('error')); ?>
 </div>
 <?php endif; ?>
@@ -68,14 +68,14 @@
 <h1 class="font-headline-lg text-headline-lg text-primary">School</h1>
 <p class="font-body-md text-body-md text-on-surface-variant mt-2">Sign in to access your administrative dashboard.</p>
 </div>
-<?php echo form_open('auth/login', array('id' => 'login-form', 'class' => 'space-y-6')); ?>
+<?php echo form_open('auth/login', array('id' => 'login-form', 'class' => 'space-y-6', 'data-testid' => 'login-form')); ?>
 <div>
 <label class="block font-label-md text-label-md text-on-surface mb-2" for="email">Email Address or Username</label>
 <div class="relative">
 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
 <span class="material-symbols-outlined text-on-surface-variant/70 text-sm">person</span>
 </div>
-<input class="block w-full pl-10 pr-3 py-2.5 border border-outline-variant rounded-lg bg-surface-container-lowest text-on-surface font-body-md text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary transition-colors placeholder-on-surface-variant/50" id="email" name="email" placeholder="Email address or username" required="" type="text" value="<?php echo set_value('email'); ?>"/>
+<input data-testid="login-email" class="block w-full pl-10 pr-3 py-2.5 border border-outline-variant rounded-lg bg-surface-container-lowest text-on-surface font-body-md text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary transition-colors placeholder-on-surface-variant/50" id="email" name="email" placeholder="Email address or username" required="" type="text" value="<?php echo set_value('email'); ?>"/>
 </div>
 </div>
 <div>
@@ -84,7 +84,7 @@
 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
 <span class="material-symbols-outlined text-on-surface-variant/70 text-sm">lock</span>
 </div>
-<input class="block w-full pl-10 pr-3 py-2.5 border border-outline-variant rounded-lg bg-surface-container-lowest text-on-surface font-body-md text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary transition-colors placeholder-on-surface-variant/50" id="password" name="password" placeholder="••••••••" required="" type="password"/>
+<input data-testid="login-password" class="block w-full pl-10 pr-3 py-2.5 border border-outline-variant rounded-lg bg-surface-container-lowest text-on-surface font-body-md text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary transition-colors placeholder-on-surface-variant/50" id="password" name="password" placeholder="••••••••" required="" type="password"/>
 </div>
 </div>
 <div class="flex items-center justify-between">
@@ -101,7 +101,7 @@
 </div>
 </div>
 <div>
-<button class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm font-label-md text-label-md text-on-secondary bg-secondary hover:bg-on-secondary-fixed-variant focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary transition-colors duration-200 active:scale-[0.98]" type="submit">
+<button data-testid="login-submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm font-label-md text-label-md text-on-secondary bg-secondary hover:bg-on-secondary-fixed-variant focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary transition-colors duration-200 active:scale-[0.98]" type="submit">
                         Sign In
                     </button>
 </div>

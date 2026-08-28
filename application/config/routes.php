@@ -66,6 +66,7 @@ $route['students']            = 'students/overview';
 $route['students/overview']   = 'students/overview';
 $route['students/list']       = 'students/list_students';
 $route['students/register']   = 'students/register';
+$route['students/add']        = 'students/add';
 $route['students/admissions'] = 'students/admissions';
 $route['students/roll']       = 'students/index';
 $route['students/roll_numbers']= 'students/index';

@@ -1,6 +1,6 @@
 <?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
 
-    <?php echo form_open('students/add', array('id' => 'student-add-form')); ?>
+    <?php echo form_open('students/add', array('id' => 'student-add-form', 'data-testid' => 'student-add-form')); ?>
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
         <h2 class="font-headline-md text-headline-md text-on-surface">Student Admission</h2>
@@ -27,17 +27,17 @@
       
     <div class="">
       <label class="block font-label-md text-label-md text-on-surface mb-1.5">Admission Number <span class="text-error">*</span></label>
-      <input type="text" name="admission_number" required value="EDU<?php echo date('Y') . sprintf('%03d', rand(10, 999)); ?>" placeholder="e.g. EDU2026009" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
+      <input data-testid="student-admission-no" type="text" name="admission_number" required value="EDU<?php echo date('Y') . sprintf('%03d', rand(10, 999)); ?>" placeholder="e.g. EDU2026009" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
     </div>
       
     <div class="">
       <label class="block font-label-md text-label-md text-on-surface mb-1.5">First Name <span class="text-error">*</span></label>
-      <input type="text" name="first_name" required placeholder="e.g. Aarav" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
+      <input data-testid="student-first-name" type="text" name="first_name" required placeholder="e.g. Aarav" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
     </div>
       
     <div class="">
       <label class="block font-label-md text-label-md text-on-surface mb-1.5">Last Name</label>
-      <input type="text" name="last_name" placeholder="e.g. Nair" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
+      <input data-testid="student-last-name" type="text" name="last_name" placeholder="e.g. Nair" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
     </div>
       
     <div class="">
@@ -70,7 +70,7 @@
       
     <div class="">
       <label class="block font-label-md text-label-md text-on-surface mb-1.5">Class</label>
-      <select name="class_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
+      <select data-testid="student-class-select" name="class_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
         <?php foreach ($classes as $cls): ?>
           <option value="<?php echo $cls->class_id; ?>"><?php echo html_escape($cls->class_name); ?></option>
         <?php endforeach; ?>
@@ -79,7 +79,7 @@
       
     <div class="">
       <label class="block font-label-md text-label-md text-on-surface mb-1.5">Section</label>
-      <select name="section_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
+      <select data-testid="student-section-select" name="section_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
         <?php foreach ($sections as $sec): ?>
           <option value="<?php echo $sec->section_id; ?>"><?php echo html_escape($sec->class_name . ' ' . $sec->section_name); ?></option>
         <?php endforeach; ?>
@@ -98,7 +98,7 @@
       
     <div class="">
       <label class="block font-label-md text-label-md text-on-surface mb-1.5">Guardian Phone</label>
-      <input type="text" name="guardian_phone" placeholder="+91 98470 11223" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
+      <input data-testid="student-guardian-phone" type="text" name="guardian_phone" placeholder="+91 98470 11223" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
     </div>
       
     <div class="sm:col-span-2">
@@ -108,7 +108,7 @@
     </div>
     <div class="flex justify-end gap-3 mt-6 pt-5 border-t border-outline-variant/50">
       <a href="<?php echo site_url('students'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md text-label-md hover:bg-surface-container-high transition-colors">Cancel</a>
-      <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md text-label-md hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer"><span class="material-symbols-outlined text-[18px]">check</span>Save Student</button>
+      <button data-testid="student-submit-btn" type="submit" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md text-label-md hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer"><span class="material-symbols-outlined text-[18px]">check</span>Save Student</button>
     </div>
   </div>
     </div>

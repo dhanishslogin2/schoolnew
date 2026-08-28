@@ -32,9 +32,9 @@
       <form method="get" action="<?php echo site_url('fees/collection'); ?>" class="flex flex-col sm:flex-row items-center gap-3">
         <div class="relative flex-1 w-full">
           <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-          <input type="text" name="search" value="<?php echo html_escape($search ?? ''); ?>" placeholder="Search student by Name, Admission Number, or Roll Number..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+          <input data-testid="fee-search-input" type="text" name="search" value="<?php echo html_escape($search ?? ''); ?>" placeholder="Search student by Name, Admission Number, or Roll Number..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
         </div>
-        <button type="submit" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-primary text-on-primary text-label-md font-semibold hover:bg-primary/90 transition-colors shrink-0 flex items-center justify-center gap-1.5 cursor-pointer">
+        <button data-testid="fee-search-btn" type="submit" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-primary text-on-primary text-label-md font-semibold hover:bg-primary/90 transition-colors shrink-0 flex items-center justify-center gap-1.5 cursor-pointer">
           <span class="material-symbols-outlined text-[18px]">search</span>Find Student
         </button>
       </form>
@@ -42,7 +42,7 @@
 
     <?php if ($student_info): ?>
       <!-- Student Overview Card -->
-      <div class="p-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 mb-6">
+      <div data-testid="fee-student-card" class="p-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 mb-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-outline-variant/50 mb-4">
           <div class="flex items-center gap-3">
             <div class="w-12 h-12 rounded-full bg-primary text-on-primary font-bold text-lg flex items-center justify-center shrink-0">
@@ -64,37 +64,52 @@
         </div>
 
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-body-md">
-          <div><span class="text-[12px] text-on-surface-variant block">Class & Section</span><strong class="text-on-surface"><?php echo html_escape($student_info->class_name . ' ' . $student_info->section_name); ?></strong></div>
-          <div><span class="text-[12px] text-on-surface-variant block">Roll Number</span><strong class="text-primary font-mono"><?php echo html_escape($student_info->roll_number ?: '—'); ?></strong></div>
-          <div><span class="text-[12px] text-on-surface-variant block">Parent / Guardian</span><strong class="text-on-surface"><?php echo html_escape($student_info->guardian_name ?: 'Parent'); ?></strong></div>
-          <div><span class="text-[12px] text-on-surface-variant block">Guardian Phone</span><strong class="text-on-surface font-mono"><?php echo html_escape($student_info->guardian_phone ?: '—'); ?></strong></div>
+          <div class="p-3 bg-surface-container-low rounded-xl">
+            <span class="text-on-surface-variant text-[12px] block">Class & Section</span>
+            <span class="font-semibold text-on-surface"><?php echo html_escape(($student_info->class_name ?? '') . ' - ' . ($student_info->section_name ?? '')); ?></span>
+          </div>
+          <div class="p-3 bg-surface-container-low rounded-xl">
+            <span class="text-on-surface-variant text-[12px] block">Roll Number</span>
+            <span class="font-semibold text-on-surface"><?php echo html_escape($student_info->roll_number ?? '—'); ?></span>
+          </div>
+          <div class="p-3 bg-surface-container-low rounded-xl">
+            <span class="text-on-surface-variant text-[12px] block">Guardian Name</span>
+            <span class="font-semibold text-on-surface"><?php echo html_escape($student_info->guardian_name ?? '—'); ?></span>
+          </div>
+          <div class="p-3 bg-surface-container-low rounded-xl">
+            <span class="text-on-surface-variant text-[12px] block">Contact Phone</span>
+            <span class="font-semibold text-on-surface"><?php echo html_escape($student_info->guardian_phone ?? '—'); ?></span>
+          </div>
         </div>
       </div>
 
-      <!-- Outstanding Fees List & Pay Section -->
+      <!-- Fees List & Collection Actions -->
       <div class="elevation-1 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 overflow-hidden mb-6">
-        <div class="p-4 border-b border-outline-variant/50 flex items-center justify-between">
-          <span class="text-body-md font-semibold text-on-surface">Outstanding Fee Items (<?php echo count($student_fees); ?> Invoices)</span>
+        <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/50">
+          <h3 class="font-headline-md text-title-md font-semibold text-on-surface">Assigned Fee Schedule & Invoices</h3>
+          <span class="text-body-md text-on-surface-variant"><?php echo count($student_fees); ?> Fee Items</span>
         </div>
 
         <div class="table-scroll overflow-x-auto">
-          <table class="w-full data-table zebra border-collapse text-body-md">
+          <table class="w-full data-table border-collapse text-body-md">
             <thead>
               <tr class="border-b border-outline-variant/60 bg-surface-container-low/50">
-                <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Invoice #</th>
-                <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Fee Category</th>
-                <th class="text-right px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Original</th>
-                <th class="text-right px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Discount</th>
-                <th class="text-right px-4 py-3 text-label-md font-semibold text-secondary uppercase whitespace-nowrap">Paid</th>
-                <th class="text-right px-4 py-3 text-label-md font-semibold text-error uppercase whitespace-nowrap">Outstanding Due</th>
-                <th class="text-center px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Due Date</th>
-                <th class="text-center px-4 py-3 text-label-md font-semibold text-on-surface uppercase whitespace-nowrap">Status</th>
-                <th class="text-center px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Action</th>
+                <th class="px-4 py-3 text-left font-semibold text-on-surface-variant uppercase text-[11px] tracking-wider">Invoice #</th>
+                <th class="px-4 py-3 text-left font-semibold text-on-surface-variant uppercase text-[11px] tracking-wider">Fee Category</th>
+                <th class="px-4 py-3 text-right font-semibold text-on-surface-variant uppercase text-[11px] tracking-wider">Original Fee</th>
+                <th class="px-4 py-3 text-right font-semibold text-on-surface-variant uppercase text-[11px] tracking-wider">Discount</th>
+                <th class="px-4 py-3 text-right font-semibold text-on-surface-variant uppercase text-[11px] tracking-wider">Paid</th>
+                <th class="px-4 py-3 text-right font-semibold text-on-surface-variant uppercase text-[11px] tracking-wider">Balance Due</th>
+                <th class="px-4 py-3 text-center font-semibold text-on-surface-variant uppercase text-[11px] tracking-wider">Due Date</th>
+                <th class="px-4 py-3 text-center font-semibold text-on-surface-variant uppercase text-[11px] tracking-wider">Status</th>
+                <th class="px-4 py-3 text-center font-semibold text-on-surface-variant uppercase text-[11px] tracking-wider">Action</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-outline-variant/40">
               <?php if (empty($student_fees)): ?>
-                <tr><td colspan="9" class="px-4 py-6 text-center text-on-surface-variant">No fee records found for this student.</td></tr>
+                <tr>
+                  <td colspan="9" class="px-4 py-8 text-center text-on-surface-variant">No fee records found for this student.</td>
+                </tr>
               <?php else: ?>
                 <?php foreach ($student_fees as $sf): ?>
                   <tr class="hover:bg-surface-container-low transition-colors">
@@ -112,7 +127,7 @@
                     </td>
                     <td class="px-4 py-3 text-center whitespace-nowrap">
                       <?php if ($sf->due_amount > 0): ?>
-                        <button type="button" onclick='openPaymentModal(<?php echo json_encode($sf); ?>)' class="inline-flex items-center gap-1 px-4 py-1.5 rounded-lg bg-secondary text-on-secondary hover:bg-on-secondary-fixed-variant transition-colors text-[12px] font-semibold cursor-pointer shadow-sm">
+                        <button data-testid="fee-pay-now-btn" type="button" onclick='openPaymentModal(<?php echo json_encode($sf); ?>)' class="inline-flex items-center gap-1 px-4 py-1.5 rounded-lg bg-secondary text-on-secondary hover:bg-on-secondary-fixed-variant transition-colors text-[12px] font-semibold cursor-pointer shadow-sm">
                           <span class="material-symbols-outlined text-[16px]">payments</span>Pay Now
                         </button>
                       <?php else: ?>
@@ -174,11 +189,11 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Amount to Pay (₹) *</label>
-              <input type="number" step="0.5" min="1" name="amount_to_pay" id="pay-amount-input" required class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-mono font-bold text-secondary focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+              <input data-testid="payment-amount-input" type="number" step="0.5" min="1" name="amount_to_pay" id="pay-amount-input" required class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-mono font-bold text-secondary focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
             </div>
             <div>
               <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Payment Method *</label>
-              <select name="payment_mode" required class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+              <select data-testid="payment-mode-select" name="payment_mode" required class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
                 <option value="Cash" selected>Cash</option>
                 <option value="UPI">UPI / QR Code</option>
                 <option value="Card">Credit / Debit Card</option>
@@ -192,24 +207,24 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Transaction / Ref #</label>
-              <input type="text" name="transaction_reference" placeholder="e.g. UPI/2026/89472" class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-mono focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+              <input data-testid="payment-reference-input" type="text" name="transaction_reference" placeholder="e.g. UPI/2026/89472" class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-mono focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
             </div>
             <div>
               <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Payment Date *</label>
-              <input type="date" name="payment_date" value="<?php echo date('Y-m-d'); ?>" required class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+              <input data-testid="payment-date-input" type="date" name="payment_date" value="<?php echo date('Y-m-d'); ?>" required class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
             </div>
           </div>
 
           <div>
             <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Remarks / Counter Note</label>
-            <input type="text" name="remarks" placeholder="Optional notes for this payment..." class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+            <input data-testid="payment-remarks-input" type="text" name="remarks" placeholder="Optional notes for this payment..." class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
           </div>
 
           <div class="flex items-center justify-end gap-2 pt-4 border-t border-outline-variant/50">
             <button type="button" onclick="closePaymentModal()" class="px-4 py-2 rounded-lg bg-surface-container-high text-on-surface text-label-md font-medium hover:bg-surface-container-highest cursor-pointer">
               Cancel
             </button>
-            <button type="submit" class="px-6 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
+            <button data-testid="payment-submit-btn" type="submit" class="px-6 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
               Confirm & Collect Payment
             </button>
           </div>

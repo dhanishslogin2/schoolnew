@@ -1202,7 +1202,7 @@ function renderHeader(pageKey, breadcrumb) {
       <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-low border border-outline-variant/70 text-on-surface">
         <span class="material-symbols-outlined text-[18px] text-secondary">calendar_month</span>
         <label for="global-academic-year-select" class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant hidden sm:inline">Academic Year:</label>
-        <select id="global-academic-year-select" data-current-year="${CURRENT_ACADEMIC_YEAR_ID}" class="bg-transparent border-0 py-0.5 pl-1 pr-6 text-[13px] font-semibold text-secondary focus:ring-0 focus:outline-none cursor-pointer transition-opacity">
+        <select data-testid="academic-year-select" id="global-academic-year-select" data-current-year="${CURRENT_ACADEMIC_YEAR_ID}" class="bg-transparent border-0 py-0.5 pl-1 pr-6 text-[13px] font-semibold text-secondary focus:ring-0 focus:outline-none cursor-pointer transition-opacity">
           ${options}
         </select>
       </div>
@@ -1218,7 +1218,7 @@ function renderHeader(pageKey, breadcrumb) {
   }
 
   return `
-  <header class="sticky top-0 z-20 h-16 bg-surface-container-lowest/90 backdrop-blur border-b border-outline-variant/60 flex items-center gap-3 px-4 lg:px-6">
+  <header data-testid="app-header" class="sticky top-0 z-20 h-16 bg-surface-container-lowest/90 backdrop-blur border-b border-outline-variant/60 flex items-center gap-3 px-4 lg:px-6">
     <button id="sidebar-open-btn" type="button" class="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg hover:bg-surface-container-high text-on-surface-variant shrink-0">
       ${iconSpan("menu", "text-[22px]")}
     </button>
@@ -1243,15 +1243,15 @@ function renderHeader(pageKey, breadcrumb) {
         <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error ring-2 ring-surface-container-lowest"></span>
       </button>
       <div class="relative">
-        <button id="profile-menu-btn" type="button" class="flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-lg hover:bg-surface-container-high transition-colors">
+        <button data-testid="profile-menu-btn" id="profile-menu-btn" type="button" class="flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-lg hover:bg-surface-container-high transition-colors">
           <div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-label-md text-label-md font-semibold">${CURRENT_USER.initials}</div>
           <div class="hidden sm:block text-left leading-tight">
-            <div class="text-body-md font-body-md font-medium text-on-surface">${CURRENT_USER.name}</div>
+            <div data-testid="current-user-name" class="text-body-md font-body-md font-medium text-on-surface">${CURRENT_USER.name}</div>
             <div class="text-[11px] text-on-surface-variant">${CURRENT_USER.role}</div>
           </div>
           ${iconSpan("expand_more", "hidden sm:block text-[18px] text-on-surface-variant")}
         </button>
-        <div id="profile-menu" class="hidden absolute right-0 mt-2 w-56 rounded-xl border border-outline-variant/60 bg-surface-container-lowest shadow-[0_10px_15px_-3px_rgba(0,0,0,0.08)] py-2 z-30">
+        <div data-testid="profile-menu" id="profile-menu" class="hidden absolute right-0 mt-2 w-56 rounded-xl border border-outline-variant/60 bg-surface-container-lowest shadow-[0_10px_15px_-3px_rgba(0,0,0,0.08)] py-2 z-30">
           <div class="px-3.5 py-2 border-b border-outline-variant/60">
             <div class="text-body-md font-body-md font-medium text-on-surface">${CURRENT_USER.name}</div>
             <div class="text-[12px] text-on-surface-variant truncate">${CURRENT_USER.email}</div>
@@ -1260,7 +1260,7 @@ function renderHeader(pageKey, breadcrumb) {
           <a href="${url("settings")}" class="flex items-center gap-2.5 px-3.5 py-2 text-body-md font-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface">${iconSpan("settings", "text-[18px]")} School Settings</a>
           <a href="${url("user-management")}" class="flex items-center gap-2.5 px-3.5 py-2 text-body-md font-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface">${iconSpan("manage_accounts", "text-[18px]")} User Management</a>
           <div class="my-1 border-t border-outline-variant/60"></div>
-          <a href="${url("logout")}" class="flex items-center gap-2.5 px-3.5 py-2 text-body-md font-body-md text-error hover:bg-error-container/40">${iconSpan("logout", "text-[18px]")} Log Out</a>
+          <a data-testid="logout-btn" href="${url("logout")}" class="flex items-center gap-2.5 px-3.5 py-2 text-body-md font-body-md text-error hover:bg-error-container/40">${iconSpan("logout", "text-[18px]")} Log Out</a>
         </div>
       </div>
     </div>
