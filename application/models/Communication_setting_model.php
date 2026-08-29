@@ -19,7 +19,7 @@ class Communication_setting_model extends CI_Model {
                 'sms_provider'                    => 'Generic SMS Gateway',
                 'sms_sender_id'                   => 'SCHOLL',
                 'whatsapp_provider'               => 'WhatsApp Business API',
-                'email_from_name'                 => 'School Management',
+                'email_from_name'                 => 'Login2 Management',
                 'email_from_address'              => 'notifications@school.edu',
                 'enable_scheduled_jobs'           => 1,
                 'max_retries'                     => 3,

@@ -2,6 +2,7 @@
 <html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title><?php echo html_escape(($title ?? 'Dashboard') . ' - Login2'); ?></title>
 <script src="<?php echo base_url('assets/vendor/tailwind.min.js'); ?>"></script>
 <link href="<?php echo base_url('assets/fonts/material-symbols.css'); ?>" rel="stylesheet"/>
 <link href="<?php echo base_url('assets/fonts/inter.css'); ?>" rel="stylesheet"/>

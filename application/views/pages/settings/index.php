@@ -29,7 +29,7 @@
       
     <div class="">
       <label class="block font-label-md text-label-md text-on-surface mb-1.5">School Name</label>
-      <input type="text" name="school_name" value="<?php echo html_escape(isset($settings->school_name) ? $settings->school_name : ''); ?>" placeholder="School Public School" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
+      <input type="text" name="school_name" value="<?php echo html_escape(isset($settings->school_name) ? $settings->school_name : ''); ?>" placeholder="Login2 Public School" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
     </div>
       
     <div class="">

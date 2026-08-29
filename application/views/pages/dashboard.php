@@ -12,7 +12,7 @@
       Welcome back, <?php echo html_escape($current_user->name ?? 'User'); ?>
     </h2>
     <p class="text-body-md font-body-md text-on-surface-variant mt-1">
-      Here's what's happening across your school today &mdash; <?php echo date('d M Y', strtotime($today)); ?>.
+      Here's what's happening across Login2 today &mdash; <?php echo date('d M Y', strtotime($today)); ?>.
     </p>
   </div>
   <div class="flex items-center gap-2 shrink-0">

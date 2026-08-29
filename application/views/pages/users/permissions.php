@@ -4,7 +4,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
         <h2 class="font-headline-md text-headline-md text-on-surface">Permissions Catalog</h2>
-        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Full registry of granular permissions across all 16 School Management modules.</p>
+        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Full registry of granular permissions across all 16 Login2 Management modules.</p>
       </div>
       <div class="flex items-center gap-2">
         <a href="<?php echo site_url('users/roles'); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-outline-variant text-on-surface bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors">

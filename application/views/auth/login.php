@@ -3,7 +3,7 @@
 <html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Login - School Management</title>
+<title>Login - Login2 Management</title>
 <script src="<?php echo base_url('assets/vendor/tailwind.min.js'); ?>"></script>
 <link href="<?php echo base_url('assets/fonts/material-symbols.css'); ?>" rel="stylesheet"/>
 <link href="<?php echo base_url('assets/fonts/inter.css'); ?>" rel="stylesheet"/>
@@ -65,7 +65,7 @@
 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-fixed mb-4">
 <span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">school</span>
 </div>
-<h1 class="font-headline-lg text-headline-lg text-primary">School</h1>
+<h1 class="font-headline-lg text-headline-lg text-primary">Login2</h1>
 <p class="font-body-md text-body-md text-on-surface-variant mt-2">Sign in to access your administrative dashboard.</p>
 </div>
 <?php echo form_open('auth/login', array('id' => 'login-form', 'class' => 'space-y-6', 'data-testid' => 'login-form')); ?>

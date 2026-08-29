@@ -1158,7 +1158,7 @@ function renderSidebar(activeKey) {
       <div class="w-9 h-9 rounded-full bg-white/15 text-white flex items-center justify-center shrink-0">
         ${iconSpan("school", "text-white text-[20px]")}
       </div>
-      <a href="${url("dashboard")}" class="sidebar-label font-headline-md text-headline-md text-white font-bold tracking-tight truncate">School</a>
+      <a href="${url("dashboard")}" class="sidebar-label font-headline-md text-headline-md text-white font-bold tracking-tight truncate">Login2</a>
       <button id="sidebar-collapse-btn" type="button" class="ml-auto hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors">
         ${iconSpan("dock_to_right", "text-[20px]")}
       </button>
@@ -1177,7 +1177,7 @@ function renderSidebar(activeKey) {
 }
 
 function renderHeader(pageKey, breadcrumb) {
-  const title = PAGE_TITLES[pageKey] || "School";
+  const title = PAGE_TITLES[pageKey] || "Login2";
   const crumbHtml = (breadcrumb && breadcrumb.length ? breadcrumb : ["Dashboard", title])
     .map((c, i, arr) => (i === arr.length - 1
       ? `<span class="text-on-surface font-medium">${c}</span>`

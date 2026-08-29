@@ -132,7 +132,7 @@ class MY_Controller extends CI_Controller {
     {
         $uid = (int)($this->current_user->user_id ?? 0);
 
-        $data['title']               = $data['title'] ?? 'School';
+        $data['title']               = $data['title'] ?? 'Login2';
         
         // Auto-determine page_key if not explicitly specified in the controller
         if (empty($data['page_key'])) {
