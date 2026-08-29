@@ -225,106 +225,148 @@ class Students extends MY_Controller {
     ───────────────────────────────────────────────────────────────────────── */
     public function wizard_photo_upload()
     {
-        $this->require_permission('students.create');
+        try {
+            $this->require_permission('students.create');
 
-        if ($this->input->method() !== 'post') {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Invalid request.')));
-            return;
-        }
-
-        if (empty($_FILES['student_image']['name'])) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please select an image to upload.')));
-            return;
-        }
-
-        if ($_FILES['student_image']['error'] !== UPLOAD_ERR_OK) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Upload error. Please try again.')));
-            return;
-        }
-
-        // 1. Check extension whitelist (jpg, jpeg, png)
-        $orig_name = $_FILES['student_image']['name'];
-        $ext = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
-        $allowed_ext = array('jpg', 'jpeg', 'png');
-
-        if (!in_array($ext, $allowed_ext)) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
-            return;
-        }
-
-        // 2. MIME type check via finfo and getimagesize
-        $allowed_mime = array('image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/x-png');
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mime = finfo_file($finfo, $_FILES['student_image']['tmp_name']);
-        finfo_close($finfo);
-
-        if (!in_array($mime, $allowed_mime)) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
-            return;
-        }
-
-        // Validate image dimensions / header to verify it is truly a valid image
-        $img_info = @getimagesize($_FILES['student_image']['tmp_name']);
-        if ($img_info === FALSE) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
-            return;
-        }
-
-        // 3. Size check: 10 MB maximum
-        $max_size = 10 * 1024 * 1024;
-        if ($_FILES['student_image']['size'] > $max_size) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Student image must not exceed 10 MB.')));
-            return;
-        }
-
-        // 4. Safe unique filename & temporary storage
-        $safe_name = 'photo_temp_' . time() . '_' . bin2hex(random_bytes(6)) . '.' . ($ext === 'jpeg' ? 'jpg' : $ext);
-        $temp_dir = FCPATH . 'uploads/photo_temp/';
-
-        if (!is_dir($temp_dir)) {
-            mkdir($temp_dir, 0755, TRUE);
-        }
-
-        if (!move_uploaded_file($_FILES['student_image']['tmp_name'], $temp_dir . $safe_name)) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Failed to store image. Please try again.')));
-            return;
-        }
-
-        // Clean up any previously uploaded temp photo for this wizard session
-        $wizard = $this->session->userdata('student_registration_wizard') ?: array();
-        $old_sd = isset($wizard['student_details']) ? $wizard['student_details'] : array();
-        if (!empty($old_sd['photo_temp_path'])) {
-            $old_file = FCPATH . $old_sd['photo_temp_path'];
-            if (is_file($old_file) && $old_file !== ($temp_dir . $safe_name)) {
-                @unlink($old_file);
+            if ($this->input->method() !== 'post') {
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Invalid request.')));
+                return;
             }
+
+            if (empty($_FILES['student_image']['name'])) {
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please select an image to upload.')));
+                return;
+            }
+
+            $upload_err = isset($_FILES['student_image']['error']) ? (int)$_FILES['student_image']['error'] : UPLOAD_ERR_NO_FILE;
+            if ($upload_err !== UPLOAD_ERR_OK) {
+                $err_msg = 'Upload error. Please try again.';
+                if ($upload_err === UPLOAD_ERR_INI_SIZE || $upload_err === UPLOAD_ERR_FORM_SIZE) {
+                    $err_msg = 'Student image must not exceed 10 MB.';
+                } elseif ($upload_err === UPLOAD_ERR_NO_FILE) {
+                    $err_msg = 'Please select an image to upload.';
+                }
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => $err_msg)));
+                return;
+            }
+
+            // 1. Check extension whitelist (jpg, jpeg, png)
+            $orig_name = $_FILES['student_image']['name'];
+            $ext = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
+            $allowed_ext = array('jpg', 'jpeg', 'png');
+
+            if (!in_array($ext, $allowed_ext, TRUE)) {
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
+                return;
+            }
+
+            // 2. Binary Image Structure & MIME Validation (PHP core getimagesize — works without ext-fileinfo)
+            $img_info = @getimagesize($_FILES['student_image']['tmp_name']);
+            if ($img_info === FALSE) {
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
+                return;
+            }
+
+            // Validate detected image type constant and MIME string
+            $detected_type = isset($img_info[2]) ? $img_info[2] : 0;
+            $detected_mime = isset($img_info['mime']) ? strtolower($img_info['mime']) : '';
+            $allowed_types = array(IMAGETYPE_JPEG, IMAGETYPE_PNG);
+            $allowed_mimes = array('image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/x-png');
+
+            if (!in_array($detected_type, $allowed_types, TRUE) || !in_array($detected_mime, $allowed_mimes, TRUE)) {
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
+                return;
+            }
+
+            // Additional fileinfo/mime_content_type check if available on the server
+            if (function_exists('finfo_open') && function_exists('finfo_file')) {
+                $finfo = @finfo_open(FILEINFO_MIME_TYPE);
+                if (is_resource($finfo)) {
+                    $fi_mime = @finfo_file($finfo, $_FILES['student_image']['tmp_name']);
+                    @finfo_close($finfo);
+                    if ($fi_mime && !in_array(strtolower($fi_mime), $allowed_mimes, TRUE)) {
+                        $this->output->set_content_type('application/json')
+                                     ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
+                        return;
+                    }
+                }
+            }
+
+            // 3. Size check: 10 MB maximum
+            $max_size = 10 * 1024 * 1024;
+            if ($_FILES['student_image']['size'] > $max_size) {
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Student image must not exceed 10 MB.')));
+                return;
+            }
+
+            // 4. Safe unique filename & temporary storage
+            try {
+                $rand_token = bin2hex(random_bytes(6));
+            } catch (Exception $re) {
+                $rand_token = substr(md5(uniqid(mt_rand(), true)), 0, 12);
+            }
+            $safe_name = 'photo_temp_' . time() . '_' . $rand_token . '.' . ($ext === 'jpeg' ? 'jpg' : $ext);
+            $temp_dir  = FCPATH . 'uploads/photo_temp/';
+
+            if (!is_dir($temp_dir)) {
+                @mkdir($temp_dir, 0775, TRUE);
+            }
+            if (!is_dir($temp_dir)) {
+                $temp_dir = './uploads/photo_temp/';
+                if (!is_dir($temp_dir)) {
+                    @mkdir($temp_dir, 0775, TRUE);
+                }
+            }
+
+            if (!@move_uploaded_file($_FILES['student_image']['tmp_name'], $temp_dir . $safe_name)) {
+                log_message('error', 'wizard_photo_upload: move_uploaded_file failed to ' . $temp_dir . $safe_name);
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Failed to store image. Please check upload folder permissions.')));
+                return;
+            }
+
+            // Clean up any previously uploaded temp photo for this wizard session
+            $wizard = $this->session->userdata('student_registration_wizard') ?: array();
+            $old_sd = isset($wizard['student_details']) ? $wizard['student_details'] : array();
+            if (!empty($old_sd['photo_temp_path'])) {
+                $old_file = FCPATH . $old_sd['photo_temp_path'];
+                if (is_file($old_file) && $old_file !== ($temp_dir . $safe_name)) {
+                    @unlink($old_file);
+                }
+            }
+
+            $temp_path = 'uploads/photo_temp/' . $safe_name;
+
+            // Save in session
+            if (!isset($wizard['student_details'])) {
+                $wizard['student_details'] = array();
+            }
+            $wizard['student_details']['photo_temp_path']    = $temp_path;
+            $wizard['student_details']['photo_display_name'] = $orig_name;
+            $this->session->set_userdata('student_registration_wizard', $wizard);
+
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array(
+                             'success'      => TRUE,
+                             'temp_path'    => $temp_path,
+                             'display_name' => $orig_name,
+                             'preview_url'  => base_url($temp_path),
+                         )));
+        } catch (Throwable $e) {
+            log_message('error', 'wizard_photo_upload exception: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array(
+                             'success' => FALSE,
+                             'error'   => 'Image upload failed. Please ensure the file is a valid JPG/PNG image.'
+                         )));
         }
-
-        $temp_path = 'uploads/photo_temp/' . $safe_name;
-
-        // Save in session
-        if (!isset($wizard['student_details'])) {
-            $wizard['student_details'] = array();
-        }
-        $wizard['student_details']['photo_temp_path']    = $temp_path;
-        $wizard['student_details']['photo_display_name'] = $orig_name;
-        $this->session->set_userdata('student_registration_wizard', $wizard);
-
-        $this->output->set_content_type('application/json')
-                     ->set_output(json_encode(array(
-                         'success'      => TRUE,
-                         'temp_path'    => $temp_path,
-                         'display_name' => $orig_name,
-                         'preview_url'  => base_url($temp_path),
-                     )));
     }
 
     /* ─────────────────────────────────────────────────────────────────────────
@@ -401,90 +443,126 @@ class Students extends MY_Controller {
     ───────────────────────────────────────────────────────────────────────── */
     public function wizard_tc_upload()
     {
-        $this->require_permission('students.create');
+        try {
+            $this->require_permission('students.create');
 
-        if ($this->input->method() !== 'post') {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Invalid request.')));
-            return;
-        }
-
-        if (empty($_FILES['tc_document']['name'])) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document is required.')));
-            return;
-        }
-
-        if ($_FILES['tc_document']['error'] !== UPLOAD_ERR_OK) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Upload error. Please try again.')));
-            return;
-        }
-
-        // ── Security: whitelist extensions + MIME types ───────────────────────
-        $allowed_ext  = array('pdf', 'jpg', 'jpeg', 'png');
-        $allowed_mime = array('application/pdf', 'image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/x-png');
-
-        $orig_name = $_FILES['tc_document']['name'];
-        $ext       = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
-
-        if (!in_array($ext, $allowed_ext)) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document must be a PDF, JPG, JPEG, or PNG file.')));
-            return;
-        }
-
-        // MIME type check via finfo
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mime  = finfo_file($finfo, $_FILES['tc_document']['tmp_name']);
-        finfo_close($finfo);
-
-        if (!in_array($mime, $allowed_mime)) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document must be a PDF, JPG, JPEG, or PNG file.')));
-            return;
-        }
-
-        // Size limit: 2MB
-        $max_size = 2 * 1024 * 1024;
-        if ($_FILES['tc_document']['size'] > $max_size) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document must not exceed 2 MB.')));
-            return;
-        }
-
-        // ── Safe filename + temp storage ──────────────────────────────────────
-        $safe_name  = 'tc_' . time() . '_' . bin2hex(random_bytes(6)) . '.' . ($ext === 'jpeg' ? 'jpg' : $ext);
-        $temp_dir   = FCPATH . 'uploads/tc_temp/';
-
-        if (!is_dir($temp_dir)) {
-            mkdir($temp_dir, 0755, TRUE);
-        }
-
-        if (!move_uploaded_file($_FILES['tc_document']['tmp_name'], $temp_dir . $safe_name)) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Failed to store file. Please try again.')));
-            return;
-        }
-
-        // Clean up any previously uploaded temp TC for this wizard session
-        $wizard = $this->session->userdata('student_registration_wizard') ?: array();
-        $old_ad = isset($wizard['academic_details']) ? $wizard['academic_details'] : array();
-        if (!empty($old_ad['prev_school']['tc_temp_path'])) {
-            $old_file = FCPATH . $old_ad['prev_school']['tc_temp_path'];
-            if (is_file($old_file) && $old_file !== ($temp_dir . $safe_name)) {
-                @unlink($old_file);
+            if ($this->input->method() !== 'post') {
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Invalid request.')));
+                return;
             }
+
+            if (empty($_FILES['tc_document']['name'])) {
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document is required.')));
+                return;
+            }
+
+            $upload_err = isset($_FILES['tc_document']['error']) ? (int)$_FILES['tc_document']['error'] : UPLOAD_ERR_NO_FILE;
+            if ($upload_err !== UPLOAD_ERR_OK) {
+                $err_msg = 'Upload error. Please try again.';
+                if ($upload_err === UPLOAD_ERR_INI_SIZE || $upload_err === UPLOAD_ERR_FORM_SIZE) {
+                    $err_msg = 'TC Document must not exceed 2 MB.';
+                } elseif ($upload_err === UPLOAD_ERR_NO_FILE) {
+                    $err_msg = 'TC Document is required.';
+                }
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => $err_msg)));
+                return;
+            }
+
+            // ── Security: whitelist extensions + binary header validation ──────────
+            $allowed_ext  = array('pdf', 'jpg', 'jpeg', 'png');
+            $orig_name    = $_FILES['tc_document']['name'];
+            $ext          = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
+
+            if (!in_array($ext, $allowed_ext, TRUE)) {
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document must be a PDF, JPG, JPEG, or PNG file.')));
+                return;
+            }
+
+            // Binary header checks
+            $tmp_path = $_FILES['tc_document']['tmp_name'];
+            if ($ext === 'pdf') {
+                $fh = @fopen($tmp_path, 'rb');
+                $header = $fh ? @fread($fh, 5) : '';
+                if ($fh) { @fclose($fh); }
+                if (strpos($header, '%PDF-') !== 0) {
+                    $this->output->set_content_type('application/json')
+                                 ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document must be a valid PDF file.')));
+                    return;
+                }
+            } else {
+                // Image verification via getimagesize
+                $img_info = @getimagesize($tmp_path);
+                if ($img_info === FALSE || !in_array($img_info[2], array(IMAGETYPE_JPEG, IMAGETYPE_PNG), TRUE)) {
+                    $this->output->set_content_type('application/json')
+                                 ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document must be a valid PDF, JPG, JPEG, or PNG file.')));
+                    return;
+                }
+            }
+
+            // Size limit: 2MB
+            $max_size = 2 * 1024 * 1024;
+            if ($_FILES['tc_document']['size'] > $max_size) {
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document must not exceed 2 MB.')));
+                return;
+            }
+
+            // ── Safe filename + temp storage ──────────────────────────────────────
+            try {
+                $rand_token = bin2hex(random_bytes(6));
+            } catch (Exception $re) {
+                $rand_token = substr(md5(uniqid(mt_rand(), true)), 0, 12);
+            }
+            $safe_name  = 'tc_' . time() . '_' . $rand_token . '.' . ($ext === 'jpeg' ? 'jpg' : $ext);
+            $temp_dir   = FCPATH . 'uploads/tc_temp/';
+
+            if (!is_dir($temp_dir)) {
+                @mkdir($temp_dir, 0775, TRUE);
+            }
+            if (!is_dir($temp_dir)) {
+                $temp_dir = './uploads/tc_temp/';
+                if (!is_dir($temp_dir)) {
+                    @mkdir($temp_dir, 0775, TRUE);
+                }
+            }
+
+            if (!@move_uploaded_file($_FILES['tc_document']['tmp_name'], $temp_dir . $safe_name)) {
+                log_message('error', 'wizard_tc_upload: move_uploaded_file failed to ' . $temp_dir . $safe_name);
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Failed to store file. Please check upload folder permissions.')));
+                return;
+            }
+
+            // Clean up any previously uploaded temp TC for this wizard session
+            $wizard = $this->session->userdata('student_registration_wizard') ?: array();
+            $old_ad = isset($wizard['academic_details']) ? $wizard['academic_details'] : array();
+            if (!empty($old_ad['prev_school']['tc_temp_path'])) {
+                $old_file = FCPATH . $old_ad['prev_school']['tc_temp_path'];
+                if (is_file($old_file) && $old_file !== ($temp_dir . $safe_name)) {
+                    @unlink($old_file);
+                }
+            }
+
+            $temp_path = 'uploads/tc_temp/' . $safe_name;
+
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array(
+                             'success'      => TRUE,
+                             'temp_path'    => $temp_path,
+                             'display_name' => $orig_name,
+                         )));
+        } catch (Throwable $e) {
+            log_message('error', 'wizard_tc_upload exception: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array(
+                             'success' => FALSE,
+                             'error'   => 'TC Document upload failed. Please ensure the file is valid.'
+                         )));
         }
-
-        $temp_path = 'uploads/tc_temp/' . $safe_name;
-
-        $this->output->set_content_type('application/json')
-                     ->set_output(json_encode(array(
-                         'success'      => TRUE,
-                         'temp_path'    => $temp_path,
-                         'display_name' => $orig_name,
-                     )));
     }
 
     /* ─────────────────────────────────────────────────────────────────────────
