@@ -17,3 +17,4 @@ scratch/*.txt
 node_modules/
 playwright-report/
 test-results/
+tests/test_assets/sample_oversized_*

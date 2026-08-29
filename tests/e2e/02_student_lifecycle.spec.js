@@ -4,9 +4,11 @@ const path = require('path');
 
 test.describe('Core Student Admission Wizard Lifecycle', () => {
 
-  const samplePhoto = path.resolve(__dirname, '../test_assets/sample_valid.png');
-  const sampleTcDoc = path.resolve(__dirname, '../test_assets/sample_valid.pdf');
-  const invalidFile = path.resolve(__dirname, '../test_assets/sample_invalid.txt');
+  const samplePhoto   = path.resolve(__dirname, '../test_assets/sample_valid.png');
+  const sampleTcDoc   = path.resolve(__dirname, '../test_assets/sample_valid.pdf');
+  const invalidFile   = path.resolve(__dirname, '../test_assets/sample_invalid.txt');
+  const oversizedPhoto = path.resolve(__dirname, '../test_assets/sample_oversized_4mb.jpg');
+  const oversizedTc   = path.resolve(__dirname, '../test_assets/sample_oversized_4mb.pdf');
 
   test('Happy Path: Full 3-step registration with Student Image and TC Document', async ({ authenticatedPage: page, baseURL }) => {
     const uniqueId = Date.now().toString().slice(-6);
@@ -107,7 +109,7 @@ test.describe('Core Student Admission Wizard Lifecycle', () => {
     await expect(page.locator('img[alt*="Aarav"]')).toBeVisible();
   });
 
-  test('Validation: Reject invalid image types and enforce mandatory TC fields in Step 2', async ({ authenticatedPage: page, baseURL }) => {
+  test('Validation: Reject invalid image types, oversized files (>3MB) and enforce mandatory TC fields', async ({ authenticatedPage: page, baseURL }) => {
     // Navigate to wizard Step 1
     await page.goto(`${baseURL}students/add`);
     await page.waitForLoadState('networkidle');
@@ -115,6 +117,10 @@ test.describe('Core Student Admission Wizard Lifecycle', () => {
     // 1. Attempt invalid file upload on Step 1 Image
     await page.setInputFiles('#student_image_file', invalidFile);
     await expect(page.locator('#err-student_image')).toContainText('Please upload a JPG, JPEG, or PNG image.');
+
+    // 2. Attempt oversized image upload (>3MB)
+    await page.setInputFiles('#student_image_file', oversizedPhoto);
+    await expect(page.locator('#err-student_image')).toContainText('Student image must not exceed 3 MB.');
 
     // Upload valid image and proceed
     await page.setInputFiles('#student_image_file', samplePhoto);
@@ -126,7 +132,7 @@ test.describe('Core Student Admission Wizard Lifecycle', () => {
     await page.fill('input[name="last_name"]', 'Student');
     await page.click('#btn-step1-next');
 
-    // 2. Step 2 validation checks
+    // 3. Step 2 validation checks
     await page.waitForURL(/step=2/);
     await page.selectOption('#class_id', { index: 1 });
     await page.fill('#prev_school_name', 'Previous Model School');
@@ -138,9 +144,13 @@ test.describe('Core Student Admission Wizard Lifecycle', () => {
     await expect(page.locator('#err-tc_number')).toContainText('TC Number is required.');
     await expect(page.locator('#err-tc_document')).toContainText('TC Document is required.');
 
-    // 3. Attempt invalid TC document file
+    // 4. Attempt invalid TC document file
     await page.setInputFiles('#tc_document_file', invalidFile);
     await expect(page.locator('#err-tc_document')).toContainText('TC Document must be a PDF, JPG, JPEG, or PNG file.');
+
+    // 5. Attempt oversized TC document (>3MB)
+    await page.setInputFiles('#tc_document_file', oversizedTc);
+    await expect(page.locator('#err-tc_document')).toContainText('TC Document must not exceed 3 MB.');
   });
 
   test('Failure State: Submitting step 1 without mandatory first name triggers validation', async ({ authenticatedPage: page, baseURL }) => {

@@ -610,10 +610,10 @@
                 return;
             }
 
-            // Client-side size validation (10 MB)
-            if (file.size > 10 * 1024 * 1024) {
-                showAlert('error', 'Student image must not exceed 10 MB.');
-                $('#err-student_image').text('Student image must not exceed 10 MB.').removeClass('hidden');
+            // Client-side size validation (3 MB)
+            if (file.size > 3 * 1024 * 1024) {
+                showAlert('error', 'Student image must not exceed 3 MB.');
+                $('#err-student_image').text('Student image must not exceed 3 MB.').removeClass('hidden');
                 this.value = '';
                 return;
             }
@@ -740,9 +740,9 @@
                 this.value = '';
                 return;
             }
-            if (file.size > 2 * 1024 * 1024) {
-                showAlert('error', 'TC Document must not exceed 2 MB.');
-                $('#err-tc_document').text('TC Document must not exceed 2 MB.').removeClass('hidden');
+            if (file.size > 3 * 1024 * 1024) {
+                showAlert('error', 'TC Document must not exceed 3 MB.');
+                $('#err-tc_document').text('TC Document must not exceed 3 MB.').removeClass('hidden');
                 this.value = '';
                 return;
             }

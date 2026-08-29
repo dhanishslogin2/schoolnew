@@ -244,7 +244,7 @@ class Students extends MY_Controller {
             if ($upload_err !== UPLOAD_ERR_OK) {
                 $err_msg = 'Upload error. Please try again.';
                 if ($upload_err === UPLOAD_ERR_INI_SIZE || $upload_err === UPLOAD_ERR_FORM_SIZE) {
-                    $err_msg = 'Student image must not exceed 10 MB.';
+                    $err_msg = 'Student image must not exceed 3 MB.';
                 } elseif ($upload_err === UPLOAD_ERR_NO_FILE) {
                     $err_msg = 'Please select an image to upload.';
                 }
@@ -298,11 +298,11 @@ class Students extends MY_Controller {
                 }
             }
 
-            // 3. Size check: 10 MB maximum
-            $max_size = 10 * 1024 * 1024;
+            // 3. Size check: 3 MB maximum
+            $max_size = 3 * 1024 * 1024;
             if ($_FILES['student_image']['size'] > $max_size) {
                 $this->output->set_content_type('application/json')
-                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Student image must not exceed 10 MB.')));
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Student image must not exceed 3 MB.')));
                 return;
             }
 
@@ -462,7 +462,7 @@ class Students extends MY_Controller {
             if ($upload_err !== UPLOAD_ERR_OK) {
                 $err_msg = 'Upload error. Please try again.';
                 if ($upload_err === UPLOAD_ERR_INI_SIZE || $upload_err === UPLOAD_ERR_FORM_SIZE) {
-                    $err_msg = 'TC Document must not exceed 10 MB.';
+                    $err_msg = 'TC Document must not exceed 3 MB.';
                 } elseif ($upload_err === UPLOAD_ERR_NO_FILE) {
                     $err_msg = 'TC Document is required.';
                 }
@@ -503,11 +503,11 @@ class Students extends MY_Controller {
                 }
             }
 
-            // Size limit: 10MB
-            $max_size = 10 * 1024 * 1024;
+            // Size limit: 3MB
+            $max_size = 3 * 1024 * 1024;
             if ($_FILES['tc_document']['size'] > $max_size) {
                 $this->output->set_content_type('application/json')
-                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document must not exceed 10 MB.')));
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document must not exceed 3 MB.')));
                 return;
             }
 
