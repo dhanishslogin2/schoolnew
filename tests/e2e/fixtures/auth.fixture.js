@@ -30,8 +30,8 @@ const test = base.extend({
   // Fixture providing an already-authenticated page
   authenticatedPage: async ({ page, baseURL }, use) => {
     const targetURL = baseURL || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost/schoolnew/';
-    const username = process.env.PLAYWRIGHT_TEST_USERNAME || 'admin@gmail.com';
-    const password = process.env.PLAYWRIGHT_TEST_PASSWORD || 'password123';
+    const username = 'admin@gmail.com';
+    const password = '123456';
 
     await page.goto(`${targetURL}auth/login`);
     await page.fill('[data-testid="login-email"]', username);

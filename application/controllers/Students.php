@@ -218,6 +218,116 @@ class Students extends MY_Controller {
     }
 
     /* ─────────────────────────────────────────────────────────────────────────
+       Wizard Photo Upload — multipart file-only endpoint for Student Image
+       POST students/wizard_photo_upload
+       Allowed: JPG, JPEG, PNG (max 10MB)
+       Returns JSON { success, temp_path, display_name, preview_url, error }
+    ───────────────────────────────────────────────────────────────────────── */
+    public function wizard_photo_upload()
+    {
+        $this->require_permission('students.create');
+
+        if ($this->input->method() !== 'post') {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Invalid request.')));
+            return;
+        }
+
+        if (empty($_FILES['student_image']['name'])) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please select an image to upload.')));
+            return;
+        }
+
+        if ($_FILES['student_image']['error'] !== UPLOAD_ERR_OK) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Upload error. Please try again.')));
+            return;
+        }
+
+        // 1. Check extension whitelist (jpg, jpeg, png)
+        $orig_name = $_FILES['student_image']['name'];
+        $ext = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
+        $allowed_ext = array('jpg', 'jpeg', 'png');
+
+        if (!in_array($ext, $allowed_ext)) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
+            return;
+        }
+
+        // 2. MIME type check via finfo and getimagesize
+        $allowed_mime = array('image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/x-png');
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $_FILES['student_image']['tmp_name']);
+        finfo_close($finfo);
+
+        if (!in_array($mime, $allowed_mime)) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
+            return;
+        }
+
+        // Validate image dimensions / header to verify it is truly a valid image
+        $img_info = @getimagesize($_FILES['student_image']['tmp_name']);
+        if ($img_info === FALSE) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
+            return;
+        }
+
+        // 3. Size check: 10 MB maximum
+        $max_size = 10 * 1024 * 1024;
+        if ($_FILES['student_image']['size'] > $max_size) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Student image must not exceed 10 MB.')));
+            return;
+        }
+
+        // 4. Safe unique filename & temporary storage
+        $safe_name = 'photo_temp_' . time() . '_' . bin2hex(random_bytes(6)) . '.' . ($ext === 'jpeg' ? 'jpg' : $ext);
+        $temp_dir = FCPATH . 'uploads/photo_temp/';
+
+        if (!is_dir($temp_dir)) {
+            mkdir($temp_dir, 0755, TRUE);
+        }
+
+        if (!move_uploaded_file($_FILES['student_image']['tmp_name'], $temp_dir . $safe_name)) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Failed to store image. Please try again.')));
+            return;
+        }
+
+        // Clean up any previously uploaded temp photo for this wizard session
+        $wizard = $this->session->userdata('student_registration_wizard') ?: array();
+        $old_sd = isset($wizard['student_details']) ? $wizard['student_details'] : array();
+        if (!empty($old_sd['photo_temp_path'])) {
+            $old_file = FCPATH . $old_sd['photo_temp_path'];
+            if (is_file($old_file) && $old_file !== ($temp_dir . $safe_name)) {
+                @unlink($old_file);
+            }
+        }
+
+        $temp_path = 'uploads/photo_temp/' . $safe_name;
+
+        // Save in session
+        if (!isset($wizard['student_details'])) {
+            $wizard['student_details'] = array();
+        }
+        $wizard['student_details']['photo_temp_path']    = $temp_path;
+        $wizard['student_details']['photo_display_name'] = $orig_name;
+        $this->session->set_userdata('student_registration_wizard', $wizard);
+
+        $this->output->set_content_type('application/json')
+                     ->set_output(json_encode(array(
+                         'success'      => TRUE,
+                         'temp_path'    => $temp_path,
+                         'display_name' => $orig_name,
+                         'preview_url'  => base_url($temp_path),
+                     )));
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
        Wizard Step 1 — Validate & save Student Details to session
        POST students/wizard_step1
     ───────────────────────────────────────────────────────────────────────── */
@@ -251,13 +361,27 @@ class Students extends MY_Controller {
             $wizard['wizard_token'] = sha1(uniqid('wiz_', TRUE));
         }
 
+        $photo_temp_path = $this->input->post('photo_temp_path', TRUE);
+        $photo_display_name = $this->input->post('photo_display_name', TRUE);
+
+        // If user cleared the photo, delete old temp file
+        $old_photo = isset($wizard['student_details']['photo_temp_path']) ? $wizard['student_details']['photo_temp_path'] : '';
+        if (empty($photo_temp_path) && !empty($old_photo)) {
+            $old_f = FCPATH . $old_photo;
+            if (is_file($old_f)) {
+                @unlink($old_f);
+            }
+        }
+
         $wizard['student_details'] = array(
-            'admission_number' => $this->input->post('admission_number', TRUE),
-            'first_name'       => $this->input->post('first_name',       TRUE),
-            'last_name'        => $this->input->post('last_name',         TRUE),
-            'gender'           => $this->input->post('gender',            TRUE) ?: 'Male',
-            'date_of_birth'    => $this->input->post('date_of_birth',     TRUE) ?: date('Y-m-d'),
-            'blood_group'      => $this->input->post('blood_group',       TRUE),
+            'admission_number'   => $this->input->post('admission_number', TRUE),
+            'first_name'         => $this->input->post('first_name',       TRUE),
+            'last_name'          => $this->input->post('last_name',         TRUE),
+            'gender'             => $this->input->post('gender',            TRUE) ?: 'Male',
+            'date_of_birth'      => $this->input->post('date_of_birth',     TRUE) ?: date('Y-m-d'),
+            'blood_group'        => $this->input->post('blood_group',       TRUE),
+            'photo_temp_path'    => $photo_temp_path ?: '',
+            'photo_display_name' => $photo_display_name ?: '',
         );
 
         $this->session->set_userdata('student_registration_wizard', $wizard);
@@ -287,20 +411,26 @@ class Students extends MY_Controller {
 
         if (empty($_FILES['tc_document']['name'])) {
             $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'No file received.')));
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document is required.')));
+            return;
+        }
+
+        if ($_FILES['tc_document']['error'] !== UPLOAD_ERR_OK) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Upload error. Please try again.')));
             return;
         }
 
         // ── Security: whitelist extensions + MIME types ───────────────────────
         $allowed_ext  = array('pdf', 'jpg', 'jpeg', 'png');
-        $allowed_mime = array('application/pdf', 'image/jpeg', 'image/jpg', 'image/png');
+        $allowed_mime = array('application/pdf', 'image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/x-png');
 
         $orig_name = $_FILES['tc_document']['name'];
         $ext       = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
 
         if (!in_array($ext, $allowed_ext)) {
             $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Invalid file type. Allowed: PDF, JPG, PNG.')));
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document must be a PDF, JPG, JPEG, or PNG file.')));
             return;
         }
 
@@ -311,7 +441,7 @@ class Students extends MY_Controller {
 
         if (!in_array($mime, $allowed_mime)) {
             $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'File content does not match allowed types.')));
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document must be a PDF, JPG, JPEG, or PNG file.')));
             return;
         }
 
@@ -319,18 +449,12 @@ class Students extends MY_Controller {
         $max_size = 2 * 1024 * 1024;
         if ($_FILES['tc_document']['size'] > $max_size) {
             $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'File too large. Maximum size is 2 MB.')));
-            return;
-        }
-
-        if ($_FILES['tc_document']['error'] !== UPLOAD_ERR_OK) {
-            $this->output->set_content_type('application/json')
-                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Upload error. Please try again.')));
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'TC Document must not exceed 2 MB.')));
             return;
         }
 
         // ── Safe filename + temp storage ──────────────────────────────────────
-        $safe_name  = 'tc_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $safe_name  = 'tc_' . time() . '_' . bin2hex(random_bytes(6)) . '.' . ($ext === 'jpeg' ? 'jpg' : $ext);
         $temp_dir   = FCPATH . 'uploads/tc_temp/';
 
         if (!is_dir($temp_dir)) {
@@ -346,9 +470,9 @@ class Students extends MY_Controller {
         // Clean up any previously uploaded temp TC for this wizard session
         $wizard = $this->session->userdata('student_registration_wizard') ?: array();
         $old_ad = isset($wizard['academic_details']) ? $wizard['academic_details'] : array();
-        if (!empty($old_ad['tc_temp_path'])) {
-            $old_file = FCPATH . $old_ad['tc_temp_path'];
-            if (is_file($old_file)) {
+        if (!empty($old_ad['prev_school']['tc_temp_path'])) {
+            $old_file = FCPATH . $old_ad['prev_school']['tc_temp_path'];
+            if (is_file($old_file) && $old_file !== ($temp_dir . $safe_name)) {
                 @unlink($old_file);
             }
         }
@@ -395,6 +519,9 @@ class Students extends MY_Controller {
 
         if (!$no_prev_school) {
             $this->form_validation->set_rules('prev_school_name',  'Previous School Name',    'trim|required');
+            $this->form_validation->set_rules('tc_number',         'TC Number',               'trim|required',
+                array('required' => 'TC Number is required.')
+            );
             $this->form_validation->set_rules('prev_school_board',  'Previous School Board',   'trim');
             $this->form_validation->set_rules('prev_class',         'Previous Class',          'trim');
             $this->form_validation->set_rules('prev_academic_year', 'Previous Academic Year',  'trim');
@@ -404,12 +531,25 @@ class Students extends MY_Controller {
             );
         }
 
+        $errors = array();
         if ($this->form_validation->run() !== TRUE) {
+            $errors = $this->_collect_validation_errors();
+        }
+
+        // Validate mandatory TC document when previous school is applicable
+        if (!$no_prev_school) {
+            $tc_temp_path = $this->input->post('tc_temp_path', TRUE);
+            if (empty($tc_temp_path) || !is_file(FCPATH . $tc_temp_path)) {
+                $errors['tc_document'] = 'TC Document is required.';
+            }
+        }
+
+        if (!empty($errors)) {
             $this->output
                 ->set_content_type('application/json')
                 ->set_output(json_encode(array(
                     'success' => FALSE,
-                    'errors'  => $this->_collect_validation_errors(),
+                    'errors'  => $errors,
                 )));
             return;
         }
@@ -443,8 +583,8 @@ class Students extends MY_Controller {
             $academic_details['prev_school'] = array();
             // Clean up any temp TC file from a previous attempt
             $old_ad = isset($wizard['academic_details']) ? $wizard['academic_details'] : array();
-            if (!empty($old_ad['tc_temp_path'])) {
-                $old_file = FCPATH . $old_ad['tc_temp_path'];
+            if (!empty($old_ad['prev_school']['tc_temp_path'])) {
+                $old_file = FCPATH . $old_ad['prev_school']['tc_temp_path'];
                 if (is_file($old_file)) {
                     @unlink($old_file);
                 }
@@ -582,6 +722,28 @@ class Students extends MY_Controller {
             }
         }
 
+        // ── Photo Handling: Move from temp → permanent uploads/students/ ──────
+        $photo_filename   = NULL;
+        $moved_photo_path = NULL;
+        if (!empty($sd['photo_temp_path'])) {
+            $temp_photo = FCPATH . $sd['photo_temp_path'];
+            if (is_file($temp_photo)) {
+                $photo_dest_dir = FCPATH . 'uploads/students/';
+                if (!is_dir($photo_dest_dir)) {
+                    mkdir($photo_dest_dir, 0755, TRUE);
+                }
+                $photo_ext = strtolower(pathinfo($sd['photo_temp_path'], PATHINFO_EXTENSION));
+                if ($photo_ext === 'jpeg') $photo_ext = 'jpg';
+                $photo_filename = 'photo_' . time() . '_' . bin2hex(random_bytes(6)) . '.' . $photo_ext;
+                $photo_dest_path = $photo_dest_dir . $photo_filename;
+                if (rename($temp_photo, $photo_dest_path)) {
+                    $moved_photo_path = $photo_dest_path;
+                } else {
+                    $photo_filename = NULL;
+                }
+            }
+        }
+
         $student_data = array(
             'admission_number'  => $sd['admission_number'],
             'first_name'        => $sd['first_name'],
@@ -589,6 +751,7 @@ class Students extends MY_Controller {
             'gender'            => $sd['gender']            ?: 'Male',
             'date_of_birth'     => $sd['date_of_birth']     ?: date('Y-m-d'),
             'blood_group'       => $sd['blood_group']       ?: '',
+            'photo'             => $photo_filename,
             'academic_year_id'  => !empty($ad['academic_year_id']) ? (int)$ad['academic_year_id'] : $this->academic_year_id,
             'class_id'          => $class_id,
             'section_id'        => $section_id,
@@ -658,20 +821,36 @@ class Students extends MY_Controller {
 
             // 3. Academic activities
             $all_activities = array();
-            $activities     = isset($ad['activities'])      ? $ad['activities']      : array();
-            $extracurricular = isset($ad['extracurricular']) ? $ad['extracurricular'] : array();
 
-            foreach (array_merge($activities, $extracurricular) as $act) {
-                if (!empty($act['activity_name'])) {
+            if (!empty($ad['activities']) && is_array($ad['activities'])) {
+                foreach ($ad['activities'] as $act) {
+                    if (empty($act['activity_name'])) continue;
                     $all_activities[] = array(
                         'student_id'      => $new_id,
-                        'category'        => $act['category'],
-                        'activity_type'   => $act['activity_type'],
+                        'category'        => 'Academic',
+                        'activity_type'   => isset($act['activity_type'])   ? $act['activity_type']   : 'Competition',
                         'activity_name'   => $act['activity_name'],
-                        'description'     => isset($act['description'])     ? $act['description']     : NULL,
-                        'level'           => isset($act['level'])           ? $act['level']           : NULL,
                         'position_result' => isset($act['position_result']) ? $act['position_result'] : NULL,
-                        'year'            => isset($act['year']) && $act['year'] > 0 ? (int)$act['year'] : NULL,
+                        'year'            => !empty($act['year'])           ? (int)$act['year']        : (int)date('Y'),
+                        'description'     => isset($act['description'])     ? $act['description']     : NULL,
+                        'status'          => 1,
+                        'created_at'      => date('Y-m-d H:i:s'),
+                    );
+                }
+            }
+
+            if (!empty($ad['extracurricular']) && is_array($ad['extracurricular'])) {
+                foreach ($ad['extracurricular'] as $extra) {
+                    if (empty($extra['activity_name'])) continue;
+                    $all_activities[] = array(
+                        'student_id'      => $new_id,
+                        'category'        => 'Extracurricular',
+                        'activity_type'   => isset($extra['activity_type'])   ? $extra['activity_type']   : 'Sports',
+                        'activity_name'   => $extra['activity_name'],
+                        'level'           => isset($extra['level'])           ? $extra['level']           : NULL,
+                        'position_result' => isset($extra['position_result']) ? $extra['position_result'] : NULL,
+                        'year'            => !empty($extra['year'])           ? (int)$extra['year']        : (int)date('Y'),
+                        'description'     => isset($extra['description'])     ? $extra['description']     : NULL,
                         'status'          => 1,
                         'created_at'      => date('Y-m-d H:i:s'),
                     );

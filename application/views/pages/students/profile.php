@@ -16,7 +16,11 @@
   <!-- Header Card -->
   <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-5 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div class="flex items-center gap-4">
-      <div class="w-16 h-16 rounded-xl bg-primary-fixed text-primary flex items-center justify-center text-2xl font-bold shrink-0"><?php echo html_escape($initials); ?></div>
+      <?php if (!empty($student->photo) && file_exists(FCPATH . 'uploads/students/' . $student->photo)): ?>
+        <img src="<?php echo base_url('uploads/students/' . $student->photo); ?>" alt="<?php echo html_escape($fullName); ?>" class="w-16 h-16 rounded-xl object-cover shrink-0 border border-outline-variant/60 shadow-sm"/>
+      <?php else: ?>
+        <div class="w-16 h-16 rounded-xl bg-primary-fixed text-primary flex items-center justify-center text-2xl font-bold shrink-0"><?php echo html_escape($initials); ?></div>
+      <?php endif; ?>
       <div class="min-w-0">
         <div class="flex items-center gap-2.5 flex-wrap">
           <h2 class="font-headline-md text-headline-md text-on-surface"><?php echo html_escape($fullName); ?></h2>

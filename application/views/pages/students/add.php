@@ -107,6 +107,51 @@
             <?php endforeach; ?>
           </select>
         </div>
+
+        <!-- Student Image Upload Field -->
+        <div class="sm:col-span-2">
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5">
+            Student Image
+            <span class="text-on-surface-variant font-normal">(JPG, JPEG, PNG · Max 10 MB)</span>
+          </label>
+          <input type="hidden" id="photo_temp_path" name="photo_temp_path" value="<?php echo wval($sd, 'photo_temp_path'); ?>"/>
+          <input type="hidden" id="photo_display_name" name="photo_display_name" value="<?php echo wval($sd, 'photo_display_name'); ?>"/>
+
+          <div class="flex items-start gap-4 p-4 rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest">
+            <!-- Preview Box -->
+            <div id="photo-preview-container" class="relative w-20 h-20 rounded-lg overflow-hidden border border-outline-variant bg-surface-container-low flex items-center justify-center shrink-0">
+              <?php $has_photo = !empty($sd['photo_temp_path']) && file_exists(FCPATH . $sd['photo_temp_path']); ?>
+              <img id="photo-preview-img" src="<?php echo $has_photo ? base_url($sd['photo_temp_path']) : ''; ?>"
+                   alt="Student Preview" class="w-full h-full object-cover <?php echo $has_photo ? '' : 'hidden'; ?>"/>
+              <div id="photo-placeholder-icon" class="flex flex-col items-center justify-center text-on-surface-variant/60 <?php echo $has_photo ? 'hidden' : ''; ?>">
+                <span class="material-symbols-outlined text-[32px]">account_circle</span>
+              </div>
+            </div>
+
+            <!-- Upload Controls & Status -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                <label for="student_image_file" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-outline-variant text-on-surface-variant text-label-md hover:bg-surface-container-high cursor-pointer transition-colors bg-surface-container-lowest">
+                  <span class="material-symbols-outlined text-[16px]">photo_camera</span>
+                  <span id="photo-btn-label"><?php echo $has_photo ? 'Change Image' : 'Choose Image'; ?></span>
+                </label>
+                <input type="file" id="student_image_file" name="student_image" accept=".jpg,.jpeg,.png,image/jpeg,image/png" class="hidden"/>
+                <button type="button" id="photo-remove-btn" class="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg text-error hover:bg-error-container/40 text-label-md transition-colors <?php echo $has_photo ? '' : 'hidden'; ?>">
+                  <span class="material-symbols-outlined text-[16px]">delete</span>
+                  <span>Remove</span>
+                </button>
+              </div>
+              <p id="photo-file-name" class="text-xs text-on-surface-variant truncate <?php echo $has_photo ? '' : 'hidden'; ?>">
+                <?php echo html_escape(wval($sd, 'photo_display_name', 'Student Photo')); ?>
+              </p>
+              <div id="photo-upload-progress" class="hidden items-center gap-2 text-xs text-primary mt-1">
+                <span class="material-symbols-outlined text-[14px] animate-spin">autorenew</span>
+                <span>Uploading and validating image…</span>
+              </div>
+              <p class="field-error text-error text-[11px] mt-1 hidden" id="err-student_image"></p>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="flex justify-end gap-3 mt-6 pt-5 border-t border-outline-variant/50">
         <a href="<?php echo site_url('students/wizard_cancel'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant text-label-md hover:bg-surface-container-high transition-colors">Cancel</a>
@@ -235,20 +280,21 @@
                  class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
         </div>
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1.5">TC Number</label>
-          <input type="text" name="tc_number" value="<?php echo wval($ps, 'tc_number'); ?>" placeholder="e.g. TC/2025/0042"
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5">TC Number <span class="text-error">*</span></label>
+          <input type="text" id="tc_number" name="tc_number" value="<?php echo wval($ps, 'tc_number'); ?>" placeholder="e.g. TC/2025/0042"
                  class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
+          <p class="field-error text-error text-[11px] mt-1 hidden" id="err-tc_number"></p>
         </div>
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1.5">TC Document
-            <span class="text-on-surface-variant font-normal">(PDF/JPG/PNG, max 2MB)</span>
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5">TC Document <span class="text-error">*</span>
+            <span class="text-on-surface-variant font-normal">(PDF, JPG, JPEG, PNG · Max 2 MB)</span>
           </label>
           <div class="flex items-center gap-2 flex-wrap">
-            <label for="tc_document_file" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-outline-variant text-on-surface-variant text-label-md hover:bg-surface-container-high cursor-pointer transition-colors">
+            <label for="tc_document_file" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-outline-variant text-on-surface-variant text-label-md hover:bg-surface-container-high cursor-pointer transition-colors bg-surface-container-lowest">
               <span class="material-symbols-outlined text-[16px]">upload_file</span>
-              <span id="tc-btn-label">Choose File</span>
+              <span id="tc-btn-label"><?php echo !empty($ps['tc_temp_path']) ? 'Change File' : 'Choose File'; ?></span>
             </label>
-            <input type="file" id="tc_document_file" name="tc_document" accept=".pdf,.jpg,.jpeg,.png" class="hidden"/>
+            <input type="file" id="tc_document_file" name="tc_document" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="hidden"/>
             <?php if (!empty($ps['tc_temp_path'])): ?>
             <span id="tc-file-status" class="inline-flex items-center gap-1 text-[12px] text-on-secondary-container bg-secondary-container px-2 py-1 rounded-full">
               <span class="material-symbols-outlined text-[14px]">check_circle</span>
@@ -396,7 +442,7 @@
 
 <!-- ── Navigation ────────────────────────────────────────────────────── -->
 <div class="flex justify-between gap-3 mt-2 mb-4">
-  <a href="<?php echo site_url('students/add'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant text-label-md hover:bg-surface-container-high transition-colors">
+  <a href="<?php echo site_url('students/add'); ?>" id="btn-step2-back" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant text-label-md hover:bg-surface-container-high transition-colors">
     <span class="material-symbols-outlined text-[18px]">arrow_back</span>Back
   </a>
   <div class="flex gap-3">
@@ -421,16 +467,27 @@
     <!-- Summary of previous steps -->
     <div class="mb-5 p-4 rounded-lg bg-surface-container-low border border-outline-variant/40">
       <p class="text-label-md text-on-surface-variant mb-2 font-semibold uppercase tracking-wide">Registration Summary</p>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-body-md text-on-surface">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-body-md text-on-surface">
         <?php if (!empty($wizard['student_details'])): $s = $wizard['student_details']; ?>
-        <span><span class="text-on-surface-variant">Name:</span> <?php echo html_escape(trim($s['first_name'] . ' ' . $s['last_name'])); ?></span>
-        <span><span class="text-on-surface-variant">Admission No:</span> <?php echo html_escape($s['admission_number']); ?></span>
+        <div class="sm:col-span-2 flex items-center gap-3 mb-1">
+          <?php if (!empty($s['photo_temp_path']) && file_exists(FCPATH . $s['photo_temp_path'])): ?>
+          <img src="<?php echo base_url($s['photo_temp_path']); ?>" alt="Student Photo" class="w-12 h-12 rounded-lg object-cover border border-outline-variant shrink-0"/>
+          <?php else: ?>
+          <div class="w-12 h-12 rounded-lg bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[24px]">account_circle</span>
+          </div>
+          <?php endif; ?>
+          <div>
+            <p class="font-medium text-on-surface text-body-md"><?php echo html_escape(trim($s['first_name'] . ' ' . $s['last_name'])); ?></p>
+            <p class="text-xs text-on-surface-variant">Adm No: <span class="font-medium text-on-surface"><?php echo html_escape($s['admission_number']); ?></span> · Gender: <?php echo html_escape($s['gender'] ?? '—'); ?></p>
+          </div>
+        </div>
         <?php endif; ?>
         <?php if (!empty($wizard['academic_details'])): $a = $wizard['academic_details']; ?>
         <span><span class="text-on-surface-variant">Class:</span> <?php echo html_escape($a['class_id'] ?? '—'); ?></span>
         <span><span class="text-on-surface-variant">Roll No:</span> <?php echo html_escape($a['roll_number'] ?: '—'); ?></span>
         <?php if (!empty($a['prev_school']['school_name'])): ?>
-        <span class="sm:col-span-2"><span class="text-on-surface-variant">Previous School:</span> <?php echo html_escape($a['prev_school']['school_name']); ?></span>
+        <span class="sm:col-span-2"><span class="text-on-surface-variant">Previous School:</span> <?php echo html_escape($a['prev_school']['school_name']); ?><?php if (!empty($a['prev_school']['tc_number'])): ?> · TC: <?php echo html_escape($a['prev_school']['tc_number']); ?><?php endif; ?></span>
         <?php endif; ?>
         <?php $act_count = count($a['activities'] ?? []) + count($a['extracurricular'] ?? []); ?>
         <?php if ($act_count > 0): ?>
@@ -473,7 +530,7 @@
         </div>
       </div>
       <div class="flex justify-between gap-3 mt-6 pt-5 border-t border-outline-variant/50">
-        <a href="<?php echo site_url('students/add?step=2'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant text-label-md hover:bg-surface-container-high transition-colors">
+        <a href="<?php echo site_url('students/add?step=2'); ?>" id="btn-step3-back" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant text-label-md hover:bg-surface-container-high transition-colors">
           <span class="material-symbols-outlined text-[18px]">arrow_back</span>Back
         </a>
         <div class="flex gap-3">
@@ -536,6 +593,101 @@
     /* ═══ STEP 1 ═══════════════════════════════════════════════════════════ */
     var $s1 = $('#step1-form');
     if ($s1.length) {
+
+        /* ── Student Image Upload (AJAX upload with live preview) ───────── */
+        $('#student_image_file').on('change', function () {
+            var file = this.files[0];
+            if (!file) return;
+
+            $('#err-student_image').addClass('hidden').text('');
+
+            // Client-side extension validation
+            var ext = file.name.split('.').pop().toLowerCase();
+            if (['jpg', 'jpeg', 'png'].indexOf(ext) === -1) {
+                showAlert('error', 'Please upload a JPG, JPEG, or PNG image.');
+                $('#err-student_image').text('Please upload a JPG, JPEG, or PNG image.').removeClass('hidden');
+                this.value = '';
+                return;
+            }
+
+            // Client-side size validation (10 MB)
+            if (file.size > 10 * 1024 * 1024) {
+                showAlert('error', 'Student image must not exceed 10 MB.');
+                $('#err-student_image').text('Student image must not exceed 10 MB.').removeClass('hidden');
+                this.value = '';
+                return;
+            }
+
+            // Show instant local preview
+            if (window.FileReader) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    $('#photo-preview-img').attr('src', e.target.result).removeClass('hidden');
+                    $('#photo-placeholder-icon').addClass('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+
+            var fd = new FormData();
+            fd.append('student_image', file);
+            fd.append(CSRF_NAME, CSRF_HASH);
+
+            $('#photo-btn-label').text('Uploading…');
+            $('#photo-upload-progress').removeClass('hidden').addClass('flex');
+            $('#photo-remove-btn').addClass('hidden');
+
+            $.ajax({
+                url: BASE_URL + 'students/wizard_photo_upload',
+                method: 'POST',
+                data: fd,
+                processData: false,
+                contentType: false,
+                dataType: 'json',
+                success: function (r) {
+                    refreshCsrf(r);
+                    $('#photo-upload-progress').addClass('hidden').removeClass('flex');
+                    if (r.success) {
+                        $('#photo_temp_path').val(r.temp_path);
+                        $('#photo_display_name').val(r.display_name);
+                        $('#photo-file-name').text(r.display_name).removeClass('hidden');
+                        $('#photo-btn-label').text('Change Image');
+                        $('#photo-remove-btn').removeClass('hidden');
+                        $('#err-student_image').addClass('hidden');
+                        if (r.preview_url) {
+                            $('#photo-preview-img').attr('src', r.preview_url).removeClass('hidden');
+                            $('#photo-placeholder-icon').addClass('hidden');
+                        }
+                    } else {
+                        showAlert('error', r.error || 'Please upload a JPG, JPEG, or PNG image.');
+                        $('#err-student_image').text(r.error || 'Please upload a JPG, JPEG, or PNG image.').removeClass('hidden');
+                        $('#photo-btn-label').text('Choose Image');
+                        $('#photo-preview-img').attr('src', '').addClass('hidden');
+                        $('#photo-placeholder-icon').removeClass('hidden');
+                        $('#photo_temp_path').val('');
+                        $('#photo_display_name').val('');
+                    }
+                },
+                error: function () {
+                    $('#photo-btn-label').text('Choose Image');
+                    $('#photo-upload-progress').addClass('hidden').removeClass('flex');
+                    showAlert('error', 'Image upload failed. Please try again.');
+                }
+            });
+        });
+
+        /* Remove student photo */
+        $('#photo-remove-btn').on('click', function () {
+            $('#photo_temp_path').val('');
+            $('#photo_display_name').val('');
+            $('#student_image_file').val('');
+            $('#photo-preview-img').attr('src', '').addClass('hidden');
+            $('#photo-placeholder-icon').removeClass('hidden');
+            $('#photo-file-name').text('').addClass('hidden');
+            $('#photo-remove-btn').addClass('hidden');
+            $('#photo-btn-label').text('Choose Image');
+            $('#err-student_image').addClass('hidden').text('');
+        });
+
         $s1.on('submit', function (e) {
             e.preventDefault();
             var $btn = $('#btn-step1-next').prop('disabled', true)
@@ -578,15 +730,19 @@
             var file = this.files[0];
             if (!file) return;
 
+            $('#err-tc_document').addClass('hidden').text('');
+
             // Client-side pre-check
             var ext = file.name.split('.').pop().toLowerCase();
             if (['pdf','jpg','jpeg','png'].indexOf(ext) === -1) {
-                showAlert('error', 'Invalid file type. Allowed: PDF, JPG, PNG.');
+                showAlert('error', 'TC Document must be a PDF, JPG, JPEG, or PNG file.');
+                $('#err-tc_document').text('TC Document must be a PDF, JPG, JPEG, or PNG file.').removeClass('hidden');
                 this.value = '';
                 return;
             }
             if (file.size > 2 * 1024 * 1024) {
-                showAlert('error', 'File is too large. Maximum size is 2 MB.');
+                showAlert('error', 'TC Document must not exceed 2 MB.');
+                $('#err-tc_document').text('TC Document must not exceed 2 MB.').removeClass('hidden');
                 this.value = '';
                 return;
             }
@@ -614,9 +770,12 @@
                         $('#tc_temp_path').val(r.temp_path);
                         $('#tc-file-name').text(r.display_name);
                         $('#tc-file-status').removeClass('hidden');
+                        $('#err-tc_document').addClass('hidden').text('');
                     } else {
-                        showAlert('error', r.error || 'Upload failed. Please try again.');
+                        showAlert('error', r.error || 'TC Document must be a PDF, JPG, JPEG, or PNG file.');
+                        $('#err-tc_document').text(r.error || 'TC Document must be a PDF, JPG, JPEG, or PNG file.').removeClass('hidden');
                         $('#tc-btn-label').text('Choose File');
+                        $('#tc_temp_path').val('');
                     }
                 },
                 error: function () {
@@ -633,6 +792,7 @@
             $('#tc-file-status').addClass('hidden');
             $('#tc-btn-label').text('Choose File');
             $('#tc_document_file').val('');
+            $('#err-tc_document').addClass('hidden').text('');
         });
 
         /* ── Dynamic Academic Activity Rows ────────────────────────────── */
@@ -728,6 +888,15 @@
                 if (!$.trim($('#prev_school_name').val())) {
                     $('#err-prev_school_name').text('Previous School Name is required.').removeClass('hidden');
                     $('#prev_school_name').addClass('!border-error');
+                    ok = false;
+                }
+                if (!$.trim($('#tc_number').val())) {
+                    $('#err-tc_number').text('TC Number is required.').removeClass('hidden');
+                    $('#tc_number').addClass('!border-error');
+                    ok = false;
+                }
+                if (!$('#tc_temp_path').val()) {
+                    $('#err-tc_document').text('TC Document is required.').removeClass('hidden');
                     ok = false;
                 }
                 var pct = $('#prev_percentage').val();
