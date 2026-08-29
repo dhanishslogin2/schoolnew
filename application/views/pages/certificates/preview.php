@@ -55,7 +55,7 @@
       <!-- Watermark Background -->
       <?php if ($settings->watermark_enabled): ?>
         <div class="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none select-none font-sans font-black text-6xl tracking-widest uppercase text-slate-800 rotate-[-30deg]">
-          <?php echo html_escape($school->school_name ?? 'SCHOOL'); ?>
+          <?php echo html_escape($school->school_name ?? 'LOGIN2'); ?>
         </div>
       <?php endif; ?>
 
@@ -73,7 +73,7 @@
         </div>
 
         <h1 class="font-bold text-2xl sm:text-3xl text-slate-900 tracking-wide uppercase font-serif">
-          <?php echo html_escape($school->school_name ?? 'SCHOOL MANAGEMENT SYSTEM'); ?>
+          <?php echo html_escape($school->school_name ?? 'LOGIN2 MANAGEMENT SYSTEM'); ?>
         </h1>
         <p class="text-xs text-slate-600 font-sans mt-1">
           <?php echo html_escape($school->address ?? ''); ?> • Phone: <?php echo html_escape($school->phone ?? ''); ?> • Email: <?php echo html_escape($school->email ?? ''); ?>
@@ -104,7 +104,7 @@
           </div>
 
           <div class="w-32 h-32 rounded-full border-2 border-dashed border-slate-400 flex items-center justify-center text-[10px] text-slate-400 uppercase font-bold tracking-widest select-none">
-            [ School Seal ]
+            [ Login2 Seal ]
           </div>
 
           <div class="w-48">
@@ -118,7 +118,7 @@
         </div>
 
         <div class="mt-8 text-center text-[11px] text-slate-500 font-mono">
-          * This document is generated electronically from the school management system ledger.
+          * This document is generated electronically from the Login2 management system ledger.
         </div>
       </div>
     </div>

@@ -837,10 +837,10 @@ const NAV = [
 
   // 22. School Settings
   {
-    key: "settings", label: "School Settings", icon: "settings",
+    key: "settings", label: "Login2 Settings", icon: "settings",
     groups: [
       { key: "settings", label: "Overview" },
-      { key: "settings", label: "School Profile" },
+      { key: "settings", label: "Login2 Profile" },
       {
         label: "Academic Settings",
         items: [
@@ -935,7 +935,7 @@ const PAGE_TITLES = {
   "user-security-settings": "Security Settings",
   "user-audit-logs": "Permission Audit Logs",
   "user-management": "User & Permission Management",
-  "settings": "School Settings",
+  "settings": "Login2 Settings",
   "unauthorized": "Access Restricted",
 };
 
@@ -1257,7 +1257,7 @@ function renderHeader(pageKey, breadcrumb) {
             <div class="text-[12px] text-on-surface-variant truncate">${CURRENT_USER.email}</div>
             <span class="inline-block mt-1.5 rounded-full bg-primary-fixed text-primary text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5">${CURRENT_USER.role}</span>
           </div>
-          <a href="${url("settings")}" class="flex items-center gap-2.5 px-3.5 py-2 text-body-md font-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface">${iconSpan("settings", "text-[18px]")} School Settings</a>
+          <a href="${url("settings")}" class="flex items-center gap-2.5 px-3.5 py-2 text-body-md font-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface">${iconSpan("settings", "text-[18px]")} Login2 Settings</a>
           <a href="${url("user-management")}" class="flex items-center gap-2.5 px-3.5 py-2 text-body-md font-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface">${iconSpan("manage_accounts", "text-[18px]")} User Management</a>
           <div class="my-1 border-t border-outline-variant/60"></div>
           <a data-testid="logout-btn" href="${url("logout")}" class="flex items-center gap-2.5 px-3.5 py-2 text-body-md font-body-md text-error hover:bg-error-container/40">${iconSpan("logout", "text-[18px]")} Log Out</a>

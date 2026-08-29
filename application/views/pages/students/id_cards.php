@@ -56,7 +56,7 @@
         <div class="id-card elevation-2 rounded-2xl overflow-hidden border border-outline-variant/60 bg-surface-container-lowest flex flex-col justify-between">
           <!-- Card Top Header -->
           <div class="bg-primary text-on-primary p-3.5 text-center">
-            <div class="text-[13px] font-bold tracking-wider uppercase">Senior School</div>
+            <div class="text-[13px] font-bold tracking-wider uppercase">Login2</div>
             <div class="text-[10px] opacity-80 uppercase tracking-widest mt-0.5">Student Identity Card</div>
           </div>
 

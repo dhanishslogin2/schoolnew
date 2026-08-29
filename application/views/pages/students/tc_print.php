@@ -22,7 +22,7 @@
       
       <!-- School Header -->
       <div class="text-center border-b-2 border-primary/40 pb-6 mb-6">
-        <div class="text-2xl font-bold uppercase tracking-wider text-primary">Senior Secondary School</div>
+        <div class="text-2xl font-bold uppercase tracking-wider text-primary">Login2</div>
         <div class="text-xs text-on-surface-variant uppercase tracking-widest mt-0.5">Affiliated to CBSE, New Delhi · Affiliation No. 930842 · School Code 75210</div>
         <div class="text-xs text-on-surface-variant mt-1">Knowledge Park Road, Kochi, Ernakulam, Kerala — 682030 | Phone: +91 484 2900000</div>
         <div class="mt-4 inline-block px-6 py-1.5 rounded-full bg-surface-container-high font-bold text-sm uppercase tracking-wider text-on-surface border border-outline-variant">

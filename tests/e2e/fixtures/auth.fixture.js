@@ -1,16 +1,18 @@
 // @ts-check
+require('dotenv').config();
 const { test: base, expect } = require('@playwright/test');
 
 const test = base.extend({
   // Helper to perform manual login actions
   authHelper: async ({ page, baseURL }, use) => {
+    const targetURL = baseURL || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost/schoolnew/';
     const helper = {
       async goToLogin() {
-        await page.goto(`${baseURL}auth/login`);
+        await page.goto(`${targetURL}auth/login`);
         await expect(page.locator('[data-testid="login-form"]')).toBeVisible();
       },
       async login(username, password) {
-        await page.goto(`${baseURL}auth/login`);
+        await page.goto(`${targetURL}auth/login`);
         await page.fill('[data-testid="login-email"]', username);
         await page.fill('[data-testid="login-password"]', password);
         await page.click('[data-testid="login-submit"]');
@@ -27,10 +29,11 @@ const test = base.extend({
 
   // Fixture providing an already-authenticated page
   authenticatedPage: async ({ page, baseURL }, use) => {
+    const targetURL = baseURL || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost/schoolnew/';
     const username = process.env.PLAYWRIGHT_TEST_USERNAME || 'admin@gmail.com';
     const password = process.env.PLAYWRIGHT_TEST_PASSWORD || 'password123';
 
-    await page.goto(`${baseURL}auth/login`);
+    await page.goto(`${targetURL}auth/login`);
     await page.fill('[data-testid="login-email"]', username);
     await page.fill('[data-testid="login-password"]', password);
     await page.click('[data-testid="login-submit"]');

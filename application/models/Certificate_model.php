@@ -126,7 +126,7 @@ class Certificate_model extends CI_Model {
         $dol_formatted = !empty($extra['date_of_leaving']) ? date('d-m-Y', strtotime($extra['date_of_leaving'])) : date('d-m-Y');
 
         $replacements = array(
-            '{school_name}'          => html_escape($school->school_name ?? 'School'),
+            '{school_name}'          => html_escape($school->school_name ?? 'Login2'),
             '{school_code}'          => html_escape($school->school_code ?? 'SCH-01'),
             '{school_address}'       => html_escape($school->address ?? ''),
             '{school_phone}'         => html_escape($school->phone ?? ''),

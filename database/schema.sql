@@ -1208,7 +1208,7 @@ CREATE TABLE `tbl_communication_settings` (
   `sms_provider` VARCHAR(50) NOT NULL DEFAULT 'Generic SMS Gateway',
   `sms_sender_id` VARCHAR(20) NOT NULL DEFAULT 'SCHOLL',
   `whatsapp_provider` VARCHAR(50) NOT NULL DEFAULT 'WhatsApp Business API',
-  `email_from_name` VARCHAR(100) NOT NULL DEFAULT 'School Management',
+  `email_from_name` VARCHAR(100) NOT NULL DEFAULT 'Login2 Management',
   `email_from_address` VARCHAR(100) NOT NULL DEFAULT 'notifications@school.edu',
   `enable_scheduled_jobs` TINYINT(1) NOT NULL DEFAULT 1,
   `max_retries` INT UNSIGNED NOT NULL DEFAULT 3,
@@ -2313,4 +2313,4 @@ INSERT INTO `tbl_certificates` (`certificate_id`, `student_id`, `certificate_typ
 
 -- School Settings
 INSERT INTO `tbl_school_settings` (`setting_id`, `school_name`, `school_code`, `established_year`, `principal_name`, `phone`, `email`, `website`, `address`, `description`) VALUES
-(1, 'School', 'SCH-KL-2026', '1998', 'Antony Xavier', '+91 484 234 5678', 'info@school.edu', 'www.school.edu', 'Kakkanad, Ernakulam, Kerala - 682030', 'A CBSE-affiliated school known for excellence in academics and sports.');
+(1, 'Login2', 'SCH-KL-2026', '1998', 'Antony Xavier', '+91 484 234 5678', 'info@school.edu', 'www.school.edu', 'Kakkanad, Ernakulam, Kerala - 682030', 'A CBSE-affiliated school known for excellence in academics and sports.');

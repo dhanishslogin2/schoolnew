@@ -458,12 +458,12 @@
         </div>
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1.5">Guardian Phone</label>
-          <input type="text" name="guardian_phone" value="<?php echo wval($pd, 'guardian_phone'); ?>" placeholder="+91 98470 11223"
+          <input type="text" id="guardian_phone" name="guardian_phone" value="<?php echo wval($pd, 'guardian_phone'); ?>" placeholder="+91 98470 11223"
                  class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
         </div>
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1.5">Guardian Email</label>
-          <input type="email" name="guardian_email" value="<?php echo wval($pd, 'guardian_email'); ?>" placeholder="parent@example.com"
+          <input type="email" id="guardian_email" name="guardian_email" value="<?php echo wval($pd, 'guardian_email'); ?>" placeholder="parent@example.com"
                  class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
         </div>
         <div class="sm:col-span-2">

@@ -9,8 +9,8 @@
     <?php echo form_open('settings', array('id' => 'settings-form')); ?>
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
-        <h2 class="font-headline-md text-headline-md text-on-surface">School Settings</h2>
-        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Manage your school's core information.</p>
+        <h2 class="font-headline-md text-headline-md text-on-surface">Login2 Settings</h2>
+        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Manage your institution's core information.</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
         <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md text-label-md hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
@@ -21,7 +21,7 @@
   
     <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 overflow-hidden">
       <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant/50">
-        <h3 class="font-headline-md text-headline-md text-on-surface">School Information</h3>
+        <h3 class="font-headline-md text-headline-md text-on-surface">Institution Information</h3>
         <div class="flex items-center gap-2"></div>
       </div>
       <div class="p-5">

@@ -570,6 +570,18 @@ class Students extends MY_Controller {
         $sd = $wizard['student_details'];
         $ad = $wizard['academic_details'];
 
+        $class_id = !empty($ad['class_id']) ? (int)$ad['class_id'] : 1;
+        $section_id = !empty($ad['section_id']) ? (int)$ad['section_id'] : NULL;
+        if (!$section_id) {
+            $sec_row = $this->db->get_where('tbl_sections', array('class_id' => $class_id, 'is_deleted' => 'n'))->row();
+            if (!$sec_row) {
+                $sec_row = $this->db->get_where('tbl_sections', array('is_deleted' => 'n'))->row();
+            }
+            if ($sec_row) {
+                $section_id = (int)$sec_row->section_id;
+            }
+        }
+
         $student_data = array(
             'admission_number'  => $sd['admission_number'],
             'first_name'        => $sd['first_name'],
@@ -577,10 +589,10 @@ class Students extends MY_Controller {
             'gender'            => $sd['gender']            ?: 'Male',
             'date_of_birth'     => $sd['date_of_birth']     ?: date('Y-m-d'),
             'blood_group'       => $sd['blood_group']       ?: '',
-            'academic_year_id'  => $ad['academic_year_id']  ?: $this->academic_year_id,
-            'class_id'          => $ad['class_id']          ?: 1,
-            'section_id'        => $ad['section_id']        ?: 1,
-            'roll_number'       => $ad['roll_number']       ?: '',
+            'academic_year_id'  => !empty($ad['academic_year_id']) ? (int)$ad['academic_year_id'] : $this->academic_year_id,
+            'class_id'          => $class_id,
+            'section_id'        => $section_id,
+            'roll_number'       => !empty($ad['roll_number']) ? trim($ad['roll_number']) : '',
             'guardian_name'     => $parent_details['guardian_name'],
             'guardian_relation' => $parent_details['guardian_relation'],
             'guardian_phone'    => $parent_details['guardian_phone']    ?: '',

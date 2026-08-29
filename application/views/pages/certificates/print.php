@@ -122,7 +122,7 @@
 <body onload="window.print()">
   <div class="cert-frame">
     <?php if ($settings->watermark_enabled): ?>
-      <div class="watermark"><?php echo html_escape($school->school_name ?? 'SCHOOL'); ?></div>
+      <div class="watermark"><?php echo html_escape($school->school_name ?? 'LOGIN2'); ?></div>
     <?php endif; ?>
 
     <div class="cert-header">
@@ -130,7 +130,7 @@
         <div>REF NO: <?php echo html_escape($cert->certificate_no); ?></div>
         <div>DATE: <?php echo date('d-m-Y', strtotime($cert->issue_date)); ?></div>
       </div>
-      <h1 class="school-title"><?php echo html_escape($school->school_name ?? 'SCHOOL MANAGEMENT SYSTEM'); ?></h1>
+      <h1 class="school-title"><?php echo html_escape($school->school_name ?? 'LOGIN2 MANAGEMENT SYSTEM'); ?></h1>
       <p class="school-subtitle"><?php echo html_escape($school->address ?? ''); ?> • Phone: <?php echo html_escape($school->phone ?? ''); ?></p>
       
       <div>
