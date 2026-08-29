@@ -7,6 +7,7 @@ class Students extends MY_Controller {
     {
         parent::__construct();
         $this->load->model('Student_model');
+        $this->load->model('Student_academic_model');
         $this->load->model('Class_model');
         $this->load->model('Section_model');
         $this->load->model('Academic_year_model');
@@ -147,59 +148,589 @@ class Students extends MY_Controller {
     }
 
     /* =========================================================================
-       2. Student Registration / Add Student
+       2. Student Registration Wizard
        ========================================================================= */
+
+    /**
+     * Alias — /students/register maps here
+     */
     public function register()
     {
         $this->add();
     }
 
+    /**
+     * Main wizard dispatcher.
+     *
+     * GET  students/add          → Step 1 (Student Details)
+     * GET  students/add?step=2   → Step 2 (Academic Details) — guarded
+     * GET  students/add?step=3   → Step 3 (Parent / Guardian) — guarded
+     *
+     * The wizard stores intermediate data in the CI session under the key
+     * 'student_registration_wizard'.  No database rows are written until the
+     * final Save Student action (wizard_save).
+     */
     public function add()
     {
         $this->require_permission('students.create');
 
-        if ($this->input->method() === 'post') {
-            $this->form_validation->set_rules('first_name', 'First Name', 'required|trim');
-            $this->form_validation->set_rules('admission_number', 'Admission Number', 'required|trim');
+        $step    = (int)($this->input->get('step') ?: 1);
+        $wizard  = $this->session->userdata('student_registration_wizard') ?: array();
 
-            if ($this->form_validation->run() === TRUE) {
-                $data = array(
-                    'admission_number' => $this->input->post('admission_number', TRUE),
-                    'first_name'       => $this->input->post('first_name', TRUE),
-                    'last_name'        => $this->input->post('last_name', TRUE),
-                    'gender'           => $this->input->post('gender', TRUE),
-                    'date_of_birth'    => $this->input->post('date_of_birth', TRUE) ?: date('Y-m-d'),
-                    'blood_group'      => $this->input->post('blood_group', TRUE),
-                    'academic_year_id' => $this->input->post('academic_year_id') ?: $this->academic_year_id,
-                    'class_id'         => $this->input->post('class_id') ?: 1,
-                    'section_id'       => $this->input->post('section_id') ?: 1,
-                    'roll_number'      => $this->input->post('roll_number', TRUE),
-                    'guardian_name'    => $this->input->post('guardian_name', TRUE),
-                    'guardian_relation'=> $this->input->post('guardian_relation', TRUE) ?: 'Father',
-                    'guardian_phone'   => $this->input->post('guardian_phone', TRUE),
-                    'guardian_email'   => $this->input->post('guardian_email', TRUE),
-                    'address'          => $this->input->post('address', TRUE),
-                    'status'           => 1,
-                    'created_at'       => date('Y-m-d H:i:s'),
-                );
-                $new_id = $this->Student_model->insert($data);
-                $this->session->set_flashdata('success', 'Student registered successfully.');
-                redirect('students/profile/' . $new_id);
-                return;
+        // ── Guard: disallow skipping ahead ────────────────────────────────────
+        if ($step === 2 && empty($wizard['student_details'])) {
+            redirect('students/add');
+            return;
+        }
+        if ($step === 3 && (empty($wizard['student_details']) || empty($wizard['academic_details']))) {
+            if (empty($wizard['student_details'])) {
+                redirect('students/add');
+            } else {
+                redirect('students/add?step=2');
+            }
+            return;
+        }
+        if ($step < 1 || $step > 3) {
+            redirect('students/add');
+            return;
+        }
+
+        // ── Initialise a wizard token on first visit ───────────────────────────
+        if (empty($wizard['wizard_token'])) {
+            $wizard['wizard_token'] = sha1(uniqid('wiz_', TRUE));
+            $this->session->set_userdata('student_registration_wizard', $wizard);
+        }
+
+        $classes       = $this->Class_model->get_all($this->academic_year_id);
+        $sections      = $this->Section_model->get_all();
+        $academic_years = $this->Academic_year_model->get_all();
+
+        $this->render('pages/students/add', array(
+            'title'          => 'Student Registration',
+            'page_key'       => 'student-registration',
+            'breadcrumb'     => array('Student Management', 'Student Registration'),
+            'classes'        => $classes,
+            'sections'       => $sections,
+            'academic_years' => $academic_years,
+            'current_step'   => $step,
+            'wizard'         => $wizard,
+        ));
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       Wizard Step 1 — Validate & save Student Details to session
+       POST students/wizard_step1
+    ───────────────────────────────────────────────────────────────────────── */
+    public function wizard_step1()
+    {
+        $this->require_permission('students.create');
+
+        if ($this->input->method() !== 'post') {
+            redirect('students/add');
+            return;
+        }
+
+        $this->form_validation->set_rules('admission_number', 'Admission Number', 'required|trim');
+        $this->form_validation->set_rules('first_name',       'First Name',        'required|trim');
+
+        if ($this->form_validation->run() !== TRUE) {
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode(array(
+                    'success' => FALSE,
+                    'errors'  => $this->_collect_validation_errors(),
+                )));
+            return;
+        }
+
+        // Store step-1 data in session (no DB write)
+        $wizard = $this->session->userdata('student_registration_wizard') ?: array();
+
+        // Initialise token if somehow missing
+        if (empty($wizard['wizard_token'])) {
+            $wizard['wizard_token'] = sha1(uniqid('wiz_', TRUE));
+        }
+
+        $wizard['student_details'] = array(
+            'admission_number' => $this->input->post('admission_number', TRUE),
+            'first_name'       => $this->input->post('first_name',       TRUE),
+            'last_name'        => $this->input->post('last_name',         TRUE),
+            'gender'           => $this->input->post('gender',            TRUE) ?: 'Male',
+            'date_of_birth'    => $this->input->post('date_of_birth',     TRUE) ?: date('Y-m-d'),
+            'blood_group'      => $this->input->post('blood_group',       TRUE),
+        );
+
+        $this->session->set_userdata('student_registration_wizard', $wizard);
+
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode(array(
+                'success'  => TRUE,
+                'redirect' => site_url('students/add?step=2'),
+            )));
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       Wizard TC Upload — separate multipart file-only endpoint
+       POST students/wizard_tc_upload
+       Returns JSON { success, temp_path, display_name, error }
+    ───────────────────────────────────────────────────────────────────────── */
+    public function wizard_tc_upload()
+    {
+        $this->require_permission('students.create');
+
+        if ($this->input->method() !== 'post') {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Invalid request.')));
+            return;
+        }
+
+        if (empty($_FILES['tc_document']['name'])) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'No file received.')));
+            return;
+        }
+
+        // ── Security: whitelist extensions + MIME types ───────────────────────
+        $allowed_ext  = array('pdf', 'jpg', 'jpeg', 'png');
+        $allowed_mime = array('application/pdf', 'image/jpeg', 'image/jpg', 'image/png');
+
+        $orig_name = $_FILES['tc_document']['name'];
+        $ext       = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
+
+        if (!in_array($ext, $allowed_ext)) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Invalid file type. Allowed: PDF, JPG, PNG.')));
+            return;
+        }
+
+        // MIME type check via finfo
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = finfo_file($finfo, $_FILES['tc_document']['tmp_name']);
+        finfo_close($finfo);
+
+        if (!in_array($mime, $allowed_mime)) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'File content does not match allowed types.')));
+            return;
+        }
+
+        // Size limit: 2MB
+        $max_size = 2 * 1024 * 1024;
+        if ($_FILES['tc_document']['size'] > $max_size) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'File too large. Maximum size is 2 MB.')));
+            return;
+        }
+
+        if ($_FILES['tc_document']['error'] !== UPLOAD_ERR_OK) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Upload error. Please try again.')));
+            return;
+        }
+
+        // ── Safe filename + temp storage ──────────────────────────────────────
+        $safe_name  = 'tc_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $temp_dir   = FCPATH . 'uploads/tc_temp/';
+
+        if (!is_dir($temp_dir)) {
+            mkdir($temp_dir, 0755, TRUE);
+        }
+
+        if (!move_uploaded_file($_FILES['tc_document']['tmp_name'], $temp_dir . $safe_name)) {
+            $this->output->set_content_type('application/json')
+                         ->set_output(json_encode(array('success' => FALSE, 'error' => 'Failed to store file. Please try again.')));
+            return;
+        }
+
+        // Clean up any previously uploaded temp TC for this wizard session
+        $wizard = $this->session->userdata('student_registration_wizard') ?: array();
+        $old_ad = isset($wizard['academic_details']) ? $wizard['academic_details'] : array();
+        if (!empty($old_ad['tc_temp_path'])) {
+            $old_file = FCPATH . $old_ad['tc_temp_path'];
+            if (is_file($old_file)) {
+                @unlink($old_file);
             }
         }
 
-        $classes  = $this->Class_model->get_all($this->academic_year_id);
-        $sections = $this->Section_model->get_all();
-        $years    = $this->Academic_year_model->get_all();
+        $temp_path = 'uploads/tc_temp/' . $safe_name;
 
-        $this->render('pages/students/add', array(
-            'title'    => 'Student Registration',
-            'page_key' => 'student-registration',
-            'classes'  => $classes,
-            'sections' => $sections,
-            'years'    => $years,
-        ));
+        $this->output->set_content_type('application/json')
+                     ->set_output(json_encode(array(
+                         'success'      => TRUE,
+                         'temp_path'    => $temp_path,
+                         'display_name' => $orig_name,
+                     )));
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       Wizard Step 2 — Validate & save Academic Details to session
+       POST students/wizard_step2
+    ───────────────────────────────────────────────────────────────────────── */
+    public function wizard_step2()
+    {
+        $this->require_permission('students.create');
+
+        if ($this->input->method() !== 'post') {
+            redirect('students/add?step=2');
+            return;
+        }
+
+        $wizard = $this->session->userdata('student_registration_wizard') ?: array();
+        if (empty($wizard['student_details'])) {
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode(array(
+                    'success'  => FALSE,
+                    'redirect' => site_url('students/add'),
+                    'message'  => 'Please complete Step 1 first.',
+                )));
+            return;
+        }
+
+        // ── Server-side validation ────────────────────────────────────────────
+        $this->form_validation->set_rules('class_id', 'Class', 'required');
+
+        $no_prev_school = ($this->input->post('no_previous_school') == '1');
+
+        if (!$no_prev_school) {
+            $this->form_validation->set_rules('prev_school_name',  'Previous School Name',    'trim|required');
+            $this->form_validation->set_rules('prev_school_board',  'Previous School Board',   'trim');
+            $this->form_validation->set_rules('prev_class',         'Previous Class',          'trim');
+            $this->form_validation->set_rules('prev_academic_year', 'Previous Academic Year',  'trim');
+            $this->form_validation->set_rules('prev_percentage',
+                'Previous Percentage',
+                'trim|numeric|greater_than_equal_to[0]|less_than_equal_to[100]'
+            );
+        }
+
+        if ($this->form_validation->run() !== TRUE) {
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode(array(
+                    'success' => FALSE,
+                    'errors'  => $this->_collect_validation_errors(),
+                )));
+            return;
+        }
+
+        // ── Build academic_details sub-array ──────────────────────────────────
+        $academic_details = array(
+            'academic_year_id'   => $this->academic_year_id,
+            'class_id'           => (int)$this->input->post('class_id'),
+            'section_id'         => (int)$this->input->post('section_id') ?: 0,
+            'roll_number'        => $this->input->post('roll_number', TRUE),
+            'no_previous_school' => $no_prev_school ? 1 : 0,
+        );
+
+        // ── Previous school fields (only when applicable) ─────────────────────
+        if (!$no_prev_school) {
+            $academic_details['prev_school'] = array(
+                'school_name'            => $this->input->post('prev_school_name',    TRUE),
+                'school_address'         => $this->input->post('prev_school_address', TRUE),
+                'school_board'           => $this->input->post('prev_school_board',   TRUE),
+                'previous_class'         => $this->input->post('prev_class',           TRUE),
+                'previous_academic_year' => $this->input->post('prev_academic_year',  TRUE),
+                'date_of_leaving'        => $this->input->post('date_of_leaving',     TRUE) ?: NULL,
+                'reason_for_leaving'     => $this->input->post('reason_for_leaving',  TRUE),
+                'tc_number'              => $this->input->post('tc_number',            TRUE),
+                'previous_percentage'    => strlen($this->input->post('prev_percentage')) > 0
+                                               ? (float)$this->input->post('prev_percentage')
+                                               : NULL,
+                'tc_temp_path'           => $this->input->post('tc_temp_path', TRUE),
+            );
+        } else {
+            $academic_details['prev_school'] = array();
+            // Clean up any temp TC file from a previous attempt
+            $old_ad = isset($wizard['academic_details']) ? $wizard['academic_details'] : array();
+            if (!empty($old_ad['tc_temp_path'])) {
+                $old_file = FCPATH . $old_ad['tc_temp_path'];
+                if (is_file($old_file)) {
+                    @unlink($old_file);
+                }
+            }
+        }
+
+        // ── Academic activities ───────────────────────────────────────────────
+        $raw_academic = $this->input->post('academic_activities');
+        $activities   = array();
+        if (!empty($raw_academic) && is_array($raw_academic)) {
+            foreach ($raw_academic as $act) {
+                if (!empty($act['activity_name'])) {
+                    $activities[] = array(
+                        'category'        => 'Academic',
+                        'activity_type'   => isset($act['activity_type'])   ? $act['activity_type']   : 'Achievement',
+                        'activity_name'   => isset($act['activity_name'])   ? $act['activity_name']   : '',
+                        'description'     => isset($act['description'])     ? $act['description']     : '',
+                        'level'           => isset($act['level'])           ? $act['level']           : '',
+                        'position_result' => isset($act['position_result']) ? $act['position_result'] : '',
+                        'year'            => isset($act['year']) && is_numeric($act['year'])
+                                                ? (int)$act['year'] : NULL,
+                    );
+                }
+            }
+        }
+        $academic_details['activities'] = $activities;
+
+        // ── Extracurricular activities ────────────────────────────────────────
+        $raw_extra     = $this->input->post('extracurricular');
+        $extracurricular = array();
+        if (!empty($raw_extra) && is_array($raw_extra)) {
+            foreach ($raw_extra as $act) {
+                if (!empty($act['activity_name'])) {
+                    $extracurricular[] = array(
+                        'category'        => 'Extracurricular',
+                        'activity_type'   => isset($act['activity_type'])   ? $act['activity_type']   : 'Sports',
+                        'activity_name'   => isset($act['activity_name'])   ? $act['activity_name']   : '',
+                        'description'     => isset($act['description'])     ? $act['description']     : '',
+                        'level'           => isset($act['level'])           ? $act['level']           : '',
+                        'position_result' => isset($act['position_result']) ? $act['position_result'] : '',
+                        'year'            => isset($act['year']) && is_numeric($act['year'])
+                                                ? (int)$act['year'] : NULL,
+                    );
+                }
+            }
+        }
+        $academic_details['extracurricular'] = $extracurricular;
+
+        $wizard['academic_details'] = $academic_details;
+        $this->session->set_userdata('student_registration_wizard', $wizard);
+
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode(array(
+                'success'  => TRUE,
+                'redirect' => site_url('students/add?step=3'),
+            )));
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       Wizard Final Save — Validate Step 3, merge all data, run DB transaction
+       POST students/wizard_save
+    ───────────────────────────────────────────────────────────────────────── */
+    public function wizard_save()
+    {
+        $this->require_permission('students.create');
+
+        if ($this->input->method() !== 'post') {
+            redirect('students/add?step=3');
+            return;
+        }
+
+        $wizard = $this->session->userdata('student_registration_wizard') ?: array();
+
+        // Guard: require all prior steps
+        if (empty($wizard['student_details']) || empty($wizard['academic_details'])) {
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode(array(
+                    'success'  => FALSE,
+                    'redirect' => site_url('students/add'),
+                    'message'  => 'Registration session expired. Please start again.',
+                )));
+            return;
+        }
+
+        // Anti-duplicate: check wizard token consumed flag
+        if (!empty($wizard['submitted'])) {
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode(array(
+                    'success'  => FALSE,
+                    'message'  => 'This registration has already been submitted.',
+                )));
+            return;
+        }
+
+        $this->form_validation->set_rules('guardian_name', 'Guardian Name', 'required|trim');
+
+        if ($this->form_validation->run() !== TRUE) {
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode(array(
+                    'success' => FALSE,
+                    'errors'  => $this->_collect_validation_errors(),
+                )));
+            return;
+        }
+
+        // Mark submitted immediately to prevent duplicate concurrent posts
+        $wizard['submitted'] = TRUE;
+        $this->session->set_userdata('student_registration_wizard', $wizard);
+
+        $parent_details = array(
+            'guardian_name'     => $this->input->post('guardian_name',     TRUE),
+            'guardian_relation' => $this->input->post('guardian_relation', TRUE) ?: 'Father',
+            'guardian_phone'    => $this->input->post('guardian_phone',    TRUE),
+            'guardian_email'    => $this->input->post('guardian_email',    TRUE),
+            'address'           => $this->input->post('address',           TRUE),
+        );
+
+        // ── Merge all three steps ──────────────────────────────────────────────
+        $sd = $wizard['student_details'];
+        $ad = $wizard['academic_details'];
+
+        $student_data = array(
+            'admission_number'  => $sd['admission_number'],
+            'first_name'        => $sd['first_name'],
+            'last_name'         => $sd['last_name']         ?: '',
+            'gender'            => $sd['gender']            ?: 'Male',
+            'date_of_birth'     => $sd['date_of_birth']     ?: date('Y-m-d'),
+            'blood_group'       => $sd['blood_group']       ?: '',
+            'academic_year_id'  => $ad['academic_year_id']  ?: $this->academic_year_id,
+            'class_id'          => $ad['class_id']          ?: 1,
+            'section_id'        => $ad['section_id']        ?: 1,
+            'roll_number'       => $ad['roll_number']       ?: '',
+            'guardian_name'     => $parent_details['guardian_name'],
+            'guardian_relation' => $parent_details['guardian_relation'],
+            'guardian_phone'    => $parent_details['guardian_phone']    ?: '',
+            'guardian_email'    => $parent_details['guardian_email']    ?: '',
+            'address'           => $parent_details['address']           ?: '',
+            'status'            => 1,
+            'is_deleted'        => 'n',
+            'created_at'        => date('Y-m-d H:i:s'),
+        );
+
+        // ── Database transaction ──────────────────────────────────────────────
+        $this->db->trans_start();
+
+        // 1. Insert core student record
+        $this->db->insert('tbl_students', $student_data);
+        $new_id = (int)$this->db->insert_id();
+
+        if ($new_id > 0) {
+            $no_prev_school = !empty($ad['no_previous_school']);
+            $prev_school    = isset($ad['prev_school']) ? $ad['prev_school'] : array();
+
+            // 2. Previous school record
+            if (!$no_prev_school && !empty($prev_school['school_name'])) {
+                $tc_document_id = NULL;
+
+                // Move TC file from temp → permanent location
+                if (!empty($prev_school['tc_temp_path'])) {
+                    $temp_path  = FCPATH . $prev_school['tc_temp_path'];
+                    $dest_dir   = FCPATH . 'uploads/documents/';
+                    if (!is_dir($dest_dir)) {
+                        mkdir($dest_dir, 0755, TRUE);
+                    }
+                    $dest_name = 'tc_' . $new_id . '_' . basename($prev_school['tc_temp_path']);
+                    $dest_path = $dest_dir . $dest_name;
+
+                    if (is_file($temp_path) && rename($temp_path, $dest_path)) {
+                        $perm_path      = 'uploads/documents/' . $dest_name;
+                        $tc_document_id = $this->Student_academic_model->insert_tc_document(
+                            $new_id,
+                            $perm_path,
+                            isset($prev_school['tc_number']) ? $prev_school['tc_number'] : ''
+                        );
+                    }
+                }
+
+                $prev_school_data = array(
+                    'student_id'             => $new_id,
+                    'school_name'            => $prev_school['school_name'],
+                    'school_address'         => isset($prev_school['school_address'])         ? $prev_school['school_address']         : NULL,
+                    'school_board'           => isset($prev_school['school_board'])           ? $prev_school['school_board']           : NULL,
+                    'previous_class'         => isset($prev_school['previous_class'])         ? $prev_school['previous_class']         : NULL,
+                    'previous_academic_year' => isset($prev_school['previous_academic_year']) ? $prev_school['previous_academic_year'] : NULL,
+                    'date_of_leaving'        => !empty($prev_school['date_of_leaving'])       ? $prev_school['date_of_leaving']        : NULL,
+                    'reason_for_leaving'     => isset($prev_school['reason_for_leaving'])     ? $prev_school['reason_for_leaving']     : NULL,
+                    'tc_number'              => isset($prev_school['tc_number'])               ? $prev_school['tc_number']               : NULL,
+                    'tc_document_id'         => $tc_document_id,
+                    'previous_percentage'    => isset($prev_school['previous_percentage'])    ? $prev_school['previous_percentage']    : NULL,
+                    'status'                 => 1,
+                    'created_at'             => date('Y-m-d H:i:s'),
+                );
+                $this->Student_academic_model->insert_previous_school($prev_school_data);
+            }
+
+            // 3. Academic activities
+            $all_activities = array();
+            $activities     = isset($ad['activities'])      ? $ad['activities']      : array();
+            $extracurricular = isset($ad['extracurricular']) ? $ad['extracurricular'] : array();
+
+            foreach (array_merge($activities, $extracurricular) as $act) {
+                if (!empty($act['activity_name'])) {
+                    $all_activities[] = array(
+                        'student_id'      => $new_id,
+                        'category'        => $act['category'],
+                        'activity_type'   => $act['activity_type'],
+                        'activity_name'   => $act['activity_name'],
+                        'description'     => isset($act['description'])     ? $act['description']     : NULL,
+                        'level'           => isset($act['level'])           ? $act['level']           : NULL,
+                        'position_result' => isset($act['position_result']) ? $act['position_result'] : NULL,
+                        'year'            => isset($act['year']) && $act['year'] > 0 ? (int)$act['year'] : NULL,
+                        'status'          => 1,
+                        'created_at'      => date('Y-m-d H:i:s'),
+                    );
+                }
+            }
+
+            if (!empty($all_activities)) {
+                $this->Student_academic_model->insert_activities_batch($all_activities);
+            }
+        }
+
+        $this->db->trans_complete();
+
+        if (!$this->db->trans_status() || !$new_id) {
+            // Roll back happened automatically; clear submitted flag so user can retry
+            $wizard['submitted'] = FALSE;
+            $this->session->set_userdata('student_registration_wizard', $wizard);
+
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode(array(
+                    'success' => FALSE,
+                    'message' => 'Failed to save student. Please try again.',
+                )));
+            return;
+        }
+
+        // ── Success: clear wizard session data ────────────────────────────────
+        $this->session->unset_userdata('student_registration_wizard');
+        $this->session->set_flashdata('success', 'Student registered successfully.');
+
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode(array(
+                'success'  => TRUE,
+                'redirect' => site_url('students/profile/' . $new_id),
+            )));
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       Wizard Cancel — clear session, redirect to student list
+       GET/POST students/wizard_cancel
+    ───────────────────────────────────────────────────────────────────────── */
+    public function wizard_cancel()
+    {
+        $this->require_permission('students.create');
+
+        // Clean up any temp TC file
+        $wizard = $this->session->userdata('student_registration_wizard') ?: array();
+        $ad     = isset($wizard['academic_details']) ? $wizard['academic_details'] : array();
+        if (!empty($ad['prev_school']['tc_temp_path'])) {
+            $temp = FCPATH . $ad['prev_school']['tc_temp_path'];
+            if (is_file($temp)) {
+                @unlink($temp);
+            }
+        }
+
+        $this->session->unset_userdata('student_registration_wizard');
+        redirect('students');
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       Internal: collect form_validation errors into a flat array
+    ───────────────────────────────────────────────────────────────────────── */
+    private function _collect_validation_errors()
+    {
+        $errors = array();
+        foreach ($this->form_validation->error_array() as $field => $msg) {
+            $errors[$field] = $msg;
+        }
+        return $errors;
     }
 
 

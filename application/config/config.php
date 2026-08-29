@@ -22,9 +22,56 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | If you need to allow multiple domains, remember that this file is still
 | a PHP script and you can easily do that on your own.
 |
-$root = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost');
-$root .= str_replace(basename($_SERVER['SCRIPT_NAME']), '', $_SERVER['SCRIPT_NAME']);
-$config['base_url'] = getenv('BASE_URL') ?: (getenv('CI_BASE_URL') ?: $root);
+| DEPLOYMENT NOTE:
+|   On servers behind a reverse proxy (Nginx → Apache, load balancer, etc.)
+|   $_SERVER['HTTP_HOST'] may return the internal IP instead of the public
+|   domain. To override safely, set BASE_URL in the server .htaccess:
+|
+|
+|   Or export it from the PHP-FPM / server environment:
+|
+|
+|   The auto-detection below handles: localhost, direct Apache, and reverse
+|   proxy environments. It MUST NOT be left blank for production.
+*/
+
+// Priority 1: explicit override from server environment (most reliable)
+$_base_url_env = getenv('BASE_URL') ?: getenv('CI_BASE_URL');
+
+if ($_base_url_env) {
+    // Use the explicit env var — trailing slash is enforced below
+    $config['base_url'] = rtrim($_base_url_env, '/') . '/';
+} else {
+    // Priority 2: auto-detect from server variables
+    // Determine protocol — check both direct HTTPS and common proxy headers
+    if (
+        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+        (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
+        (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') ||
+        (!empty($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443)
+    ) {
+        $_base_scheme = 'https';
+    } else {
+        $_base_scheme = 'http';
+    }
+
+    // Determine public hostname — reverse proxies forward the original Host
+    // via HTTP_X_FORWARDED_HOST; use it when present and non-empty.
+    // HTTP_HOST is the direct Apache value (may be an internal IP on proxied setups).
+    if (!empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+        // X-Forwarded-Host can be a comma-separated list; take the first (original client host)
+        $_base_host = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_HOST'])[0]);
+    } elseif (!empty($_SERVER['HTTP_HOST'])) {
+        $_base_host = $_SERVER['HTTP_HOST'];
+    } else {
+        $_base_host = 'localhost';
+    }
+
+    // Determine path prefix from SCRIPT_NAME (e.g. /schoolnew/index.php → /schoolnew/)
+    $_base_path = str_replace(basename($_SERVER['SCRIPT_NAME']), '', $_SERVER['SCRIPT_NAME']);
+
+    $config['base_url'] = $_base_scheme . '://' . $_base_host . $_base_path;
+}
 
 /*
 |--------------------------------------------------------------------------
