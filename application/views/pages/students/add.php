@@ -287,7 +287,7 @@
         </div>
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1.5">TC Document <span class="text-error">*</span>
-            <span class="text-on-surface-variant font-normal">(PDF, JPG, JPEG, PNG · Max 2 MB)</span>
+            <span class="text-on-surface-variant font-normal">(PDF, JPG, JPEG, PNG · Max 10 MB)</span>
           </label>
           <div class="flex items-center gap-2 flex-wrap">
             <label for="tc_document_file" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-outline-variant text-on-surface-variant text-label-md hover:bg-surface-container-high cursor-pointer transition-colors bg-surface-container-lowest">
