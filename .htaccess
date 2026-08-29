@@ -1,15 +1,20 @@
-RewriteEngine On
+<IfModule mod_rewrite.c>
+    RewriteEngine On
 
-# ------------------------------------------------------------------
-# Static files: serve directly — never route through CodeIgniter.
-# This is critical: without these two conditions, Apache rewrites
-# CSS/JS/image requests to index.php which returns HTML, not the file.
-# ------------------------------------------------------------------
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
+    # Prevent directory listing
+    Options -Indexes
 
-# Route everything else through CodeIgniter's front controller
-RewriteRule ^(.*)$ index.php/$1 [L]
+    # Allow direct access to real files and directories
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Rewrite to index.php with query string append for universal FastCGI / PHP-FPM / mod_php compatibility
+    RewriteRule ^(.*)$ index.php?/$1 [L,QSA]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    ErrorDocument 404 /index.php
+</IfModule>
 
 # ------------------------------------------------------------------
 # Environment-specific BASE_URL

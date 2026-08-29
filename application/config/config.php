@@ -27,9 +27,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 |   $_SERVER['HTTP_HOST'] may return the internal IP instead of the public
 |   domain. To override safely, set BASE_URL in the server .htaccess:
 |
+|       SetEnv BASE_URL "http://dev.login2.in/schoolnew/"
 |
 |   Or export it from the PHP-FPM / server environment:
 |
+|       BASE_URL=http://dev.login2.in/schoolnew/
 |
 |   The auto-detection below handles: localhost, direct Apache, and reverse
 |   proxy environments. It MUST NOT be left blank for production.
