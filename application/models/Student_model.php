@@ -628,5 +628,130 @@ class Student_model extends CI_Model {
             ->where($this->primaryKey, $id)
             ->update($this->table, ['status' => 0, 'is_deleted' => 'y']);
     }
+
+    /**
+     * Get classes with active student count for a specific academic year.
+     *
+     * @param int $academic_year_id
+     * @return array
+     */
+    public function get_classes_with_student_count($academic_year_id)
+    {
+        $academic_year_id = (int)$academic_year_id;
+        return $this->db->query("
+            SELECT c.class_id, c.class_name, c.class_code, c.academic_year_id,
+                   COUNT(st.student_id) as total_students,
+                   SUM(CASE WHEN st.status = 1 THEN 1 ELSE 0 END) as active_students,
+                   SUM(CASE WHEN st.gender = 'Male' THEN 1 ELSE 0 END) as male_students,
+                   SUM(CASE WHEN st.gender = 'Female' THEN 1 ELSE 0 END) as female_students
+            FROM tbl_classes c
+            LEFT JOIN tbl_students st ON st.class_id = c.class_id 
+                 AND st.academic_year_id = ? 
+                 AND st.is_deleted = 'n'
+            WHERE c.status = 1 AND c.is_deleted = 'n'
+              AND (c.academic_year_id = ? OR c.academic_year_id IS NULL OR c.academic_year_id = 0)
+            GROUP BY c.class_id, c.class_name
+            ORDER BY c.class_id ASC
+        ", [$academic_year_id, $academic_year_id])->result();
+    }
+
+    /**
+     * Get paginated and filtered students strictly matching academic year and filters.
+     *
+     * @param array $filters
+     * @param int|null $limit
+     * @param int|null $offset
+     * @param string $order_col
+     * @param string $order_dir
+     * @return array
+     */
+    public function get_all_students_paginated($filters = array(), $limit = 10, $offset = 0, $order_col = 'st.student_id', $order_dir = 'ASC')
+    {
+        $this->db
+            ->select('st.*, c.class_name, c.class_code, sec.section_name, y.year_name')
+            ->from('tbl_students st')
+            ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
+            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_academic_years y', 'y.academic_year_id = st.academic_year_id', 'left')
+            ->where('st.is_deleted', 'n');
+
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('st.academic_year_id', (int)$filters['academic_year_id']);
+        }
+        if (!empty($filters['class_id'])) {
+            $this->db->where('st.class_id', (int)$filters['class_id']);
+        }
+        if (!empty($filters['section_id'])) {
+            $this->db->where('st.section_id', (int)$filters['section_id']);
+        }
+        if (!empty($filters['gender'])) {
+            $this->db->where('st.gender', $filters['gender']);
+        }
+        if (isset($filters['status']) && $filters['status'] !== '' && $filters['status'] !== 'All') {
+            $this->db->where('st.status', (int)$filters['status']);
+        }
+        if (!empty($filters['search'])) {
+            $s = trim($filters['search']);
+            $this->db->group_start()
+                ->like('st.first_name', $s)
+                ->or_like('st.last_name', $s)
+                ->or_like('st.admission_number', $s)
+                ->or_like('st.guardian_name', $s)
+                ->or_like('st.guardian_phone', $s)
+                ->or_like('st.roll_number', $s)
+                ->group_end();
+        }
+
+        $this->db->order_by($order_col, $order_dir);
+
+        if ($limit !== NULL && $limit > 0) {
+            $this->db->limit($limit, $offset);
+        }
+
+        return $this->db->get()->result();
+    }
+
+    /**
+     * Count total filtered students matching academic year and filters.
+     *
+     * @param array $filters
+     * @return int
+     */
+    public function count_all_students($filters = array())
+    {
+        $this->db
+            ->from('tbl_students st')
+            ->where('st.is_deleted', 'n');
+
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('st.academic_year_id', (int)$filters['academic_year_id']);
+        }
+        if (!empty($filters['class_id'])) {
+            $this->db->where('st.class_id', (int)$filters['class_id']);
+        }
+        if (!empty($filters['section_id'])) {
+            $this->db->where('st.section_id', (int)$filters['section_id']);
+        }
+        if (!empty($filters['gender'])) {
+            $this->db->where('st.gender', $filters['gender']);
+        }
+        if (isset($filters['status']) && $filters['status'] !== '' && $filters['status'] !== 'All') {
+            $this->db->where('st.status', (int)$filters['status']);
+        }
+        if (!empty($filters['search'])) {
+            $s = trim($filters['search']);
+            $this->db->group_start()
+                ->like('st.first_name', $s)
+                ->or_like('st.last_name', $s)
+                ->or_like('st.admission_number', $s)
+                ->or_like('st.guardian_name', $s)
+                ->or_like('st.guardian_phone', $s)
+                ->or_like('st.roll_number', $s)
+                ->group_end();
+        }
+
+        return $this->db->count_all_results();
+    }
 }
+
 

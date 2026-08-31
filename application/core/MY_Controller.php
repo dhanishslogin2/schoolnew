@@ -185,6 +185,9 @@ class MY_Controller extends CI_Controller {
                 case 'overview':
                 case 'index':
                     return 'students';
+                case 'all':
+                case 'all_students':
+                    return 'all-students';
                 case 'list_students':
                 case 'list':
                 case 'student_list':

@@ -11,6 +11,8 @@ class Students extends MY_Controller {
         $this->load->model('Class_model');
         $this->load->model('Section_model');
         $this->load->model('Academic_year_model');
+        $this->load->model('Id_card_model');
+        $this->load->model('Setting_model');
     }
 
     /* =========================================================================
@@ -33,6 +35,208 @@ class Students extends MY_Controller {
             'breadcrumb' => array('Student Management', 'Overview'),
             'stats'      => $stats,
         ));
+    }
+
+    /**
+     * All Students (Class & Academic Year Wise) main view.
+     */
+    public function all_students()
+    {
+        $this->require_permission('students.view');
+
+        $years = $this->Academic_year_model->get_all();
+        $selected_year = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        if (!$selected_year && !empty($years)) {
+            $selected_year = (int)$years[0]->academic_year_id;
+        }
+
+        $classes_with_counts = $this->Student_model->get_classes_with_student_count($selected_year);
+        $selected_class = $this->input->get('class_id') ? (int)$this->input->get('class_id') : NULL;
+
+        // If no class is explicitly selected in URL, choose the first class with students or first available class
+        if ($selected_class === NULL && !empty($classes_with_counts)) {
+            $selected_class = (int)$classes_with_counts[0]->class_id;
+        }
+
+        $sections = $this->Section_model->get_all();
+
+        $this->render('pages/students/all_students', array(
+            'title'               => 'All Students',
+            'page_key'            => 'all-students',
+            'breadcrumb'          => array('Student Management', 'All Students'),
+            'years'               => $years,
+            'selected_year'       => $selected_year,
+            'selected_class'      => $selected_class,
+            'classes_with_counts' => $classes_with_counts,
+            'sections'            => $sections,
+        ));
+    }
+
+    /**
+     * AJAX endpoint for loading class list and student counts when academic year changes.
+     */
+    public function class_counts_ajax()
+    {
+        $this->require_permission('students.view');
+        $academic_year_id = (int)$this->input->get_post('academic_year_id');
+        if (!$academic_year_id) {
+            $academic_year_id = $this->academic_year_id;
+        }
+
+        $classes = $this->Student_model->get_classes_with_student_count($academic_year_id);
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'status'          => true,
+                'academic_year_id'=> $academic_year_id,
+                'classes'         => $classes,
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            ]));
+    }
+
+    /**
+     * AJAX DataTables endpoint for All Students class & academic year filtered list.
+     */
+    public function all_students_ajax()
+    {
+        $this->require_permission('students.view');
+
+        $draw   = (int)$this->input->post('draw');
+        $start  = (int)$this->input->post('start');
+        $length = (int)$this->input->post('length') ?: 10;
+        $order  = $this->input->post('order');
+        $search = $this->input->post('search');
+
+        $order_col_idx = isset($order[0]['column']) ? (int)$order[0]['column'] : 1;
+        $order_dir     = isset($order[0]['dir']) ? $order[0]['dir'] : 'asc';
+        $search_val    = isset($search['value']) ? trim($search['value']) : '';
+
+        $column_map = [
+            0 => 'st.student_id',
+            1 => 'st.admission_number',
+            2 => 'st.first_name',
+            3 => 'st.roll_number',
+            4 => 'c.class_id',
+            5 => 'sec.section_id',
+            6 => 'st.date_of_birth',
+            7 => 'st.gender',
+            8 => 'st.guardian_name',
+            9 => 'st.guardian_phone',
+            10 => 'st.status'
+        ];
+        $order_col = isset($column_map[$order_col_idx]) ? $column_map[$order_col_idx] : 'st.student_id';
+
+        $academic_year_id = $this->input->post('academic_year_id') ? (int)$this->input->post('academic_year_id') : (int)$this->academic_year_id;
+        $class_id         = $this->input->post('class_id') ? (int)$this->input->post('class_id') : NULL;
+        $section_id       = $this->input->post('section_id') ? (int)$this->input->post('section_id') : NULL;
+        $status           = $this->input->post('status');
+        $custom_search    = $this->input->post('custom_search');
+
+        $effective_search = !empty($custom_search) ? trim($custom_search) : $search_val;
+
+        $filters = array(
+            'academic_year_id' => $academic_year_id,
+            'class_id'         => $class_id,
+            'section_id'       => $section_id,
+            'status'           => ($status !== NULL && $status !== '' && $status !== 'All') ? (int)$status : NULL,
+            'search'           => $effective_search,
+        );
+
+        $records_total    = $this->Student_model->count_all_students(array('academic_year_id' => $academic_year_id, 'class_id' => $class_id));
+        $records_filtered = $this->Student_model->count_all_students($filters);
+        $students         = $this->Student_model->get_all_students_paginated($filters, $length, $start, $order_col, $order_dir);
+
+        $data = array();
+        foreach ($students as $st) {
+            $fullName = trim($st->first_name . ' ' . ($st->middle_name ? $st->middle_name . ' ' : '') . $st->last_name);
+            $nameParts = explode(' ', $fullName);
+            $initials = '';
+            foreach ($nameParts as $np) { if (!empty($np)) $initials .= strtoupper($np[0]); }
+            $initials = substr($initials, 0, 2) ?: 'ST';
+
+            // Photo Avatar
+            $hasPhoto = !empty($st->photo) && file_exists(FCPATH . 'uploads/students/' . $st->photo);
+            if ($hasPhoto) {
+                $photoHtml = '<div class="w-9 h-9 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-2xs">' .
+                    '<img src="' . base_url('uploads/students/' . $st->photo) . '" alt="' . html_escape($fullName) . '" class="w-full h-full object-cover"/>' .
+                '</div>';
+            } else {
+                $photoHtml = '<div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">' .
+                    html_escape($initials) .
+                '</div>';
+            }
+
+            // Admission Number & Roll
+            $admHtml = '<span class="font-bold text-emerald-800 font-mono text-xs">' . html_escape($st->admission_number) . '</span>';
+
+            // Student Name + Profile Link
+            $nameHtml = '<div class="flex items-center gap-2.5">' .
+                $photoHtml .
+                '<div class="min-w-0">' .
+                    '<a href="' . site_url('students/profile/' . $st->student_id) . '" class="font-bold text-slate-900 hover:text-emerald-700 transition-colors text-xs truncate block">' . html_escape($fullName) . '</a>' .
+                    '<span class="text-[11px] text-slate-500 font-mono">Adm: ' . html_escape($st->admission_number) . '</span>' .
+                '</div>' .
+            '</div>';
+
+            $rollHtml = !empty($st->roll_number) ? '<span class="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">' . html_escape($st->roll_number) . '</span>' : '<span class="text-slate-400 font-mono text-xs">-</span>';
+
+            $classHtml = '<span class="text-xs font-semibold text-slate-800">' . html_escape($st->class_name ?: 'Grade 10') . '</span>';
+            $sectionHtml = !empty($st->section_name) ? '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">' . html_escape($st->section_name) . '</span>' : '<span class="text-slate-400 text-xs">-</span>';
+
+            $dobFormatted = !empty($st->date_of_birth) ? date('d-m-Y', strtotime($st->date_of_birth)) : '<span class="text-slate-400">-</span>';
+            $genderHtml = '<span class="text-xs text-slate-700">' . html_escape($st->gender ?: 'N/A') . '</span>';
+
+            $guardianHtml = '<div class="text-xs">' .
+                '<div class="font-bold text-slate-800 truncate">' . html_escape($st->guardian_name ?: 'test') . '</div>' .
+                '<div class="text-[11px] text-slate-500 font-mono mt-0.5">' . html_escape($st->guardian_phone ?: ($st->mobile ?: 'N/A')) . '</div>' .
+            '</div>';
+
+            $contactHtml = '<span class="font-mono text-xs text-slate-700">' . html_escape($st->mobile ?: ($st->guardian_phone ?: 'N/A')) . '</span>';
+
+            $statusBadge = ($st->status == 1)
+                ? '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Active</span>'
+                : '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Inactive</span>';
+
+            // Actions Menu
+            $actionsHtml = '<div class="flex items-center justify-end gap-1.5">' .
+                '<a href="' . site_url('students/profile/' . $st->student_id) . '" title="View Profile" class="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-emerald-700 transition-colors shadow-2xs">' .
+                    '<span class="material-symbols-outlined text-[17px]">visibility</span>' .
+                '</a>' .
+                '<a href="' . site_url('students/add?student_id=' . $st->student_id) . '" title="Edit Student" class="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-blue-700 transition-colors shadow-2xs">' .
+                    '<span class="material-symbols-outlined text-[17px]">edit</span>' .
+                '</a>' .
+                '<a href="' . site_url('students/id_cards?student_id=' . $st->student_id) . '" title="Generate ID Card" class="p-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs">' .
+                    '<span class="material-symbols-outlined text-[17px]">badge</span>' .
+                '</a>' .
+            '</div>';
+
+            $data[] = array(
+                $nameHtml,
+                $admHtml,
+                $rollHtml,
+                $classHtml,
+                $sectionHtml,
+                $dobFormatted,
+                $genderHtml,
+                $guardianHtml,
+                $contactHtml,
+                $statusBadge,
+                $actionsHtml
+            );
+        }
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'draw'            => $draw,
+                'recordsTotal'    => $records_total,
+                'recordsFiltered' => $records_filtered,
+                'data'            => $data,
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            ]));
     }
 
     public function list_students()
@@ -1284,13 +1488,14 @@ class Students extends MY_Controller {
     }
 
     /* =========================================================================
-       8. Student ID Cards
+       8. Student ID Cards & Services
        ========================================================================= */
     public function id_cards()
     {
         $this->require_permission('students.view');
         $class_id   = $this->input->get('class_id');
         $section_id = $this->input->get('section_id');
+        $student_id = $this->input->get('student_id');
 
         $students = $this->Student_model->get_all(array(
             'academic_year_id' => $this->academic_year_id,
@@ -1298,18 +1503,534 @@ class Students extends MY_Controller {
             'section_id'       => $section_id,
             'status'           => 1
         ));
+
         $classes  = $this->Class_model->get_all($this->academic_year_id);
         $sections = $this->Section_model->get_all();
+        $settings = $this->Id_card_model->get_settings();
+
+        // Selected student for initial preview
+        $selected_student = null;
+        if (!empty($student_id)) {
+            $selected_student = $this->Id_card_model->get_student_card_data($student_id);
+        } elseif (!empty($students)) {
+            $selected_student = $this->Id_card_model->get_student_card_data($students[0]->student_id);
+        }
 
         $this->render('pages/students/id_cards', array(
-            'title'    => 'Student ID Cards',
-            'page_key' => 'student-id-cards',
-            'students' => $students,
-            'classes'  => $classes,
-            'sections' => $sections,
+            'title'            => 'Student ID Cards',
+            'page_key'         => 'student-id-cards',
+            'students'         => $students,
+            'classes'          => $classes,
+            'sections'         => $sections,
+            'settings'         => $settings,
             'selected_class'   => $class_id,
             'selected_section' => $section_id,
+            'selected_student' => $selected_student,
         ));
+    }
+
+    /**
+     * AJAX endpoint to fetch fresh, complete data for a single student ID Card.
+     */
+    public function id_card_preview_ajax()
+    {
+        $this->require_permission('students.view');
+        $student_id = (int)$this->input->get_post('student_id');
+
+        if (!$student_id) {
+            return $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode([
+                    'status'  => false,
+                    'message' => 'Student ID is required.',
+                    'csrf_token_name' => $this->security->get_csrf_token_name(),
+                    'csrf_hash'       => $this->security->get_csrf_hash()
+                ]));
+        }
+
+        $student = $this->Id_card_model->get_student_card_data($student_id);
+        if (!$student) {
+            return $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode([
+                    'status'  => false,
+                    'message' => 'Student record not found.',
+                    'csrf_token_name' => $this->security->get_csrf_token_name(),
+                    'csrf_hash'       => $this->security->get_csrf_hash()
+                ]));
+        }
+
+        $settings = $this->Id_card_model->get_settings();
+
+        // Calculate initials for fallback photo
+        $nameParts = explode(' ', trim($student->first_name . ' ' . $student->middle_name . ' ' . $student->last_name));
+        $initials = '';
+        foreach ($nameParts as $np) {
+            if (!empty($np)) $initials .= strtoupper($np[0]);
+        }
+        $initials = substr($initials, 0, 2);
+
+        // Photo URL resolution
+        $photo_url = '';
+        $has_photo = false;
+        if (!empty($student->photo) && file_exists(FCPATH . 'uploads/students/' . $student->photo)) {
+            $photo_url = base_url('uploads/students/' . $student->photo);
+            $has_photo = true;
+        }
+
+        // Logo URL resolution
+        $logo_url = '';
+        if (!empty($settings->school_logo)) {
+            if (file_exists(FCPATH . 'uploads/id_card/' . $settings->school_logo)) {
+                $logo_url = base_url('uploads/id_card/' . $settings->school_logo);
+            } elseif (file_exists(FCPATH . 'uploads/settings/' . $settings->school_logo)) {
+                $logo_url = base_url('uploads/settings/' . $settings->school_logo);
+            }
+        }
+        if (empty($logo_url) && file_exists(FCPATH . 'assets/logo.png')) {
+            $logo_url = base_url('assets/logo.png');
+        }
+
+        // Signature URL resolution
+        $signature_url = '';
+        if (!empty($settings->principal_signature) && file_exists(FCPATH . 'uploads/id_card/' . $settings->principal_signature)) {
+            $signature_url = base_url('uploads/id_card/' . $settings->principal_signature);
+        }
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'status'        => true,
+                'student'       => $student,
+                'full_name'     => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
+                'initials'      => $initials ?: 'ST',
+                'photo_url'     => $photo_url,
+                'has_photo'     => $has_photo,
+                'dob_formatted' => !empty($student->date_of_birth) ? date('d-m-Y', strtotime($student->date_of_birth)) : 'N/A',
+                'class_display' => trim(($student->class_name ?: '') . ' ' . ($student->section_name ?: '')),
+                'settings'      => $settings,
+                'logo_url'      => $logo_url,
+                'signature_url' => $signature_url,
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            ]));
+    }
+
+    /**
+     * AJAX endpoint to fetch data for multiple students for bulk rendering.
+     */
+    public function id_card_bulk_data_ajax()
+    {
+        $this->require_permission('students.view');
+        $student_ids = $this->input->post('student_ids');
+
+        if (empty($student_ids) || !is_array($student_ids)) {
+            $class_id   = $this->input->post('class_id');
+            $section_id = $this->input->post('section_id');
+            $raw_students = $this->Student_model->get_all([
+                'academic_year_id' => $this->academic_year_id,
+                'class_id'         => $class_id,
+                'section_id'       => $section_id,
+                'status'           => 1
+            ]);
+            $student_ids = array_map(function($st) { return $st->student_id; }, $raw_students);
+        }
+
+        if (empty($student_ids)) {
+            return $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode([
+                    'status'  => false,
+                    'message' => 'No students selected for bulk generation.',
+                    'csrf_token_name' => $this->security->get_csrf_token_name(),
+                    'csrf_hash'       => $this->security->get_csrf_hash()
+                ]));
+        }
+
+        $students = $this->Id_card_model->get_students_bulk($student_ids);
+        $settings = $this->Id_card_model->get_settings();
+
+        // Logo URL resolution
+        $logo_url = '';
+        if (!empty($settings->school_logo)) {
+            if (file_exists(FCPATH . 'uploads/id_card/' . $settings->school_logo)) {
+                $logo_url = base_url('uploads/id_card/' . $settings->school_logo);
+            } elseif (file_exists(FCPATH . 'uploads/settings/' . $settings->school_logo)) {
+                $logo_url = base_url('uploads/settings/' . $settings->school_logo);
+            }
+        }
+
+        // Signature URL resolution
+        $signature_url = '';
+        if (!empty($settings->principal_signature) && file_exists(FCPATH . 'uploads/id_card/' . $settings->principal_signature)) {
+            $signature_url = base_url('uploads/id_card/' . $settings->principal_signature);
+        }
+
+        $formatted = [];
+        foreach ($students as $st) {
+            $nameParts = explode(' ', trim($st->first_name . ' ' . $st->middle_name . ' ' . $st->last_name));
+            $initials = '';
+            foreach ($nameParts as $np) {
+                if (!empty($np)) $initials .= strtoupper($np[0]);
+            }
+            $initials = substr($initials, 0, 2);
+
+            $photo_url = '';
+            $has_photo = false;
+            if (!empty($st->photo) && file_exists(FCPATH . 'uploads/students/' . $st->photo)) {
+                $photo_url = base_url('uploads/students/' . $st->photo);
+                $has_photo = true;
+            }
+
+            $formatted[] = [
+                'student_id'       => $st->student_id,
+                'admission_number' => $st->admission_number,
+                'roll_number'      => $st->roll_number ?: 'N/A',
+                'full_name'        => trim($st->first_name . ' ' . ($st->middle_name ? $st->middle_name . ' ' : '') . $st->last_name),
+                'initials'         => $initials ?: 'ST',
+                'gender'           => $st->gender ?: 'N/A',
+                'blood_group'      => $st->blood_group ?: 'N/A',
+                'dob_formatted'    => !empty($st->date_of_birth) ? date('d-m-Y', strtotime($st->date_of_birth)) : 'N/A',
+                'class_display'    => trim(($st->class_name ?: '') . ' ' . ($st->section_name ?: '')),
+                'year_name'        => $st->year_name ?: '2026-2027',
+                'guardian_name'    => $st->guardian_name ?: 'N/A',
+                'guardian_phone'   => $st->guardian_phone ?: 'N/A',
+                'photo_url'        => $photo_url,
+                'has_photo'        => $has_photo,
+            ];
+        }
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'status'        => true,
+                'count'         => count($formatted),
+                'students'      => $formatted,
+                'settings'      => $settings,
+                'logo_url'      => $logo_url,
+                'signature_url' => $signature_url,
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            ]));
+    }
+
+    /**
+     * AJAX endpoint for ID Card Generation History DataTables.
+     */
+    public function id_card_history_ajax()
+    {
+        $this->require_permission('students.view');
+
+        $draw        = (int)$this->input->post('draw');
+        $start       = (int)$this->input->post('start');
+        $length      = (int)$this->input->post('length') ?: 25;
+        $order_arr   = $this->input->post('order');
+        $order_col   = isset($order_arr[0]['column']) ? (int)$order_arr[0]['column'] : 0;
+        $order_dir   = isset($order_arr[0]['dir']) ? $order_arr[0]['dir'] : 'DESC';
+        $search_val  = $this->input->post('search')['value'] ?? '';
+
+        $filters = [
+            'academic_year_id' => $this->input->post('academic_year_id') ?: $this->academic_year_id,
+            'class_id'         => $this->input->post('class_id'),
+            'section_id'       => $this->input->post('section_id'),
+            'status'           => $this->input->post('status'),
+            'search'           => $search_val
+        ];
+
+        $total_records = $this->Id_card_model->get_history_count(['academic_year_id' => $filters['academic_year_id']]);
+        $filtered_count = $this->Id_card_model->get_history_count($filters);
+        $records = $this->Id_card_model->get_history($filters, $length, $start, $order_col, $order_dir);
+
+        $data = [];
+        foreach ($records as $r) {
+            $fullName = trim($r->first_name . ' ' . $r->last_name);
+            $classDisplay = trim(($r->class_name ?: '') . ' ' . ($r->section_name ?: ''));
+
+            $statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary-container text-on-secondary-container">' . html_escape($r->status) . '</span>';
+            if ($r->status === 'Re-generated') {
+                $statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-fixed text-on-primary-fixed">' . html_escape($r->status) . '</span>';
+            }
+
+            $actions = '
+                <div class="flex items-center justify-end gap-1">
+                    <button type="button" onclick="previewHistoryCard(' . $r->student_id . ')" title="Preview ID Card" class="p-1.5 rounded-lg text-primary hover:bg-primary-fixed/40 transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">visibility</span>
+                    </button>
+                    <button type="button" onclick="printSingleCard(' . $r->student_id . ')" title="Print ID Card" class="p-1.5 rounded-lg text-secondary hover:bg-secondary-fixed/40 transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">print</span>
+                    </button>
+                    <button type="button" onclick="downloadSinglePdf(' . $r->student_id . ')" title="Download PDF" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                    </button>
+                    <button type="button" onclick="downloadSingleImage(' . $r->student_id . ', \'png\')" title="Download PNG" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">image</span>
+                    </button>
+                    <button type="button" onclick="regenerateCard(' . $r->student_id . ')" title="Regenerate with Latest Info" class="p-1.5 rounded-lg text-tertiary hover:bg-tertiary-fixed-dim/30 transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">sync</span>
+                    </button>
+                </div>
+            ';
+
+            $data[] = [
+                '<span class="font-mono font-medium text-primary text-xs">' . html_escape($r->card_number) . '</span>',
+                '<div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-xs font-bold text-primary shrink-0 overflow-hidden">
+                        ' . (!empty($r->photo) && file_exists(FCPATH . 'uploads/students/' . $r->photo) ? '<img src="' . base_url('uploads/students/' . $r->photo) . '" class="w-full h-full object-cover"/>' : strtoupper(substr($r->first_name, 0, 1) . substr($r->last_name, 0, 1))) . '
+                    </div>
+                    <div>
+                        <div class="font-semibold text-on-surface text-sm">' . html_escape($fullName) . '</div>
+                        <div class="text-xs text-on-surface-variant font-mono">Adm: ' . html_escape($r->admission_number) . ($r->roll_number ? ' · Roll: ' . html_escape($r->roll_number) : '') . '</div>
+                    </div>
+                </div>',
+                '<span class="text-sm font-medium text-on-surface">' . html_escape($classDisplay ?: 'N/A') . '</span>',
+                '<span class="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-mono bg-surface-container text-on-surface-variant font-medium">v' . (int)$r->card_version . '</span>',
+                '<div class="text-xs text-on-surface-variant">
+                    <div>' . date('d M Y, h:i A', strtotime($r->generated_at)) . '</div>
+                    <div class="text-[11px] text-on-surface-variant/70">By ' . html_escape($r->generated_by_name ?: 'System') . '</div>
+                </div>',
+                $statusBadge,
+                $actions
+            ];
+        }
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'draw'            => $draw,
+                'recordsTotal'    => $total_records,
+                'recordsFiltered' => $filtered_count,
+                'data'            => $data,
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            ]));
+    }
+
+    /**
+     * AJAX endpoint to record generation or print event.
+     */
+    public function id_card_record_ajax()
+    {
+        $this->require_permission('students.view');
+        $student_id = (int)$this->input->post('student_id');
+        $action     = trim($this->input->post('action')) ?: 'Generated';
+        $user_id    = (int)($this->current_user->user_id ?? 1);
+
+        if (!$student_id) {
+            return $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode([
+                    'status' => false,
+                    'message' => 'Student ID is required.',
+                    'csrf_token_name' => $this->security->get_csrf_token_name(),
+                    'csrf_hash'       => $this->security->get_csrf_hash()
+                ]));
+        }
+
+        $record = $this->Id_card_model->record_generation($student_id, $this->academic_year_id, $user_id, $action);
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'status'  => true,
+                'message' => 'ID card activity recorded.',
+                'record'  => $record,
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            ]));
+    }
+
+    /**
+     * AJAX endpoint to regenerate an ID card with latest live student information.
+     */
+    public function id_card_regenerate_ajax()
+    {
+        $this->require_permission('students.view');
+        $student_id = (int)$this->input->post('student_id');
+        $user_id    = (int)($this->current_user->user_id ?? 1);
+
+        if (!$student_id) {
+            return $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode([
+                    'status'  => false,
+                    'message' => 'Student ID is required.',
+                    'csrf_token_name' => $this->security->get_csrf_token_name(),
+                    'csrf_hash'       => $this->security->get_csrf_hash()
+                ]));
+        }
+
+        // 1. Fetch fresh student data directly from DB
+        $student = $this->Id_card_model->get_student_card_data($student_id);
+        if (!$student) {
+            return $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode([
+                    'status'  => false,
+                    'message' => 'Student record not found.',
+                    'csrf_token_name' => $this->security->get_csrf_token_name(),
+                    'csrf_hash'       => $this->security->get_csrf_hash()
+                ]));
+        }
+
+        // 2. Increment version and update history
+        $record = $this->Id_card_model->record_generation($student_id, $this->academic_year_id, $user_id, 'Regenerate');
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'status'  => true,
+                'message' => 'ID card regenerated successfully with latest student information (v' . ($record->card_version ?? 1) . ').',
+                'record'  => $record,
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            ]));
+    }
+
+    /**
+     * Save ID Card configuration settings (School name, address, signature, logo, etc.).
+     */
+    public function id_card_settings_save()
+    {
+        $this->require_permission('students.view');
+
+        if ($this->input->method() !== 'post') {
+            redirect('students/id_cards#settings');
+            return;
+        }
+
+        $card_title        = trim($this->input->post('card_title', TRUE)) ?: 'STUDENT IDENTITY CARD';
+        $school_name       = trim($this->input->post('school_name', TRUE));
+        $school_code       = trim($this->input->post('school_code', TRUE));
+        $school_address    = trim($this->input->post('school_address', TRUE));
+        $phone             = trim($this->input->post('phone', TRUE));
+        $email             = trim($this->input->post('email', TRUE));
+        $website           = trim($this->input->post('website', TRUE));
+        $emergency_contact = trim($this->input->post('emergency_contact', TRUE));
+        $principal_name    = trim($this->input->post('principal_name', TRUE));
+        $return_text       = trim($this->input->post('return_text', TRUE));
+        $validity_text     = trim($this->input->post('validity_text', TRUE));
+        $accent_color      = trim($this->input->post('accent_color', TRUE)) ?: '#091426';
+        $secondary_color   = trim($this->input->post('secondary_color', TRUE)) ?: '#006c4a';
+
+        $data = [
+            'card_title'        => $card_title,
+            'school_name'       => $school_name,
+            'school_code'       => $school_code,
+            'school_address'    => $school_address,
+            'phone'             => $phone,
+            'email'             => $email,
+            'website'           => $website,
+            'emergency_contact' => $emergency_contact,
+            'principal_name'    => $principal_name,
+            'return_text'       => $return_text,
+            'validity_text'     => $validity_text,
+            'accent_color'      => $accent_color,
+            'secondary_color'   => $secondary_color,
+        ];
+
+        // Handle file uploads (Logo and Principal Signature)
+        $upload_dir = FCPATH . 'uploads/id_card/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0777, TRUE);
+        }
+
+        $config['upload_path']   = $upload_dir;
+        $config['allowed_types'] = 'jpg|jpeg|png|gif|svg';
+        $config['max_size']      = 5120; // 5MB
+        $config['encrypt_name']  = TRUE;
+
+        $this->load->library('upload', $config);
+
+        if (!empty($_FILES['school_logo']['name'])) {
+            $this->upload->initialize($config);
+            if ($this->upload->do_upload('school_logo')) {
+                $upload_res = $this->upload->data();
+                $data['school_logo'] = $upload_res['file_name'];
+            }
+        }
+
+        if (!empty($_FILES['principal_signature']['name'])) {
+            $this->upload->initialize($config);
+            if ($this->upload->do_upload('principal_signature')) {
+                $upload_res = $this->upload->data();
+                $data['principal_signature'] = $upload_res['file_name'];
+            }
+        }
+
+        $this->Id_card_model->save_settings($data);
+
+        // Also update tbl_school_settings if relevant to keep core info in sync
+        $this->Setting_model->update_settings([
+            'school_name'    => $school_name,
+            'school_code'    => $school_code,
+            'principal_name' => $principal_name,
+            'phone'          => $phone,
+            'email'          => $email,
+            'website'        => $website,
+            'address'        => $school_address
+        ]);
+
+        if ($this->input->is_ajax_request()) {
+            return $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode([
+                    'status'  => true,
+                    'message' => 'ID Card settings saved successfully.',
+                    'csrf_token_name' => $this->security->get_csrf_token_name(),
+                    'csrf_hash'       => $this->security->get_csrf_hash()
+                ]));
+        }
+
+        $this->session->set_flashdata('success', 'ID Card settings saved successfully.');
+        redirect('students/id_cards');
+    }
+
+    /**
+     * Standalone clean print view for single or bulk ID cards.
+     */
+    public function id_card_print()
+    {
+        $this->require_permission('students.view');
+        $student_id  = $this->input->get('student_id');
+        $student_ids = $this->input->get('student_ids');
+        $side        = $this->input->get('side') ?: 'both'; // 'both', 'front', 'back'
+
+        $ids = [];
+        if (!empty($student_id)) {
+            $ids[] = (int)$student_id;
+        } elseif (!empty($student_ids)) {
+            $ids = array_map('intval', explode(',', $student_ids));
+        } else {
+            $class_id   = $this->input->get('class_id');
+            $section_id = $this->input->get('section_id');
+            $raw_students = $this->Student_model->get_all([
+                'academic_year_id' => $this->academic_year_id,
+                'class_id'         => $class_id,
+                'section_id'       => $section_id,
+                'status'           => 1
+            ]);
+            $ids = array_map(function($st) { return $st->student_id; }, $raw_students);
+        }
+
+        if (empty($ids)) {
+            show_error('No students selected for printing.', 404);
+            return;
+        }
+
+        $students = $this->Id_card_model->get_students_bulk($ids);
+        $settings = $this->Id_card_model->get_settings();
+
+        // Record print action for each student
+        $uid = (int)($this->current_user->user_id ?? 1);
+        foreach ($ids as $sid) {
+            $this->Id_card_model->record_generation($sid, $this->academic_year_id, $uid, 'Printed');
+        }
+
+        $this->load->view('pages/students/id_card_print', [
+            'students' => $students,
+            'settings' => $settings,
+            'side'     => $side
+        ]);
     }
 
     /* =========================================================================

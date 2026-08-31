@@ -18,6 +18,7 @@ const PAGE_URLS = {
   // Student Management
   "students": "students/overview",
   "student-overview": "students/overview",
+  "all-students": "students/all",
   "student-directory": "students/list",
   "student-registration": "students/register",
   "student-add": "students/register",
@@ -307,6 +308,7 @@ const NAV = [
     key: "students", label: "Student Management", icon: "school",
     groups: [
       { key: "students", label: "Overview" },
+      { key: "all-students", label: "All Students" },
       {
         label: "Admissions",
         items: [
@@ -859,7 +861,7 @@ const NAV = [
 ];
 
 const PAGE_TITLES = {
-  "dashboard": "Dashboard", "students": "Student Directory", "student-registration": "Student Registration", "student-admission": "Student Admission", "student-profile": "Student Profile",
+  "dashboard": "Dashboard", "students": "Student Directory", "all-students": "All Students", "student-registration": "Student Registration", "student-admission": "Student Admission", "student-profile": "Student Profile",
   "student-categories": "Student Categories", "student-houses": "Student Houses", "student-roll": "Roll Number Assignment", "student-promote": "Student Promotion",
   "student-documents": "Student Documents", "student-id-cards": "Student ID Cards", "student-promotion": "Student Promotion", "student-transfers": "Transfer / TC Management", "student-search": "Student Search", "student-reports": "Student Reports",
   "staff": "Staff Directory", "staff-directory": "Staff Directory", "staff-search": "Staff Search", "teachers": "Teacher Profiles", "non-teaching-staff": "Staff Profiles",
