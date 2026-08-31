@@ -68,6 +68,7 @@ $route['students/all']        = 'students/all_students';
 $route['students/all_students'] = 'students/all_students';
 $route['students/all_students_ajax'] = 'students/all_students_ajax';
 $route['students/class_counts_ajax'] = 'students/class_counts_ajax';
+$route['student-bulk-add']           = 'students/bulk_add';
 $route['students/bulk-add']          = 'students/bulk_add';
 $route['students/bulk_add']          = 'students/bulk_add';
 $route['students/bulk_template']     = 'students/bulk_template';
