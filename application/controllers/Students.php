@@ -110,37 +110,44 @@ class Students extends MY_Controller {
         $search = $this->input->post('search');
 
         $order_col_idx = isset($order[0]['column']) ? (int)$order[0]['column'] : 1;
-        $order_dir     = isset($order[0]['dir']) ? $order[0]['dir'] : 'asc';
-        $search_val    = isset($search['value']) ? trim($search['value']) : '';
+        $order_dir     = (isset($order[0]['dir']) && strtolower($order[0]['dir']) === 'desc') ? 'DESC' : 'ASC';
+        $search_val    = (isset($search['value']) && is_string($search['value'])) ? trim($search['value']) : '';
 
         $column_map = [
             0 => 'st.student_id',
             1 => 'st.admission_number',
-            2 => 'st.first_name',
-            3 => 'st.roll_number',
-            4 => 'c.class_id',
-            5 => 'sec.section_id',
-            6 => 'st.date_of_birth',
-            7 => 'st.gender',
-            8 => 'st.guardian_name',
-            9 => 'st.guardian_phone',
-            10 => 'st.status'
+            2 => 'st.roll_number',
+            3 => 'c.class_name',
+            4 => 'sec.section_name',
+            5 => 'st.date_of_birth',
+            6 => 'st.gender',
+            7 => 'st.guardian_name',
+            8 => 'st.guardian_phone',
+            9 => 'st.status',
+            10 => 'st.student_id'
         ];
         $order_col = isset($column_map[$order_col_idx]) ? $column_map[$order_col_idx] : 'st.student_id';
 
-        $academic_year_id = $this->input->post('academic_year_id') ? (int)$this->input->post('academic_year_id') : (int)$this->academic_year_id;
-        $class_id         = $this->input->post('class_id') ? (int)$this->input->post('class_id') : NULL;
-        $section_id       = $this->input->post('section_id') ? (int)$this->input->post('section_id') : NULL;
-        $status           = $this->input->post('status');
-        $custom_search    = $this->input->post('custom_search');
+        $academic_year_id_raw = $this->input->post('academic_year_id') ?: $this->input->get('academic_year_id');
+        $academic_year_id = (!empty($academic_year_id_raw) && is_numeric($academic_year_id_raw)) ? (int)$academic_year_id_raw : (int)$this->academic_year_id;
 
+        $class_id_raw = $this->input->post('class_id');
+        $class_id = (!empty($class_id_raw) && is_numeric($class_id_raw) && (int)$class_id_raw > 0) ? (int)$class_id_raw : NULL;
+
+        $section_id_raw = $this->input->post('section_id');
+        $section_id = (!empty($section_id_raw) && is_numeric($section_id_raw) && (int)$section_id_raw > 0) ? (int)$section_id_raw : NULL;
+
+        $status_raw = $this->input->post('status');
+        $status = ($status_raw !== NULL && $status_raw !== '' && $status_raw !== 'All' && is_numeric($status_raw)) ? (int)$status_raw : NULL;
+
+        $custom_search = $this->input->post('custom_search');
         $effective_search = !empty($custom_search) ? trim($custom_search) : $search_val;
 
         $filters = array(
             'academic_year_id' => $academic_year_id,
             'class_id'         => $class_id,
             'section_id'       => $section_id,
-            'status'           => ($status !== NULL && $status !== '' && $status !== 'All') ? (int)$status : NULL,
+            'status'           => $status,
             'search'           => $effective_search,
         );
 
@@ -227,16 +234,18 @@ class Students extends MY_Controller {
             );
         }
 
+        $output = array(
+            'draw'            => $draw,
+            'recordsTotal'    => $records_total,
+            'recordsFiltered' => $records_filtered,
+            'data'            => $data,
+            'csrf_token_name' => $this->security->get_csrf_token_name(),
+            'csrf_hash'       => $this->security->get_csrf_hash()
+        );
+
         return $this->output
             ->set_content_type('application/json')
-            ->set_output(json_encode([
-                'draw'            => $draw,
-                'recordsTotal'    => $records_total,
-                'recordsFiltered' => $records_filtered,
-                'data'            => $data,
-                'csrf_token_name' => $this->security->get_csrf_token_name(),
-                'csrf_hash'       => $this->security->get_csrf_hash()
-            ]));
+            ->set_output(json_encode($output));
     }
 
     public function list_students()

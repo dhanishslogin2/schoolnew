@@ -247,27 +247,46 @@
       processing: true,
       serverSide: true,
       ajax: {
-        url: window.APP_BASE_URL + 'students/all_students_ajax',
+        url: '<?php echo site_url('students/all_students_ajax'); ?>',
         type: 'POST',
         data: function (d) {
           d.academic_year_id = currentAcademicYearId;
-          d.class_id         = currentClassId;
-          d.section_id       = $('#all-students-section-filter').val();
-          d.status           = $('#all-students-status-filter').val();
-          d.custom_search    = $('#all-students-search-input').val();
-          d[window.CSRF_TOKEN_NAME] = window.CSRF_HASH;
+          d.class_id         = (currentClassId !== null && currentClassId !== '' && currentClassId > 0) ? currentClassId : '';
+          d.section_id       = $('#all-students-section-filter').val() || '';
+          d.status           = $('#all-students-status-filter').val() || '';
+          d.custom_search    = $('#all-students-search-input').val() || '';
+          if (window.CSRF_TOKEN_NAME && window.CSRF_HASH) {
+            d[window.CSRF_TOKEN_NAME] = window.CSRF_HASH;
+          }
         },
         dataSrc: function (json) {
-          if (json.csrf_hash) window.CSRF_HASH = json.csrf_hash;
-          $('#table-total-count-badge').text(json.recordsFiltered || 0);
-          return json.data;
+          if (json && json.csrf_hash) window.CSRF_HASH = json.csrf_hash;
+          if (json && json.recordsFiltered !== undefined) {
+            $('#table-total-count-badge').text(json.recordsFiltered);
+          }
+          return (json && json.data) ? json.data : [];
+        },
+        error: function (xhr, textStatus, errorThrown) {
+          console.error('All Students DataTables AJAX Error:', xhr.status, textStatus, errorThrown, xhr.responseText);
         }
       },
       pageLength: 10,
       order: [[1, 'asc']],
+      columns: [
+        { data: 0, orderable: true },
+        { data: 1, orderable: true },
+        { data: 2, orderable: true },
+        { data: 3, orderable: true },
+        { data: 4, orderable: true },
+        { data: 5, orderable: true },
+        { data: 6, orderable: true },
+        { data: 7, orderable: false },
+        { data: 8, orderable: false },
+        { data: 9, orderable: true },
+        { data: 10, orderable: false, className: 'p-3 pr-4 text-right align-middle' }
+      ],
       columnDefs: [
-        { targets: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], className: 'p-3 text-xs align-middle' },
-        { targets: [10], className: 'p-3 pr-4 text-right align-middle', orderable: false }
+        { targets: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], className: 'p-3 text-xs align-middle' }
       ],
       language: {
         emptyTable: `
@@ -327,7 +346,7 @@
 
     // Fetch updated class counts via AJAX
     $.ajax({
-      url: window.APP_BASE_URL + 'students/class_counts_ajax',
+      url: '<?php echo site_url('students/class_counts_ajax'); ?>',
       type: 'POST',
       data: {
         academic_year_id: currentAcademicYearId,
@@ -335,8 +354,8 @@
       },
       dataType: 'json',
       success: function (res) {
-        if (res.csrf_hash) window.CSRF_HASH = res.csrf_hash;
-        if (res.status && res.classes) {
+        if (res && res.csrf_hash) window.CSRF_HASH = res.csrf_hash;
+        if (res && res.status && res.classes) {
           renderClassCardsGrid(res.classes);
         }
       }
