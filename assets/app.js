@@ -327,7 +327,6 @@ const NAV = [
           { key: "student-transfers", label: "Transfer / TC Management" },
         ],
       },
-      { key: "student-reports", label: "Reports" },
     ],
   },
 
@@ -354,7 +353,6 @@ const NAV = [
       { key: "teacher-workload", label: "Teacher Workload" },
       { key: "staff-attendance", label: "Staff Attendance" },
       { key: "staff-leave", label: "Leave Management" },
-      { key: "staff-reports", label: "Reports" },
     ],
   },
 
@@ -380,7 +378,6 @@ const NAV = [
         ],
       },
       { key: "academic-calendar", label: "Academic Calendar" },
-      { key: "academic-reports", label: "Reports" },
     ],
   },
 
@@ -407,7 +404,6 @@ const NAV = [
           { key: "attendance-calendar", label: "Attendance Calendar" },
         ],
       },
-      { key: "attendance-reports", label: "Reports" },
       {
         label: "Notifications",
         items: [
