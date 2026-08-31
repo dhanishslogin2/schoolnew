@@ -786,6 +786,301 @@ class Student_model extends CI_Model {
 
         return $this->db->count_all_results();
     }
+
+    /* =========================================================================
+       Bulk Student Management
+       ========================================================================= */
+
+    /**
+     * Check if an admission number already exists.
+     *
+     * @param string $adm_no
+     * @param int|null $exclude_student_id
+     * @return bool
+     */
+    public function is_admission_number_exists($adm_no, $exclude_student_id = NULL)
+    {
+        $adm_no = trim($adm_no);
+        if (empty($adm_no)) return false;
+
+        $this->db->where('admission_number', $adm_no)
+                 ->where('is_deleted', 'n');
+        if ($exclude_student_id) {
+            $this->db->where('student_id !=', (int)$exclude_student_id);
+        }
+        return ($this->db->count_all_results('tbl_students') > 0);
+    }
+
+    /**
+     * Generate next sequential unique admission number.
+     *
+     * @param int|null $year_id
+     * @return string e.g. EDU2026035
+     */
+    public function generate_unique_admission_number($year_id = NULL)
+    {
+        $yearStr = date('Y');
+        if ($year_id) {
+            $yRow = $this->db->select('year_name')->where('academic_year_id', (int)$year_id)->get('tbl_academic_years')->row();
+            if ($yRow && preg_match('/(\d{4})/', $yRow->year_name, $m)) {
+                $yearStr = $m[1];
+            }
+        }
+
+        $prefix = 'EDU' . $yearStr;
+        
+        // Find highest existing suffix
+        $highest = $this->db->query("
+            SELECT admission_number 
+            FROM tbl_students 
+            WHERE admission_number LIKE ? 
+            ORDER BY student_id DESC 
+            LIMIT 50
+        ", [$prefix . '%'])->result();
+
+        $maxSeq = 0;
+        foreach ($highest as $row) {
+            if (preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/', $row->admission_number, $m)) {
+                $seq = (int)$m[1];
+                if ($seq > $maxSeq) $maxSeq = $seq;
+            }
+        }
+
+        do {
+            $maxSeq++;
+            $candidate = $prefix . sprintf('%03d', $maxSeq);
+        } while ($this->is_admission_number_exists($candidate));
+
+        return $candidate;
+    }
+
+    /**
+     * Parse and validate a batch of student records.
+     *
+     * @param array $raw_rows Array of associative student rows
+     * @param int $academic_year_id
+     * @param int $class_id
+     * @param int $section_id
+     * @return array
+     */
+    public function bulk_validate_students($raw_rows, $academic_year_id, $class_id, $section_id)
+    {
+        $validated = array();
+        $seen_admissions_in_file = array();
+        $valid_count = 0;
+        $error_count = 0;
+
+        foreach ($raw_rows as $idx => $row) {
+            $row_num = $idx + 1;
+            $errors = array();
+
+            // 1. First Name (Required)
+            $first_name = isset($row['first_name']) ? trim($row['first_name']) : '';
+            if (empty($first_name)) {
+                $errors[] = 'First Name is required.';
+            }
+
+            $middle_name = isset($row['middle_name']) ? trim($row['middle_name']) : '';
+            $last_name = isset($row['last_name']) ? trim($row['last_name']) : '';
+
+            // 2. Date of Birth (Required + Valid date)
+            $raw_dob = isset($row['date_of_birth']) ? trim($row['date_of_birth']) : '';
+            $dob = null;
+            if (empty($raw_dob)) {
+                $errors[] = 'Date of Birth is required.';
+            } else {
+                $raw_dob_clean = str_replace('/', '-', $raw_dob);
+                $ts = strtotime($raw_dob_clean);
+                if (!$ts || $ts > time() || $ts < strtotime('-40 years')) {
+                    $errors[] = 'Invalid Date of Birth ("' . html_escape($raw_dob) . '").';
+                } else {
+                    $dob = date('Y-m-d', $ts);
+                }
+            }
+
+            // 3. Gender (Required: Male, Female, Other)
+            $raw_gender = isset($row['gender']) ? trim($row['gender']) : 'Male';
+            $gender = 'Male';
+            if (strcasecmp($raw_gender, 'female') === 0 || strcasecmp($raw_gender, 'f') === 0) {
+                $gender = 'Female';
+            } elseif (strcasecmp($raw_gender, 'other') === 0 || strcasecmp($raw_gender, 'o') === 0) {
+                $gender = 'Other';
+            } elseif (strcasecmp($raw_gender, 'male') === 0 || strcasecmp($raw_gender, 'm') === 0 || empty($raw_gender)) {
+                $gender = 'Male';
+            } else {
+                $errors[] = 'Invalid Gender ("' . html_escape($raw_gender) . '"). Must be Male, Female, or Other.';
+            }
+
+            // 4. Blood Group (Optional)
+            $raw_bg = isset($row['blood_group']) ? strtoupper(trim($row['blood_group'])) : '';
+            $valid_bgs = array('A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-');
+            $blood_group = in_array($raw_bg, $valid_bgs, true) ? $raw_bg : '';
+
+            // 5. Guardian Name (Required)
+            $guardian_name = isset($row['guardian_name']) ? trim($row['guardian_name']) : '';
+            if (empty($guardian_name)) {
+                $guardian_name = !empty($last_name) ? ('Parent of ' . $first_name) : 'Parent / Guardian';
+            }
+
+            // 6. Guardian Relation
+            $guardian_relation = isset($row['guardian_relation']) ? trim($row['guardian_relation']) : 'Father';
+            if (empty($guardian_relation)) $guardian_relation = 'Father';
+
+            // 7. Guardian Phone (Required)
+            $guardian_phone = isset($row['guardian_phone']) ? trim($row['guardian_phone']) : '';
+            if (empty($guardian_phone)) {
+                $guardian_phone = '—';
+            }
+
+            // 8. Guardian Email
+            $guardian_email = isset($row['guardian_email']) ? trim($row['guardian_email']) : '';
+            if (!empty($guardian_email) && !filter_var($guardian_email, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = 'Invalid Email address ("' . html_escape($guardian_email) . '").';
+            }
+
+            // 9. Address
+            $address = isset($row['address']) ? trim($row['address']) : '';
+
+            // 10. Roll Number
+            $roll_number = isset($row['roll_number']) ? trim($row['roll_number']) : '';
+
+            // 11. Admission Number (If provided, check uniqueness in DB and in file)
+            $raw_adm = isset($row['admission_number']) ? trim($row['admission_number']) : '';
+            $adm_number = $raw_adm;
+            if (!empty($adm_number)) {
+                $adm_key = strtolower($adm_number);
+                if (isset($seen_admissions_in_file[$adm_key])) {
+                    $errors[] = 'Duplicate Admission Number in batch (used in row ' . $seen_admissions_in_file[$adm_key] . ').';
+                } else {
+                    $seen_admissions_in_file[$adm_key] = $row_num;
+                }
+
+                if ($this->is_admission_number_exists($adm_number)) {
+                    $errors[] = 'Admission Number "' . html_escape($adm_number) . '" already exists in database.';
+                }
+            } else {
+                $adm_number = '(Auto-generate)';
+            }
+
+            $is_valid = empty($errors);
+            if ($is_valid) {
+                $valid_count++;
+            } else {
+                $error_count++;
+            }
+
+            $validated[] = array(
+                'row_num'           => $row_num,
+                'first_name'        => $first_name,
+                'middle_name'       => $middle_name,
+                'last_name'         => $last_name,
+                'full_name'         => trim($first_name . ' ' . ($middle_name ? $middle_name . ' ' : '') . $last_name),
+                'date_of_birth'     => $dob ?: $raw_dob,
+                'gender'            => $gender,
+                'blood_group'       => $blood_group,
+                'guardian_name'     => $guardian_name,
+                'guardian_relation' => $guardian_relation,
+                'guardian_phone'    => $guardian_phone,
+                'guardian_email'    => $guardian_email,
+                'address'           => $address,
+                'roll_number'       => $roll_number,
+                'admission_number'  => $adm_number,
+                'is_valid'          => $is_valid,
+                'status'            => $is_valid ? 'Valid' : 'Error',
+                'errors'            => $errors
+            );
+        }
+
+        return array(
+            'total_count' => count($raw_rows),
+            'valid_count' => $valid_count,
+            'error_count' => $error_count,
+            'rows'        => $validated
+        );
+    }
+
+    /**
+     * Insert validated student rows in a transaction.
+     *
+     * @param array $valid_rows
+     * @param int $academic_year_id
+     * @param int $class_id
+     * @param int $section_id
+     * @return array Result summary ['success' => bool, 'inserted_count' => int, 'student_ids' => array, 'message' => string]
+     */
+    public function bulk_insert_students($valid_rows, $academic_year_id, $class_id, $section_id)
+    {
+        if (empty($valid_rows)) {
+            return array('success' => false, 'inserted_count' => 0, 'message' => 'No valid student records to insert.');
+        }
+
+        $this->db->trans_start();
+
+        $inserted_ids = array();
+        $inserted_count = 0;
+        $now = date('Y-m-d H:i:s');
+
+        // Resolve default section ID if needed
+        if (empty($section_id)) {
+            $section_id = $this->Section_model->get_default_section_id($class_id);
+        }
+
+        foreach ($valid_rows as $row) {
+            // Generate unique admission number if needed
+            $adm = isset($row['admission_number']) ? trim($row['admission_number']) : '';
+            if (empty($adm) || $adm === '(Auto-generate)') {
+                $adm = $this->generate_unique_admission_number($academic_year_id);
+            }
+
+            $student_data = array(
+                'admission_number'  => $adm,
+                'first_name'        => $row['first_name'],
+                'middle_name'       => !empty($row['middle_name']) ? $row['middle_name'] : NULL,
+                'last_name'         => !empty($row['last_name']) ? $row['last_name'] : '',
+                'gender'            => !empty($row['gender']) ? $row['gender'] : 'Male',
+                'date_of_birth'     => !empty($row['date_of_birth']) ? $row['date_of_birth'] : date('Y-m-d'),
+                'blood_group'       => !empty($row['blood_group']) ? $row['blood_group'] : '',
+                'guardian_name'     => !empty($row['guardian_name']) ? $row['guardian_name'] : 'Parent',
+                'guardian_relation' => !empty($row['guardian_relation']) ? $row['guardian_relation'] : 'Father',
+                'guardian_phone'    => !empty($row['guardian_phone']) ? $row['guardian_phone'] : '',
+                'guardian_email'    => !empty($row['guardian_email']) ? $row['guardian_email'] : '',
+                'address'           => !empty($row['address']) ? $row['address'] : '',
+                'roll_number'       => !empty($row['roll_number']) ? $row['roll_number'] : '',
+                'academic_year_id'  => (int)$academic_year_id,
+                'class_id'          => (int)$class_id,
+                'section_id'        => (int)$section_id,
+                'status'            => 1,
+                'is_deleted'        => 'n',
+                'created_at'        => $now,
+                'updated_at'        => $now
+            );
+
+            $this->db->insert('tbl_students', $student_data);
+            $new_id = $this->db->insert_id();
+            if ($new_id) {
+                $inserted_ids[] = $new_id;
+                $inserted_count++;
+            }
+        }
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === FALSE) {
+            return array(
+                'success'        => false,
+                'inserted_count' => 0,
+                'student_ids'    => array(),
+                'message'        => 'Database transaction failed while adding students.'
+            );
+        }
+
+        return array(
+            'success'        => true,
+            'inserted_count' => $inserted_count,
+            'student_ids'    => $inserted_ids,
+            'message'        => $inserted_count . ' students added successfully.'
+        );
+    }
 }
 
 

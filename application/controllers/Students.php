@@ -1343,6 +1343,336 @@ class Students extends MY_Controller {
     }
 
     /* =========================================================================
+       5B. Bulk Student Management
+       ========================================================================= */
+
+    /**
+     * Bulk Student Add Page (Dual Mode: CSV/Excel Import & Bulk Entry).
+     */
+    public function bulk_add()
+    {
+        $this->require_permission('students.create');
+
+        $selected_year = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        $classes = $this->Class_model->get_all($selected_year);
+        $years   = $this->Academic_year_model->get_all();
+
+        $selected_class = $this->input->get('class_id') ? (int)$this->input->get('class_id') : (!empty($classes) ? $classes[0]->class_id : NULL);
+        $sections = $selected_class ? $this->Section_model->get_sections_for_class($selected_class) : array();
+
+        $this->render('pages/students/bulk_add', array(
+            'title'          => 'Bulk Student Add',
+            'page_key'       => 'student-bulk-add',
+            'breadcrumb'     => array('Student Management', 'Bulk Student Add'),
+            'years'          => $years,
+            'classes'        => $classes,
+            'sections'       => $sections,
+            'selected_year'  => $selected_year,
+            'selected_class' => $selected_class,
+        ));
+    }
+
+    /**
+     * Download Sample CSV Import Template.
+     */
+    public function bulk_template()
+    {
+        $this->require_permission('students.view');
+
+        $filename = 'student_bulk_import_template.csv';
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=' . $filename);
+
+        $out = fopen('php://output', 'w');
+        // UTF-8 BOM
+        fputs($out, "\xEF\xBB\xBF");
+
+        // Headers
+        fputcsv($out, array(
+            'admission_number',
+            'first_name',
+            'middle_name',
+            'last_name',
+            'date_of_birth',
+            'gender',
+            'blood_group',
+            'guardian_name',
+            'guardian_relation',
+            'guardian_phone',
+            'guardian_email',
+            'address',
+            'roll_number'
+        ));
+
+        // Sample Rows
+        fputcsv($out, array(
+            'EDU2026001',
+            'Aarav',
+            '',
+            'Verma',
+            '2012-05-14',
+            'Male',
+            'B+',
+            'Rajesh Verma',
+            'Father',
+            '+91 9876543210',
+            'rajesh.verma@example.com',
+            'Kochi, Kerala',
+            '101'
+        ));
+
+        fputcsv($out, array(
+            '',
+            'Ananya',
+            'K',
+            'Nair',
+            '2013-08-20',
+            'Female',
+            'O+',
+            'Suresh Nair',
+            'Father',
+            '+91 9876543211',
+            'suresh.nair@example.com',
+            'Ernakulam, Kerala',
+            '102'
+        ));
+
+        fclose($out);
+        exit;
+    }
+
+    /**
+     * AJAX: Parse & Validate uploaded Excel/CSV file.
+     */
+    public function bulk_validate_ajax()
+    {
+        $this->require_permission('students.create');
+
+        $academic_year_id = (int)$this->input->post('academic_year_id');
+        $class_id         = (int)$this->input->post('class_id');
+        $section_id       = (int)$this->input->post('section_id');
+
+        if (!$academic_year_id || !$class_id) {
+            return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+                'status'  => false,
+                'message' => 'Please select Academic Year and Class before uploading.',
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            )));
+        }
+
+        if (empty($_FILES['import_file']['name'])) {
+            return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+                'status'  => false,
+                'message' => 'Please select an Excel (.xlsx) or CSV (.csv) file to upload.',
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            )));
+        }
+
+        $orig_name = $_FILES['import_file']['name'];
+        $tmp_path  = $_FILES['import_file']['tmp_name'];
+        $file_size = (int)$_FILES['import_file']['size'];
+        $ext       = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
+
+        $allowed_exts = array('csv', 'xlsx', 'xls', 'txt');
+        if (!in_array($ext, $allowed_exts, true)) {
+            return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+                'status'  => false,
+                'message' => 'Unsupported file type. Please upload a .csv or .xlsx file.',
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            )));
+        }
+
+        if ($file_size > 10 * 1024 * 1024) {
+            return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+                'status'  => false,
+                'message' => 'File size exceeds maximum limit of 10 MB.',
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            )));
+        }
+
+        try {
+            $this->load->library('Simple_excel_reader');
+            $raw_rows = $this->simple_excel_reader->parse_file($tmp_path, $orig_name);
+
+            if (empty($raw_rows)) {
+                return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+                    'status'  => false,
+                    'message' => 'Uploaded file is empty or does not contain valid student rows.',
+                    'csrf_token_name' => $this->security->get_csrf_token_name(),
+                    'csrf_hash'       => $this->security->get_csrf_hash()
+                )));
+            }
+
+            $validation = $this->Student_model->bulk_validate_students($raw_rows, $academic_year_id, $class_id, $section_id);
+
+            // Cache validated data in session for instant import
+            $this->session->set_userdata('bulk_import_pending', array(
+                'academic_year_id' => $academic_year_id,
+                'class_id'         => $class_id,
+                'section_id'       => $section_id,
+                'rows'             => $validation['rows']
+            ));
+
+            return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+                'status'          => true,
+                'message'         => 'File parsed and validated successfully.',
+                'total_count'     => $validation['total_count'],
+                'valid_count'     => $validation['valid_count'],
+                'error_count'     => $validation['error_count'],
+                'rows'            => $validation['rows'],
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            )));
+        } catch (Exception $e) {
+            return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+                'status'  => false,
+                'message' => 'Error parsing file: ' . $e->getMessage(),
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            )));
+        }
+    }
+
+    /**
+     * AJAX: Import validated rows from uploaded file into database.
+     */
+    public function bulk_import_ajax()
+    {
+        $this->require_permission('students.create');
+
+        $academic_year_id = (int)$this->input->post('academic_year_id');
+        $class_id         = (int)$this->input->post('class_id');
+        $section_id       = (int)$this->input->post('section_id');
+
+        $pending = $this->session->userdata('bulk_import_pending');
+        $rows_to_insert = array();
+
+        if ($pending && !empty($pending['rows'])) {
+            foreach ($pending['rows'] as $r) {
+                if (!empty($r['is_valid'])) {
+                    $rows_to_insert[] = $r;
+                }
+            }
+            if (!empty($pending['academic_year_id'])) $academic_year_id = (int)$pending['academic_year_id'];
+            if (!empty($pending['class_id'])) $class_id = (int)$pending['class_id'];
+            if (!empty($pending['section_id'])) $section_id = (int)$pending['section_id'];
+        }
+
+        // Fallback: Check posted JSON rows
+        if (empty($rows_to_insert)) {
+            $raw_posted = $this->input->post('valid_rows');
+            if (!empty($raw_posted) && is_array($raw_posted)) {
+                $rows_to_insert = $raw_posted;
+            }
+        }
+
+        if (empty($rows_to_insert)) {
+            return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+                'status'  => false,
+                'message' => 'No valid student records found to import.',
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            )));
+        }
+
+        $result = $this->Student_model->bulk_insert_students($rows_to_insert, $academic_year_id, $class_id, $section_id);
+
+        // Clear session cache
+        $this->session->unset_userdata('bulk_import_pending');
+
+        return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+            'status'           => $result['success'],
+            'message'          => $result['message'],
+            'inserted_count'   => $result['inserted_count'],
+            'academic_year_id' => $academic_year_id,
+            'class_id'         => $class_id,
+            'section_id'       => $section_id,
+            'csrf_token_name'  => $this->security->get_csrf_token_name(),
+            'csrf_hash'        => $this->security->get_csrf_hash()
+        )));
+    }
+
+    /**
+     * AJAX: Save direct spreadsheet-style bulk entry rows.
+     */
+    public function bulk_entry_save_ajax()
+    {
+        $this->require_permission('students.create');
+
+        $academic_year_id = (int)$this->input->post('academic_year_id');
+        $class_id         = (int)$this->input->post('class_id');
+        $section_id       = (int)$this->input->post('section_id');
+        $raw_entries      = $this->input->post('entries');
+
+        if (!$academic_year_id || !$class_id) {
+            return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+                'status'  => false,
+                'message' => 'Please select Academic Year and Class.',
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            )));
+        }
+
+        if (empty($raw_entries) || !is_array($raw_entries)) {
+            return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+                'status'  => false,
+                'message' => 'Please enter at least one student in the table.',
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            )));
+        }
+
+        // Filter out completely blank rows
+        $filtered_entries = array();
+        foreach ($raw_entries as $e) {
+            if (!empty($e['first_name']) || !empty($e['last_name']) || !empty($e['guardian_name']) || !empty($e['admission_number'])) {
+                $filtered_entries[] = $e;
+            }
+        }
+
+        if (empty($filtered_entries)) {
+            return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+                'status'  => false,
+                'message' => 'All entered rows are blank. Please enter student details.',
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            )));
+        }
+
+        $validation = $this->Student_model->bulk_validate_students($filtered_entries, $academic_year_id, $class_id, $section_id);
+
+        if ($validation['error_count'] > 0) {
+            return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+                'status'          => false,
+                'message'         => 'Validation failed on ' . $validation['error_count'] . ' row(s). Please review the errors.',
+                'total_count'     => $validation['total_count'],
+                'valid_count'     => $validation['valid_count'],
+                'error_count'     => $validation['error_count'],
+                'rows'            => $validation['rows'],
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            )));
+        }
+
+        $result = $this->Student_model->bulk_insert_students($validation['rows'], $academic_year_id, $class_id, $section_id);
+
+        return $this->output->set_content_type('application/json')->set_output(json_encode(array(
+            'status'           => $result['success'],
+            'message'          => $result['message'],
+            'inserted_count'   => $result['inserted_count'],
+            'academic_year_id' => $academic_year_id,
+            'class_id'         => $class_id,
+            'section_id'       => $section_id,
+            'csrf_token_name'  => $this->security->get_csrf_token_name(),
+            'csrf_hash'        => $this->security->get_csrf_hash()
+        )));
+    }
+
+    /* =========================================================================
        6. Admission Management
        ========================================================================= */
     public function admissions()

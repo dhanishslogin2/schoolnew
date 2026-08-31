@@ -188,6 +188,10 @@ class MY_Controller extends CI_Controller {
                 case 'all':
                 case 'all_students':
                     return 'all-students';
+                case 'bulk_add':
+                case 'bulk':
+                case 'bulk_student_add':
+                    return 'student-bulk-add';
                 case 'list_students':
                 case 'list':
                 case 'student_list':

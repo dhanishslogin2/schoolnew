@@ -309,6 +309,7 @@ const NAV = [
     groups: [
       { key: "students", label: "Overview" },
       { key: "all-students", label: "All Students" },
+      { key: "student-bulk-add", label: "Bulk Student Add" },
       {
         label: "Admissions",
         items: [
