@@ -1005,16 +1005,7 @@ class Students extends MY_Controller {
         $ad = $wizard['academic_details'];
 
         $class_id = !empty($ad['class_id']) ? (int)$ad['class_id'] : 1;
-        $section_id = !empty($ad['section_id']) ? (int)$ad['section_id'] : NULL;
-        if (!$section_id) {
-            $sec_row = $this->db->get_where('tbl_sections', array('class_id' => $class_id, 'is_deleted' => 'n'))->row();
-            if (!$sec_row) {
-                $sec_row = $this->db->get_where('tbl_sections', array('is_deleted' => 'n'))->row();
-            }
-            if ($sec_row) {
-                $section_id = (int)$sec_row->section_id;
-            }
-        }
+        $section_id = !empty($ad['section_id']) ? (int)$ad['section_id'] : $this->Section_model->get_default_section_id($class_id);
 
         // ── Photo Handling: Move from temp → permanent uploads/students/ ──────
         $photo_filename   = NULL;
@@ -2159,22 +2150,7 @@ class Students extends MY_Controller {
         
         $sections = [];
         if ($class_id > 0) {
-            $sections = $this->Section_model->get_by_class($class_id);
-        }
-
-        // If no sections found in DB for this class, automatically supply default Section 'A'
-        if (empty($sections) && $class_id > 0) {
-            $default_sec = $this->db->where('section_name', 'A')->where('status', 1)->where('is_deleted', 'n')->get('tbl_sections')->row();
-            $default_sec_id = $default_sec ? (int)$default_sec->section_id : 12;
-
-            $sections = [
-                (object)[
-                    'section_id'   => $default_sec_id,
-                    'section_name' => 'A',
-                    'class_id'     => $class_id,
-                    'is_default'   => true
-                ]
-            ];
+            $sections = $this->Section_model->get_sections_for_class($class_id);
         }
 
         return $this->output

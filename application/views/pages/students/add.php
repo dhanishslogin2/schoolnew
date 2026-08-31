@@ -715,6 +715,36 @@
     var $s2 = $('#step2-form');
     if ($s2.length) {
 
+        /* ── Dynamic Class -> Section Loading ──────────────────────────── */
+        $('#class_id').on('change', function () {
+            var classId = $(this).val();
+            if (!classId) {
+                $('#section_id').html('<option value="">Select Section</option>');
+                return;
+            }
+            $.ajax({
+                url: BASE_URL + 'students/get_sections_ajax',
+                method: 'POST',
+                data: { class_id: classId, [CSRF_NAME]: CSRF_HASH },
+                dataType: 'json',
+                success: function (r) {
+                    refreshCsrf(r);
+                    if (r && r.sections && r.sections.length > 0) {
+                        var opts = '';
+                        r.sections.forEach(function (sec, idx) {
+                            opts += '<option value="' + sec.section_id + '" ' + (idx === 0 ? 'selected' : '') + '>' + $('<div>').text(sec.section_name).html() + '</option>';
+                        });
+                        $('#section_id').html(opts);
+                    } else {
+                        $('#section_id').html('<option value="12" selected>A</option>');
+                    }
+                },
+                error: function () {
+                    $('#section_id').html('<option value="12" selected>A</option>');
+                }
+            });
+        });
+
         /* ── No Previous School toggle ─────────────────────────────────── */
         $('#no_previous_school').on('change', function () {
             var $fields = $('#prev-school-fields');

@@ -134,16 +134,47 @@
     </div>
 
     <script>
+      function fetchNextSectionName(classId) {
+        if (!classId) return;
+        $.ajax({
+          url: '<?php echo site_url('academics/get_next_section_ajax'); ?>',
+          type: 'POST',
+          data: {
+            class_id: classId,
+            [window.CSRF_TOKEN_NAME]: window.CSRF_HASH
+          },
+          dataType: 'json',
+          success: function(res) {
+            if (res && res.csrf_hash) window.CSRF_HASH = res.csrf_hash;
+            if (document.getElementById('section_action').value === 'add' && res && res.next_section) {
+              document.getElementById('modal_section_name').value = res.next_section;
+            }
+          }
+        });
+      }
+
       function openAddSectionModal() {
         document.getElementById('section_action').value = 'add';
         document.getElementById('modal-section-title').textContent = 'Add Section';
         document.getElementById('modal_section_id').value = '';
-        document.getElementById('modal_section_name').value = '';
+        document.getElementById('modal_section_name').value = 'B';
         document.getElementById('modal_section_room').value = '';
         document.getElementById('modal_section_capacity').value = '40';
         document.getElementById('modal_section_description').value = '';
         document.getElementById('modal-section').classList.remove('hidden');
+
+        var cls = document.getElementById('modal_section_class').value;
+        if (cls) {
+          fetchNextSectionName(cls);
+        }
       }
+
+      document.getElementById('modal_section_class').addEventListener('change', function() {
+        if (document.getElementById('section_action').value === 'add') {
+          fetchNextSectionName(this.value);
+        }
+      });
+
       function openEditSectionModal(id, classId, name, room, capacity, desc) {
         document.getElementById('section_action').value = 'edit';
         document.getElementById('modal-section-title').textContent = 'Edit Section';

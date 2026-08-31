@@ -372,6 +372,29 @@ class Academics extends MY_Controller {
         redirect('academics/sections');
     }
 
+    /**
+     * AJAX endpoint: calculate next section letter for a class (starts from 'B')
+     */
+    public function get_next_section_ajax()
+    {
+        $this->require_permission('academics.view');
+        $class_id = (int)$this->input->get_post('class_id');
+        $next_name = 'B';
+        if ($class_id > 0) {
+            $next_name = $this->Section_model->get_next_section_name($class_id);
+        }
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'status'          => true,
+                'class_id'        => $class_id,
+                'next_section'    => $next_name,
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            ]));
+    }
+
     /* =========================================================================
        4. Subjects Management
        ========================================================================= */

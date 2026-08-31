@@ -62,7 +62,7 @@ class Student_model extends CI_Model {
     public function get_all($filters = array(), $limit = NULL, $offset = NULL)
     {
         $this->db
-            ->select('st.*, c.class_name, sec.section_name, y.year_name')
+            ->select("st.*, c.class_name, COALESCE(sec.section_name, 'A') as section_name, y.year_name")
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
             ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
@@ -78,7 +78,14 @@ class Student_model extends CI_Model {
             $this->db->where('st.class_id', $filters['class_id']);
         }
         if (!empty($filters['section_id'])) {
-            $this->db->where('st.section_id', $filters['section_id']);
+            $default_sec_id = $this->Section_model->get_default_section_id(!empty($filters['class_id']) ? $filters['class_id'] : null);
+            $this->db->group_start()
+                ->where('st.section_id', (int)$filters['section_id']);
+            if ((int)$filters['section_id'] === (int)$default_sec_id) {
+                $this->db->or_where('st.section_id IS NULL', null, false)
+                         ->or_where('st.section_id', 0);
+            }
+            $this->db->group_end();
         }
         if (!empty($filters['gender'])) {
             $this->db->where('st.gender', $filters['gender']);
@@ -119,7 +126,14 @@ class Student_model extends CI_Model {
             $this->db->where('st.class_id', $filters['class_id']);
         }
         if (!empty($filters['section_id'])) {
-            $this->db->where('st.section_id', $filters['section_id']);
+            $default_sec_id = $this->Section_model->get_default_section_id(!empty($filters['class_id']) ? $filters['class_id'] : null);
+            $this->db->group_start()
+                ->where('st.section_id', (int)$filters['section_id']);
+            if ((int)$filters['section_id'] === (int)$default_sec_id) {
+                $this->db->or_where('st.section_id IS NULL', null, false)
+                         ->or_where('st.section_id', 0);
+            }
+            $this->db->group_end();
         }
         if (!empty($filters['gender'])) {
             $this->db->where('st.gender', $filters['gender']);

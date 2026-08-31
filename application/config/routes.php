@@ -96,6 +96,7 @@ $route['students/get_classes_ajax']          = 'students/get_classes_ajax';
 $route['students/transfers']  = 'students/transfers';
 $route['students/search']     = 'students/search';
 $route['students/tc/(:num)']  = 'students/tc/$1';
+$route['academics/get_next_section_ajax']    = 'academics/get_next_section_ajax';
 
 $route['staff']                             = 'staff/overview';
 $route['staff/overview']                    = 'staff/overview';
