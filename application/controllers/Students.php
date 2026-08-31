@@ -163,14 +163,16 @@ class Students extends MY_Controller {
             foreach ($nameParts as $np) { if (!empty($np)) $initials .= strtoupper($np[0]); }
             $initials = substr($initials, 0, 2) ?: 'ST';
 
-            // Photo Avatar
+            // Photo Avatar (40px x 40px with object-fit: cover and robust server + client fallback)
             $hasPhoto = !empty($st->photo) && file_exists(FCPATH . 'uploads/students/' . $st->photo);
             if ($hasPhoto) {
-                $photoHtml = '<div class="w-9 h-9 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-2xs">' .
-                    '<img src="' . base_url('uploads/students/' . $st->photo) . '" alt="' . html_escape($fullName) . '" class="w-full h-full object-cover"/>' .
+                $photoUrl = base_url('uploads/students/' . $st->photo);
+                $fallbackJs = "this.onerror=null; this.parentElement.className='w-[40px] h-[40px] rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs'; this.parentElement.innerHTML='" . html_escape($initials) . "';";
+                $photoHtml = '<div class="w-[40px] h-[40px] rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-2xs bg-slate-100 flex items-center justify-center">' .
+                    '<img src="' . $photoUrl . '" alt="' . html_escape($fullName) . '" class="w-full h-full object-cover" onerror="' . $fallbackJs . '"/>' .
                 '</div>';
             } else {
-                $photoHtml = '<div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">' .
+                $photoHtml = '<div class="w-[40px] h-[40px] rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">' .
                     html_escape($initials) .
                 '</div>';
             }
@@ -179,11 +181,11 @@ class Students extends MY_Controller {
             $admHtml = '<span class="font-bold text-emerald-800 font-mono text-xs">' . html_escape($st->admission_number) . '</span>';
 
             // Student Name + Profile Link
-            $nameHtml = '<div class="flex items-center gap-2.5">' .
+            $nameHtml = '<div class="flex items-center gap-3">' .
                 $photoHtml .
                 '<div class="min-w-0">' .
                     '<a href="' . site_url('students/profile/' . $st->student_id) . '" class="font-bold text-slate-900 hover:text-emerald-700 transition-colors text-xs truncate block">' . html_escape($fullName) . '</a>' .
-                    '<span class="text-[11px] text-slate-500 font-mono">Adm: ' . html_escape($st->admission_number) . '</span>' .
+                    '<span class="text-[11px] text-slate-500 font-mono block">Adm: ' . html_escape($st->admission_number) . '</span>' .
                 '</div>' .
             '</div>';
 
@@ -324,8 +326,17 @@ class Students extends MY_Controller {
                 $admissionCol .= ' <span class="text-[11px] text-on-surface-variant ml-1 font-mono">#' . html_escape($st->roll_number) . '</span>';
             }
 
+            $hasPhoto = !empty($st->photo) && file_exists(FCPATH . 'uploads/students/' . $st->photo);
+            if ($hasPhoto) {
+                $photoCol = '<div class="w-9 h-9 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-2xs bg-slate-100 flex items-center justify-center">' .
+                    '<img src="' . base_url('uploads/students/' . $st->photo) . '" alt="' . html_escape($st->first_name) . '" class="w-full h-full object-cover" onerror="this.onerror=null; this.parentElement.className=\'w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[11px] font-semibold shrink-0\'; this.parentElement.innerHTML=\'' . html_escape($initials) . '\';"/>' .
+                '</div>';
+            } else {
+                $photoCol = '<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[11px] font-semibold shrink-0">' . html_escape($initials) . '</div>';
+            }
+
             $studentCol = '<div class="flex items-center gap-2.5">' .
-                '<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[11px] font-semibold shrink-0">' . html_escape($initials) . '</div>' .
+                $photoCol .
                 '<div>' .
                     '<div class="font-medium text-on-surface">' . html_escape($st->first_name . ' ' . $st->last_name) . '</div>' .
                     '<div class="text-[12px] text-on-surface-variant">' . html_escape($classDisplay . ' · ' . $st->gender) . '</div>' .

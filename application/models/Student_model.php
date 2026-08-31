@@ -175,7 +175,7 @@ class Student_model extends CI_Model {
 
         $this->db
             ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, 
-                      st.gender, st.date_of_birth, st.guardian_name, st.guardian_phone, st.status,
+                      st.gender, st.date_of_birth, st.guardian_name, st.guardian_phone, st.status, st.photo,
                       c.class_name, sec.section_name, y.year_name')
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
