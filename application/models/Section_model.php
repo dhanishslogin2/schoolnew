@@ -156,39 +156,36 @@ class Section_model extends CI_Model {
 
     /**
      * Get a valid database section_id for Section 'A'.
+     * Uses direct query to avoid polluting CodeIgniter Active Record state.
      *
      * @param int|null $class_id
      * @return int
      */
     public function get_default_section_id($class_id = NULL)
     {
+        static $cached_default_ids = array();
+        $cache_key = $class_id ? (int)$class_id : 'global';
+        if (isset($cached_default_ids[$cache_key])) {
+            return $cached_default_ids[$cache_key];
+        }
+
         if ($class_id) {
-            $class_sec = $this->db
-                ->where('class_id', (int)$class_id)
-                ->where('section_name', 'A')
-                ->where('status', 1)
-                ->where('is_deleted', 'n')
-                ->get($this->table)
-                ->row();
-            if ($class_sec) {
-                return (int)$class_sec->section_id;
+            $row = $this->db->query("SELECT section_id FROM tbl_sections WHERE class_id = ? AND section_name = 'A' AND status = 1 AND is_deleted = 'n' LIMIT 1", [(int)$class_id])->row();
+            if ($row) {
+                $cached_default_ids[$cache_key] = (int)$row->section_id;
+                return $cached_default_ids[$cache_key];
             }
         }
 
-        $any_a = $this->db
-            ->where('section_name', 'A')
-            ->where('status', 1)
-            ->where('is_deleted', 'n')
-            ->get($this->table)
-            ->row();
-
-        if ($any_a) {
-            return (int)$any_a->section_id;
+        $row_a = $this->db->query("SELECT section_id FROM tbl_sections WHERE section_name = 'A' AND status = 1 AND is_deleted = 'n' LIMIT 1")->row();
+        if ($row_a) {
+            $cached_default_ids[$cache_key] = (int)$row_a->section_id;
+            return $cached_default_ids[$cache_key];
         }
 
-        // Return first active section or fallback 12
-        $any_sec = $this->db->where('status', 1)->where('is_deleted', 'n')->get($this->table)->row();
-        return $any_sec ? (int)$any_sec->section_id : 12;
+        $any_sec = $this->db->query("SELECT section_id FROM tbl_sections WHERE status = 1 AND is_deleted = 'n' LIMIT 1")->row();
+        $cached_default_ids[$cache_key] = $any_sec ? (int)$any_sec->section_id : 12;
+        return $cached_default_ids[$cache_key];
     }
 
     public function insert($data)

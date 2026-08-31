@@ -72,13 +72,13 @@ class Student_model extends CI_Model {
             ->order_by('st.student_id', 'ASC');
 
         if (!empty($filters['academic_year_id'])) {
-            $this->db->where('st.academic_year_id', $filters['academic_year_id']);
+            $this->db->where('st.academic_year_id', (int)$filters['academic_year_id']);
         }
         if (!empty($filters['class_id'])) {
-            $this->db->where('st.class_id', $filters['class_id']);
+            $this->db->where('st.class_id', (int)$filters['class_id']);
         }
         if (!empty($filters['section_id'])) {
-            $default_sec_id = $this->Section_model->get_default_section_id(!empty($filters['class_id']) ? $filters['class_id'] : null);
+            $default_sec_id = $this->Section_model->get_default_section_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
             $this->db->group_start()
                 ->where('st.section_id', (int)$filters['section_id']);
             if ((int)$filters['section_id'] === (int)$default_sec_id) {
@@ -91,7 +91,7 @@ class Student_model extends CI_Model {
             $this->db->where('st.gender', $filters['gender']);
         }
         if (isset($filters['status']) && $filters['status'] !== '' && $filters['status'] !== 'All') {
-            $this->db->where('st.status', $filters['status']);
+            $this->db->where('st.status', (int)$filters['status']);
         }
         if (!empty($filters['search'])) {
             $s = trim($filters['search']);
@@ -105,7 +105,7 @@ class Student_model extends CI_Model {
                 ->group_end();
         }
 
-        if ($limit !== NULL) {
+        if ($limit !== NULL && $limit > 0) {
             $this->db->limit($limit, $offset ?: 0);
         }
 
@@ -120,13 +120,13 @@ class Student_model extends CI_Model {
             ->where('st.is_deleted', 'n');
 
         if (!empty($filters['academic_year_id'])) {
-            $this->db->where('st.academic_year_id', $filters['academic_year_id']);
+            $this->db->where('st.academic_year_id', (int)$filters['academic_year_id']);
         }
         if (!empty($filters['class_id'])) {
-            $this->db->where('st.class_id', $filters['class_id']);
+            $this->db->where('st.class_id', (int)$filters['class_id']);
         }
         if (!empty($filters['section_id'])) {
-            $default_sec_id = $this->Section_model->get_default_section_id(!empty($filters['class_id']) ? $filters['class_id'] : null);
+            $default_sec_id = $this->Section_model->get_default_section_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
             $this->db->group_start()
                 ->where('st.section_id', (int)$filters['section_id']);
             if ((int)$filters['section_id'] === (int)$default_sec_id) {
@@ -139,7 +139,7 @@ class Student_model extends CI_Model {
             $this->db->where('st.gender', $filters['gender']);
         }
         if (isset($filters['status']) && $filters['status'] !== '' && $filters['status'] !== 'All') {
-            $this->db->where('st.status', $filters['status']);
+            $this->db->where('st.status', (int)$filters['status']);
         }
         if (!empty($filters['search'])) {
             $s = trim($filters['search']);
@@ -688,7 +688,7 @@ class Student_model extends CI_Model {
     public function get_all_students_paginated($filters = array(), $limit = 10, $offset = 0, $order_col = 'st.student_id', $order_dir = 'ASC')
     {
         $this->db
-            ->select('st.*, c.class_name, c.class_code, sec.section_name, y.year_name')
+            ->select("st.*, c.class_name, c.class_code, COALESCE(sec.section_name, 'A') as section_name, y.year_name")
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
             ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
@@ -702,7 +702,14 @@ class Student_model extends CI_Model {
             $this->db->where('st.class_id', (int)$filters['class_id']);
         }
         if (!empty($filters['section_id'])) {
-            $this->db->where('st.section_id', (int)$filters['section_id']);
+            $default_sec_id = $this->Section_model->get_default_section_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
+            $this->db->group_start()
+                ->where('st.section_id', (int)$filters['section_id']);
+            if ((int)$filters['section_id'] === (int)$default_sec_id) {
+                $this->db->or_where('st.section_id IS NULL', null, false)
+                         ->or_where('st.section_id', 0);
+            }
+            $this->db->group_end();
         }
         if (!empty($filters['gender'])) {
             $this->db->where('st.gender', $filters['gender']);
@@ -750,7 +757,14 @@ class Student_model extends CI_Model {
             $this->db->where('st.class_id', (int)$filters['class_id']);
         }
         if (!empty($filters['section_id'])) {
-            $this->db->where('st.section_id', (int)$filters['section_id']);
+            $default_sec_id = $this->Section_model->get_default_section_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
+            $this->db->group_start()
+                ->where('st.section_id', (int)$filters['section_id']);
+            if ((int)$filters['section_id'] === (int)$default_sec_id) {
+                $this->db->or_where('st.section_id IS NULL', null, false)
+                         ->or_where('st.section_id', 0);
+            }
+            $this->db->group_end();
         }
         if (!empty($filters['gender'])) {
             $this->db->where('st.gender', $filters['gender']);
