@@ -2053,16 +2053,22 @@ class Students extends MY_Controller {
         $this->require_permission('students.promote');
         if ($this->input->method() === 'post') {
             $student_ids  = $this->input->post('student_ids');
-            $from_year    = $this->input->post('from_academic_year_id');
-            $from_class   = $this->input->post('from_class_id');
-            $from_sec     = $this->input->post('from_section_id');
-            $to_year      = $this->input->post('to_academic_year_id');
-            $to_class     = $this->input->post('to_class_id');
-            $to_sec       = $this->input->post('to_section_id');
+            $from_year    = (int)$this->input->post('from_academic_year_id');
+            $from_class   = (int)$this->input->post('from_class_id');
+            $from_sec     = $this->input->post('from_section_id') ? (int)$this->input->post('from_section_id') : NULL;
+            $to_year      = (int)$this->input->post('to_academic_year_id');
+            $to_class     = (int)$this->input->post('to_class_id');
+            $to_sec       = (int)$this->input->post('to_section_id');
             $promo_type   = $this->input->post('promotion_type') ?: 'Promoted';
             $remarks      = $this->input->post('remarks', TRUE);
 
             if (!empty($student_ids) && is_array($student_ids)) {
+                if (empty($to_class) || empty($to_sec)) {
+                    $this->session->set_flashdata('error', 'Please select a valid Target Class and Target Section.');
+                    redirect('students/promotion?from_year=' . $from_year . '&from_class=' . $from_class . ($from_sec ? '&from_section=' . $from_sec : ''));
+                    return;
+                }
+
                 $result = $this->Student_model->promote_students($student_ids, $from_year, $from_class, $from_sec, $to_year, $to_class, $to_sec, $promo_type, $remarks);
                 if ($result) {
                     $this->session->set_flashdata('success', count($student_ids) . ' student(s) ' . strtolower($promo_type) . ' successfully.');
@@ -2074,21 +2080,38 @@ class Students extends MY_Controller {
             }
         }
 
-        $from_year  = $this->input->get('from_year') ?: $this->academic_year_id;
-        $from_class = $this->input->get('from_class') ?: 8;
-        $from_sec   = $this->input->get('from_section');
+        $years = $this->Academic_year_model->get_all();
+        $from_year = (int)($this->input->get('from_year') ?: $this->academic_year_id);
+        if (!$from_year && !empty($years)) {
+            $from_year = (int)$years[0]->academic_year_id;
+        }
 
-        $students = $this->Student_model->get_all(array(
-            'academic_year_id' => $from_year,
-            'class_id'         => $from_class,
-            'section_id'       => $from_sec,
-            'status'           => 1
-        ));
+        $classes = $this->Class_model->get_all($from_year);
+        $from_class_raw = $this->input->get('from_class');
+        if ($from_class_raw !== NULL && $from_class_raw !== '' && is_numeric($from_class_raw)) {
+            $from_class = (int)$from_class_raw;
+        } else {
+            $from_class = !empty($classes) ? (int)$classes[0]->class_id : NULL;
+        }
 
+        $from_sec = ($this->input->get('from_section') !== NULL && $this->input->get('from_section') !== '' && is_numeric($this->input->get('from_section'))) ? (int)$this->input->get('from_section') : NULL;
+
+        // Fetch students strictly for selected academic year + class (+ section if specified)
+        $students = [];
+        if ($from_class) {
+            $filters = array(
+                'academic_year_id' => $from_year,
+                'class_id'         => $from_class,
+                'status'           => 1
+            );
+            if ($from_sec !== NULL) {
+                $filters['section_id'] = $from_sec;
+            }
+            $students = $this->Student_model->get_all($filters);
+        }
+
+        $source_sections = $from_class ? $this->Section_model->get_by_class($from_class) : [];
         $promotions_history = $this->Student_model->get_promotions();
-        $classes  = $this->Class_model->get_all($from_year);
-        $sections = $this->Section_model->get_all();
-        $years    = $this->Academic_year_model->get_all();
 
         $this->render('pages/students/promotion', array(
             'title'              => 'Student Promotion',
@@ -2096,12 +2119,60 @@ class Students extends MY_Controller {
             'students'           => $students,
             'promotions_history' => $promotions_history,
             'classes'            => $classes,
-            'sections'           => $sections,
+            'source_sections'    => $source_sections,
             'years'              => $years,
             'from_year'          => $from_year,
             'from_class'         => $from_class,
             'from_sec'           => $from_sec,
         ));
+    }
+
+    /**
+     * AJAX endpoint: fetch sections by class ID
+     */
+    public function get_sections_ajax()
+    {
+        $this->require_permission('students.view');
+        $class_id = (int)$this->input->get_post('class_id');
+        
+        $sections = [];
+        if ($class_id > 0) {
+            $sections = $this->Section_model->get_by_class($class_id);
+        }
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'status'          => true,
+                'class_id'        => $class_id,
+                'sections'        => $sections,
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            ]));
+    }
+
+    /**
+     * AJAX endpoint: fetch classes by academic year ID
+     */
+    public function get_classes_ajax()
+    {
+        $this->require_permission('students.view');
+        $academic_year_id = (int)$this->input->get_post('academic_year_id');
+        if (!$academic_year_id) {
+            $academic_year_id = (int)$this->academic_year_id;
+        }
+
+        $classes = $this->Class_model->get_all($academic_year_id);
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'status'          => true,
+                'academic_year_id'=> $academic_year_id,
+                'classes'         => $classes,
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            ]));
     }
 
     /* =========================================================================

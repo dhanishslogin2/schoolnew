@@ -338,25 +338,31 @@ class Student_model extends CI_Model {
         $this->db->trans_start();
 
         foreach ($student_ids as $sid) {
+            $orig_from_sec = $from_sec;
+            if (empty($orig_from_sec)) {
+                $st = $this->db->select('section_id')->where('student_id', (int)$sid)->get('tbl_students')->row();
+                $orig_from_sec = ($st && !empty($st->section_id)) ? $st->section_id : NULL;
+            }
+
             // Record promotion history
             $this->db->insert('tbl_student_promotions', array(
-                'student_id'            => $sid,
-                'from_academic_year_id' => $from_year,
-                'from_class_id'         => $from_class,
-                'from_section_id'       => $from_sec,
-                'to_academic_year_id'   => $to_year,
-                'to_class_id'           => $to_class,
-                'to_section_id'         => $to_sec,
+                'student_id'            => (int)$sid,
+                'from_academic_year_id' => (int)$from_year,
+                'from_class_id'         => (int)$from_class,
+                'from_section_id'       => $orig_from_sec ? (int)$orig_from_sec : NULL,
+                'to_academic_year_id'   => (int)$to_year,
+                'to_class_id'           => (int)$to_class,
+                'to_section_id'         => (int)$to_sec,
                 'promotion_date'        => date('Y-m-d'),
                 'promotion_type'        => $type,
                 'remarks'               => $remarks ?: 'Promoted to new academic session'
             ));
 
             // Update current student record
-            $this->db->where('student_id', $sid)->update('tbl_students', array(
-                'academic_year_id' => $to_year,
-                'class_id'         => $to_class,
-                'section_id'       => $to_sec,
+            $this->db->where('student_id', (int)$sid)->update('tbl_students', array(
+                'academic_year_id' => (int)$to_year,
+                'class_id'         => (int)$to_class,
+                'section_id'       => (int)$to_sec,
                 'updated_at'       => date('Y-m-d H:i:s')
             ));
         }
