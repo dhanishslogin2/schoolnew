@@ -414,12 +414,11 @@
 
   function loadTargetSections(classId) {
     if (!classId) {
-      $('#to_section_id').html('<option value="">Select Target Class first</option>').prop('disabled', true);
+      $('#to_section_id').html('<option value="12" selected>A</option>').prop('disabled', false);
       return;
     }
 
     $('#target-section-spinner').removeClass('hidden');
-    $('#to_section_id').html('<option value="">Loading sections...</option>').prop('disabled', true);
 
     $.ajax({
       url: '<?php echo site_url('students/get_sections_ajax'); ?>',
@@ -439,17 +438,19 @@
             secHtml += '<option value="" disabled selected>Select Section</option>';
           }
           res.sections.forEach(function (sec, idx) {
-            const isAutoSelected = (res.sections.length === 1 && idx === 0) ? 'selected' : '';
+            const isAutoSelected = (res.sections.length === 1 || idx === 0) ? 'selected' : '';
             secHtml += '<option value="' + sec.section_id + '" ' + isAutoSelected + '>' + $('<div>').text(sec.section_name).html() + '</option>';
           });
           $('#to_section_id').html(secHtml).prop('disabled', false);
         } else {
-          $('#to_section_id').html('<option value="">No sections available for this class</option>').prop('disabled', false);
+          // Fallback to default Section 'A'
+          $('#to_section_id').html('<option value="12" selected>A</option>').prop('disabled', false);
         }
       },
       error: function () {
         $('#target-section-spinner').addClass('hidden');
-        $('#to_section_id').html('<option value="">Error loading sections</option>').prop('disabled', false);
+        // On error, supply default Section 'A'
+        $('#to_section_id').html('<option value="12" selected>A</option>').prop('disabled', false);
       }
     });
   }

@@ -2058,13 +2058,22 @@ class Students extends MY_Controller {
             $from_sec     = $this->input->post('from_section_id') ? (int)$this->input->post('from_section_id') : NULL;
             $to_year      = (int)$this->input->post('to_academic_year_id');
             $to_class     = (int)$this->input->post('to_class_id');
-            $to_sec       = (int)$this->input->post('to_section_id');
+            $to_sec_raw   = $this->input->post('to_section_id');
+
+            // Default Section A fallback if empty
+            if (empty($to_sec_raw)) {
+                $default_sec = $this->db->where('section_name', 'A')->where('status', 1)->where('is_deleted', 'n')->get('tbl_sections')->row();
+                $to_sec = $default_sec ? (int)$default_sec->section_id : 12;
+            } else {
+                $to_sec = (int)$to_sec_raw;
+            }
+
             $promo_type   = $this->input->post('promotion_type') ?: 'Promoted';
             $remarks      = $this->input->post('remarks', TRUE);
 
             if (!empty($student_ids) && is_array($student_ids)) {
-                if (empty($to_class) || empty($to_sec)) {
-                    $this->session->set_flashdata('error', 'Please select a valid Target Class and Target Section.');
+                if (empty($to_class)) {
+                    $this->session->set_flashdata('error', 'Please select a valid Target Class.');
                     redirect('students/promotion?from_year=' . $from_year . '&from_class=' . $from_class . ($from_sec ? '&from_section=' . $from_sec : ''));
                     return;
                 }
@@ -2111,6 +2120,19 @@ class Students extends MY_Controller {
         }
 
         $source_sections = $from_class ? $this->Section_model->get_by_class($from_class) : [];
+        if (empty($source_sections) && $from_class) {
+            $default_sec = $this->db->where('section_name', 'A')->where('status', 1)->where('is_deleted', 'n')->get('tbl_sections')->row();
+            $default_sec_id = $default_sec ? (int)$default_sec->section_id : 12;
+            $source_sections = [
+                (object)[
+                    'section_id'   => $default_sec_id,
+                    'section_name' => 'A',
+                    'class_id'     => $from_class,
+                    'is_default'   => true
+                ]
+            ];
+        }
+
         $promotions_history = $this->Student_model->get_promotions();
 
         $this->render('pages/students/promotion', array(
@@ -2128,7 +2150,7 @@ class Students extends MY_Controller {
     }
 
     /**
-     * AJAX endpoint: fetch sections by class ID
+     * AJAX endpoint: fetch sections by class ID with default Section A fallback
      */
     public function get_sections_ajax()
     {
@@ -2138,6 +2160,21 @@ class Students extends MY_Controller {
         $sections = [];
         if ($class_id > 0) {
             $sections = $this->Section_model->get_by_class($class_id);
+        }
+
+        // If no sections found in DB for this class, automatically supply default Section 'A'
+        if (empty($sections) && $class_id > 0) {
+            $default_sec = $this->db->where('section_name', 'A')->where('status', 1)->where('is_deleted', 'n')->get('tbl_sections')->row();
+            $default_sec_id = $default_sec ? (int)$default_sec->section_id : 12;
+
+            $sections = [
+                (object)[
+                    'section_id'   => $default_sec_id,
+                    'section_name' => 'A',
+                    'class_id'     => $class_id,
+                    'is_default'   => true
+                ]
+            ];
         }
 
         return $this->output
