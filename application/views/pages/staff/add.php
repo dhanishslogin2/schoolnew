@@ -10,16 +10,26 @@
       </a>
     </div>
 
-    <?php if (validation_errors()): ?>
-      <div class="p-4 mb-5 rounded-xl bg-error-container/30 border border-error/30 text-error text-body-md">
+    <?php if (validation_errors() || !empty($doc_errors)): ?>
+      <div class="p-4 mb-5 rounded-xl bg-error-container/30 border border-error/30 text-error text-body-md space-y-1">
         <?php echo validation_errors(); ?>
+        <?php if (!empty($doc_errors)): ?>
+          <?php foreach ($doc_errors as $err): ?>
+            <div>• <?php echo html_escape($err); ?></div>
+          <?php endforeach; ?>
+        <?php endif; ?>
       </div>
     <?php endif; ?>
 
+    <div id="doc-validation-alert" class="hidden p-4 mb-5 rounded-xl bg-error-container/40 border border-error text-error text-body-md flex items-center gap-3">
+      <span class="material-symbols-outlined text-[22px]">error</span>
+      <div id="doc-validation-msg"></div>
+    </div>
+
     <div class="elevation-1 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 p-6 max-w-4xl">
-      <?php echo form_open('staff/register', array('class' => 'space-y-6')); ?>
+      <?php echo form_open_multipart('staff/register', array('class' => 'space-y-6', 'id' => 'add_staff_form')); ?>
         
-        <!-- SECTION 1: Personal Information -->
+        <!-- SECTION 1: Personal Details -->
         <div>
           <h3 class="font-headline-md text-headline-md text-on-surface mb-3 flex items-center gap-2">
             <span class="material-symbols-outlined text-primary text-[20px]">person</span>1. Personal Details
@@ -141,6 +151,56 @@
           </div>
         </div>
 
+        <!-- SECTION 5: Staff Documents (Dynamic & Mandatory) -->
+        <div class="pt-4 border-t border-outline-variant/40">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-[20px]">folder_shared</span>5. Staff Documents
+            </h3>
+            <span class="text-label-md text-error font-medium flex items-center gap-1">
+              <span class="material-symbols-outlined text-[16px]">priority_high</span>All configured documents are mandatory
+            </span>
+          </div>
+
+          <?php if (empty($document_types)): ?>
+            <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div class="text-body-md font-medium text-on-surface">No staff documents configured.</div>
+                <div class="text-[12px] text-on-surface-variant">Super Admin can add required staff documents from Settings → Staff Document.</div>
+              </div>
+              <?php if (!empty($is_super_admin)): ?>
+                <a href="<?php echo site_url('settings/staff_documents'); ?>" target="_blank" class="px-3.5 py-2 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors shrink-0 inline-flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[16px]">add</span>+ Add Document
+                </a>
+              <?php endif; ?>
+            </div>
+          <?php else: ?>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-body-md">
+              <?php foreach ($document_types as $dt): ?>
+                <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/60 hover:border-outline transition-colors">
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="font-semibold text-on-surface text-label-md flex items-center gap-1">
+                      <?php echo html_escape($dt->document_name); ?> <span class="text-error font-bold">*</span>
+                    </label>
+                    <span class="text-[10px] uppercase font-bold tracking-wider text-error bg-error-container/60 px-2 py-0.5 rounded-full">Required</span>
+                  </div>
+                  <?php if (!empty($dt->description)): ?>
+                    <p class="text-[12px] text-on-surface-variant mb-2.5"><?php echo html_escape($dt->description); ?></p>
+                  <?php else: ?>
+                    <p class="text-[12px] text-on-surface-variant mb-2.5">Upload document copy (PDF, JPG, PNG, DOC)</p>
+                  <?php endif; ?>
+                  <input type="file" 
+                    name="staff_doc_file[<?php echo $dt->id; ?>]" 
+                    id="doc_input_<?php echo $dt->id; ?>"
+                    data-doc-name="<?php echo html_escape($dt->document_name); ?>"
+                    required 
+                    class="staff-required-doc w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-secondary/15 file:text-secondary hover:file:bg-secondary/25 cursor-pointer transition-colors"/>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+        </div>
+
         <!-- Form Actions -->
         <div class="pt-6 border-t border-outline-variant/40 flex items-center justify-end gap-3">
           <a href="<?php echo site_url('staff'); ?>" class="px-5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-colors">Cancel</a>
@@ -161,4 +221,35 @@
           specBox.style.display = 'block';
         }
       }
+
+      // Client-side mandatory document verification
+      document.getElementById('add_staff_form').addEventListener('submit', function(e) {
+        var docInputs = document.querySelectorAll('.staff-required-doc');
+        var missingDocs = [];
+
+        docInputs.forEach(function(input) {
+          if (!input.files || input.files.length === 0) {
+            missingDocs.push(input.getAttribute('data-doc-name') || 'Document');
+            input.classList.add('border-error');
+          } else {
+            input.classList.remove('border-error');
+          }
+        });
+
+        if (missingDocs.length > 0) {
+          e.preventDefault();
+          var alertBox = document.getElementById('doc-validation-alert');
+          var alertMsg = document.getElementById('doc-validation-msg');
+          
+          var msgHtml = '<strong>Please upload all required staff documents before registering:</strong><ul class="list-disc list-inside mt-1">';
+          missingDocs.forEach(function(docName) {
+            msgHtml += '<li>' + docName + ' is required.</li>';
+          });
+          msgHtml += '</ul>';
+
+          alertMsg.innerHTML = msgHtml;
+          alertBox.classList.remove('hidden');
+          alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
     </script>

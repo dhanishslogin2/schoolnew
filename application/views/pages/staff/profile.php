@@ -150,20 +150,27 @@
             <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
               <span class="material-symbols-outlined text-primary text-[20px]">folder</span>Documents
             </h3>
-            <button onclick="switchTab('documents')" class="text-label-md text-primary hover:underline">Upload</button>
+            <button onclick="switchTab('documents')" class="text-label-md text-primary hover:underline">Manage All</button>
           </div>
           <?php if (!empty($staff->documents)): ?>
             <ul class="divide-y divide-outline-variant/30 text-body-md">
               <?php foreach ($staff->documents as $doc): ?>
-                <li class="py-2.5 flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary text-[18px]">description</span>
-                    <div>
-                      <div class="font-medium text-on-surface text-[13px]"><?php echo html_escape($doc->document_name); ?></div>
-                      <div class="text-[11px] text-on-surface-variant"><?php echo html_escape($doc->document_type); ?></div>
+                <li class="py-2.5 flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="material-symbols-outlined text-primary text-[18px] shrink-0">description</span>
+                    <div class="min-w-0 truncate">
+                      <div class="font-medium text-on-surface text-[13px] truncate"><?php echo html_escape($doc->document_name); ?></div>
+                      <div class="text-[11px] text-on-surface-variant truncate"><?php echo html_escape($doc->document_type); ?> • <?php echo date('d M Y', strtotime($doc->created_at)); ?></div>
                     </div>
                   </div>
-                  <a href="<?php echo base_url($doc->file_path); ?>" target="_blank" class="p-1 text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined text-[16px]">open_in_new</span></a>
+                  <div class="flex items-center gap-1 shrink-0">
+                    <a href="<?php echo site_url('staff/view_document/' . $doc->document_id); ?>" target="_blank" title="View Document" class="p-1 text-on-surface-variant hover:text-primary rounded hover:bg-surface-container-high transition-colors">
+                      <span class="material-symbols-outlined text-[16px]">visibility</span>
+                    </a>
+                    <a href="<?php echo site_url('staff/download_document/' . $doc->document_id); ?>" title="Download Document" class="p-1 text-on-surface-variant hover:text-secondary rounded hover:bg-surface-container-high transition-colors">
+                      <span class="material-symbols-outlined text-[16px]">download</span>
+                    </a>
+                  </div>
                 </li>
               <?php endforeach; ?>
             </ul>
@@ -288,33 +295,34 @@
   <!-- TAB: DOCUMENTS -->
   <div id="tab-documents" class="tab-pane hidden space-y-5">
     <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-6">
-      <h3 class="font-headline-md text-headline-md text-on-surface mb-4">Staff Documents Repository</h3>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-headline-md text-headline-md text-on-surface">Staff Documents Repository</h3>
+      </div>
 
       <!-- Upload Form -->
       <?php echo form_open_multipart('staff/upload_document', array('class' => 'p-4 rounded-xl bg-surface-container-low border border-outline-variant/40 mb-6')); ?>
         <input type="hidden" name="staff_id" value="<?php echo $staff_id; ?>"/>
         <input type="hidden" name="redirect_to" value="<?php echo current_url(); ?>"/>
-        <h4 class="font-title-md text-title-md text-on-surface mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">cloud_upload</span>Upload New Staff Document</h4>
+        <h4 class="font-title-md text-title-md text-on-surface mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">cloud_upload</span>Upload / Attach Staff Document</h4>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div>
             <label class="block text-label-md text-on-surface mb-1">Document Type *</label>
-            <select name="document_type" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md">
-              <option value="Aadhaar Card">Aadhaar Card</option>
-              <option value="PAN Card">PAN Card</option>
-              <option value="Qualification Certificate">Qualification Certificate</option>
-              <option value="Experience Certificate">Experience Certificate</option>
-              <option value="Joining Letter">Joining Letter</option>
-              <option value="Appointment Letter">Appointment Letter</option>
-              <option value="Other">Other Document</option>
+            <select name="document_type_id" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-medium text-on-surface">
+              <?php if (!empty($document_types)): ?>
+                <?php foreach ($document_types as $dt): ?>
+                  <option value="<?php echo $dt->id; ?>"><?php echo html_escape($dt->document_name); ?></option>
+                <?php endforeach; ?>
+              <?php endif; ?>
+              <option value="0">Other Document</option>
             </select>
           </div>
           <div>
-            <label class="block text-label-md text-on-surface mb-1">Document Title *</label>
-            <input type="text" name="document_name" required placeholder="e.g. M.Sc Degree Certificate" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md"/>
+            <label class="block text-label-md text-on-surface mb-1">Document Title (Optional)</label>
+            <input type="text" name="document_name" placeholder="Leave empty to use document type" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md"/>
           </div>
           <div>
-            <label class="block text-label-md text-on-surface mb-1">Select File</label>
-            <input type="file" name="document_file" class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface-variant"/>
+            <label class="block text-label-md text-on-surface mb-1">Select File *</label>
+            <input type="file" name="document_file" required class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface-variant file:mr-2.5 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-secondary/15 file:text-secondary"/>
           </div>
         </div>
         <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer"><span class="material-symbols-outlined text-[18px]">upload</span>Upload Document</button>
@@ -325,10 +333,10 @@
         <table class="w-full data-table zebra border-collapse">
           <thead>
             <tr class="border-b border-outline-variant/60 bg-surface-container-low">
-              <th class="text-left px-4 py-2.5 text-label-md text-on-surface-variant">Document Name</th>
-              <th class="text-left px-4 py-2.5 text-label-md text-on-surface-variant">Type</th>
-              <th class="text-left px-4 py-2.5 text-label-md text-on-surface-variant">Uploaded On</th>
-              <th class="text-right px-4 py-2.5 text-label-md text-on-surface-variant">Actions</th>
+              <th class="text-left px-4 py-2.5 text-label-md text-on-surface-variant font-semibold">Document Name</th>
+              <th class="text-left px-4 py-2.5 text-label-md text-on-surface-variant font-semibold">Type</th>
+              <th class="text-left px-4 py-2.5 text-label-md text-on-surface-variant font-semibold">Uploaded On</th>
+              <th class="text-right px-4 py-2.5 text-label-md text-on-surface-variant font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-outline-variant/30">
@@ -336,18 +344,31 @@
               <tr><td colspan="4" class="px-4 py-6 text-center text-on-surface-variant">No documents attached to this staff profile.</td></tr>
             <?php else: ?>
               <?php foreach ($staff->documents as $doc): ?>
-                <tr>
+                <tr class="hover:bg-surface-container-low transition-colors">
                   <td class="px-4 py-3 text-body-md font-medium text-on-surface">
                     <div class="flex items-center gap-2">
                       <span class="material-symbols-outlined text-primary text-[18px]">description</span>
-                      <?php echo html_escape($doc->document_name); ?>
+                      <span><?php echo html_escape($doc->document_name); ?></span>
                     </div>
                   </td>
-                  <td class="px-4 py-3 text-body-md text-on-surface-variant"><?php echo html_escape($doc->document_type); ?></td>
-                  <td class="px-4 py-3 text-body-md text-on-surface-variant"><?php echo date('d M Y', strtotime($doc->created_at)); ?></td>
-                  <td class="px-4 py-3 text-body-md text-right">
-                    <a href="<?php echo base_url($doc->file_path); ?>" target="_blank" class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface text-label-md hover:bg-surface-container-highest transition-colors inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">visibility</span>View</a>
-                    <a href="<?php echo site_url('staff/delete_document/' . $doc->document_id . '?redirect_to=' . urlencode(current_url())); ?>" onclick="return confirm('Delete this document?')" class="px-2.5 py-1 rounded text-error hover:bg-error-container/20 transition-colors inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">delete</span>Delete</a>
+                  <td class="px-4 py-3 text-body-md text-on-surface-variant">
+                    <span class="inline-block px-2 py-0.5 rounded bg-surface-container-high text-on-surface text-[11px] font-semibold">
+                      <?php echo html_escape($doc->document_type); ?>
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-body-md text-on-surface-variant text-sm"><?php echo date('d M Y', strtotime($doc->created_at)); ?></td>
+                  <td class="px-4 py-3 text-body-md text-right whitespace-nowrap">
+                    <div class="flex items-center justify-end gap-1.5">
+                      <a href="<?php echo site_url('staff/view_document/' . $doc->document_id); ?>" target="_blank" class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface text-label-md hover:bg-surface-container-highest transition-colors inline-flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">visibility</span>View
+                      </a>
+                      <a href="<?php echo site_url('staff/download_document/' . $doc->document_id); ?>" class="px-2.5 py-1 rounded bg-surface-container-high text-secondary text-label-md hover:bg-surface-container-highest transition-colors inline-flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">download</span>Download
+                      </a>
+                      <a href="<?php echo site_url('staff/delete_document/' . $doc->document_id . '?redirect_to=' . urlencode(current_url())); ?>" onclick="return confirm('Delete this document?')" class="px-2.5 py-1 rounded text-error hover:bg-error-container/20 transition-colors inline-flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">delete</span>Delete
+                      </a>
+                    </div>
                   </td>
                 </tr>
               <?php endforeach; ?>

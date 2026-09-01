@@ -16,11 +16,12 @@
     <div class="flex flex-col md:flex-row gap-3 mb-4 flex-wrap">
       <select onchange="applyFilter('document_type', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
         <option value="">All Document Types</option>
-        <option value="Qualification Certificate" <?php echo ($this->input->get('document_type') === 'Qualification Certificate') ? 'selected' : ''; ?>>Qualification Certificate</option>
-        <option value="Experience Certificate" <?php echo ($this->input->get('document_type') === 'Experience Certificate') ? 'selected' : ''; ?>>Experience Certificate</option>
-        <option value="Appointment Letter" <?php echo ($this->input->get('document_type') === 'Appointment Letter') ? 'selected' : ''; ?>>Appointment Letter</option>
-        <option value="Aadhaar Card" <?php echo ($this->input->get('document_type') === 'Aadhaar Card') ? 'selected' : ''; ?>>Aadhaar Card</option>
-        <option value="PAN Card" <?php echo ($this->input->get('document_type') === 'PAN Card') ? 'selected' : ''; ?>>PAN Card</option>
+        <?php if (!empty($document_types)): ?>
+          <?php foreach ($document_types as $dt): ?>
+            <option value="<?php echo html_escape($dt->document_name); ?>" <?php echo ($this->input->get('document_type') === $dt->document_name) ? 'selected' : ''; ?>><?php echo html_escape($dt->document_name); ?></option>
+          <?php endforeach; ?>
+        <?php endif; ?>
+        <option value="Other" <?php echo ($this->input->get('document_type') === 'Other') ? 'selected' : ''; ?>>Other</option>
       </select>
       <select onchange="applyFilter('department_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
         <option value="">All Departments</option>
@@ -69,7 +70,8 @@
                 <td class="px-4 py-3 text-on-surface-variant whitespace-nowrap"><?php echo date('d M Y', strtotime($doc->created_at)); ?></td>
                 <td class="px-4 py-3 text-right whitespace-nowrap">
                   <div class="flex items-center justify-end gap-1.5">
-                    <a href="<?php echo base_url($doc->file_path); ?>" target="_blank" class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface text-label-md hover:bg-surface-container-highest transition-colors inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">visibility</span>View</a>
+                    <a href="<?php echo site_url('staff/view_document/' . $doc->document_id); ?>" target="_blank" class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface text-label-md hover:bg-surface-container-highest transition-colors inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">visibility</span>View</a>
+                    <a href="<?php echo site_url('staff/download_document/' . $doc->document_id); ?>" class="px-2.5 py-1 rounded bg-surface-container-high text-secondary text-label-md hover:bg-surface-container-highest transition-colors inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">download</span>Download</a>
                     <a href="<?php echo site_url('staff/delete_document/' . $doc->document_id . '?redirect_to=' . urlencode(current_url())); ?>" onclick="return confirm('Delete this staff document?')" class="px-2.5 py-1 rounded text-error hover:bg-error-container/20 transition-colors inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">delete</span>Delete</a>
                   </div>
                 </td>
@@ -85,13 +87,13 @@
       <div class="elevation-3 rounded-2xl bg-surface-container-lowest border border-outline-variant w-full max-w-lg">
         <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant">
           <h3 class="font-headline-md text-headline-md text-on-surface">Upload Staff Document</h3>
-          <button onclick="document.getElementById('modal-upload-doc').classList.add('hidden')" class="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container-high"><span class="material-symbols-outlined">close</span></button>
+          <button onclick="document.getElementById('modal-upload-doc').classList.add('hidden')" class="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container-high cursor-pointer"><span class="material-symbols-outlined">close</span></button>
         </div>
         <?php echo form_open_multipart('staff/upload_document', array('class' => 'p-6 space-y-4')); ?>
           <input type="hidden" name="redirect_to" value="<?php echo current_url(); ?>"/>
           <div>
             <label class="block text-label-md mb-1">Select Staff Member *</label>
-            <select name="staff_id" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
+            <select name="staff_id" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-medium text-on-surface">
               <?php foreach ($staff_list as $st): ?>
                 <option value="<?php echo $st->staff_id; ?>"><?php echo html_escape($st->full_name . ' (' . $st->employee_code . ' - ' . $st->department_name . ')'); ?></option>
               <?php endforeach; ?>
@@ -99,25 +101,25 @@
           </div>
           <div>
             <label class="block text-label-md mb-1">Document Type *</label>
-            <select name="document_type" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
-              <option value="Qualification Certificate">Qualification Certificate</option>
-              <option value="Experience Certificate">Experience Certificate</option>
-              <option value="Appointment Letter">Appointment Letter</option>
-              <option value="Aadhaar Card">Aadhaar Card</option>
-              <option value="PAN Card">PAN Card</option>
-              <option value="Other">Other Document</option>
+            <select name="document_type_id" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-medium text-on-surface">
+              <?php if (!empty($document_types)): ?>
+                <?php foreach ($document_types as $dt): ?>
+                  <option value="<?php echo $dt->id; ?>"><?php echo html_escape($dt->document_name); ?></option>
+                <?php endforeach; ?>
+              <?php endif; ?>
+              <option value="0">Other Document</option>
             </select>
           </div>
           <div>
-            <label class="block text-label-md mb-1">Document Title *</label>
-            <input type="text" name="document_name" required placeholder="e.g. Master Degree Certificate" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest"/>
+            <label class="block text-label-md mb-1">Document Title (Optional)</label>
+            <input type="text" name="document_name" placeholder="Leave empty to use document type" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md"/>
           </div>
           <div>
-            <label class="block text-label-md mb-1">Select File</label>
-            <input type="file" name="document_file" class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface-variant"/>
+            <label class="block text-label-md mb-1">Select File *</label>
+            <input type="file" name="document_file" required class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface-variant file:mr-2.5 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-secondary/15 file:text-secondary"/>
           </div>
           <div class="flex justify-end gap-2 pt-4 border-t border-outline-variant">
-            <button type="button" onclick="document.getElementById('modal-upload-doc').classList.add('hidden')" class="px-4 py-2 rounded-lg border border-outline-variant text-on-surface-variant">Cancel</button>
+            <button type="button" onclick="document.getElementById('modal-upload-doc').classList.add('hidden')" class="px-4 py-2 rounded-lg border border-outline-variant text-on-surface-variant cursor-pointer">Cancel</button>
             <button type="submit" class="px-4 py-2 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant cursor-pointer">Upload Document</button>
           </div>
         <?php echo form_close(); ?>

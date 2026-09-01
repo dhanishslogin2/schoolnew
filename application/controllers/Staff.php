@@ -7,6 +7,7 @@ class Staff extends MY_Controller {
     {
         parent::__construct();
         $this->load->model('Staff_model');
+        $this->load->model('Staff_document_type_model');
         $this->load->model('Department_model');
         $this->load->model('Designation_model');
         $this->load->model('Subject_model');
@@ -215,6 +216,10 @@ class Staff extends MY_Controller {
     public function register()
     {
         $this->require_permission('staff.create');
+
+        $document_types = $this->Staff_document_type_model->get_active_types();
+        $doc_errors = array();
+
         if ($this->input->method() === 'post') {
             $this->form_validation->set_rules('full_name', 'Staff Name', 'required|trim');
             $this->form_validation->set_rules('employee_code', 'Employee ID', 'required|trim');
@@ -225,7 +230,36 @@ class Staff extends MY_Controller {
             $this->form_validation->set_rules('designation_id', 'Designation', 'required');
             $this->form_validation->set_rules('joining_date', 'Joining Date', 'required');
 
-            if ($this->form_validation->run() === TRUE) {
+            // Validate Dynamic Required Staff Documents
+            $allowedExtensions = array('pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx');
+            $maxFileSize = 10 * 1024 * 1024; // 10MB
+
+            foreach ($document_types as $dt) {
+                $typeId = $dt->id;
+                $hasFile = isset($_FILES['staff_doc_file']['name'][$typeId]) && 
+                           !empty($_FILES['staff_doc_file']['name'][$typeId]) &&
+                           isset($_FILES['staff_doc_file']['error'][$typeId]) && 
+                           $_FILES['staff_doc_file']['error'][$typeId] === UPLOAD_ERR_OK;
+
+                if (!$hasFile) {
+                    $doc_errors[] = 'Please upload the required ' . $dt->document_name . ' document.';
+                } else {
+                    $fileName = $_FILES['staff_doc_file']['name'][$typeId];
+                    $fileSize = $_FILES['staff_doc_file']['size'][$typeId];
+                    $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+                    if (!in_array($ext, $allowedExtensions)) {
+                        $doc_errors[] = $dt->document_name . ': Invalid file format (.' . $ext . '). Allowed: ' . implode(', ', $allowedExtensions) . '.';
+                    }
+                    if ($fileSize > $maxFileSize || $fileSize <= 0) {
+                        $doc_errors[] = $dt->document_name . ': File size exceeds the 10MB limit.';
+                    }
+                }
+            }
+
+            $formValid = $this->form_validation->run();
+
+            if ($formValid === TRUE && empty($doc_errors)) {
                 $staffType = $this->input->post('staff_type');
                 $data = array(
                     'employee_code'     => $this->input->post('employee_code'),
@@ -252,8 +286,47 @@ class Staff extends MY_Controller {
                 );
 
                 $staff_id = $this->Staff_model->insert($data);
-                $this->session->set_flashdata('success', 'Staff member registered successfully!');
+
+                // Process Document Uploads
+                $uploadDir = FCPATH . 'uploads/staff_docs/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+
+                foreach ($document_types as $dt) {
+                    $typeId = $dt->id;
+                    if (isset($_FILES['staff_doc_file']['name'][$typeId]) && !empty($_FILES['staff_doc_file']['name'][$typeId])) {
+                        $origName = $_FILES['staff_doc_file']['name'][$typeId];
+                        $ext      = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+                        $safeName = 'doc_' . $staff_id . '_' . $typeId . '_' . time() . '_' . substr(md5(uniqid()), 0, 8) . '.' . $ext;
+                        $destPath = $uploadDir . $safeName;
+
+                        if (move_uploaded_file($_FILES['staff_doc_file']['tmp_name'][$typeId], $destPath)) {
+                            $mimeType = $_FILES['staff_doc_file']['type'][$typeId] ?: 'application/octet-stream';
+                            $fileSize = $_FILES['staff_doc_file']['size'][$typeId];
+
+                            $this->Staff_model->add_document(array(
+                                'staff_id'         => $staff_id,
+                                'document_type_id' => $typeId,
+                                'document_type'    => $dt->document_name,
+                                'document_name'    => $dt->document_name,
+                                'file_name'        => $origName,
+                                'file_path'        => 'uploads/staff_docs/' . $safeName,
+                                'file_type'        => $mimeType,
+                                'file_size'        => $fileSize,
+                                'mime_type'        => $mimeType,
+                                'uploaded_by'      => $this->current_user->user_id ?? 1,
+                                'status'           => 1,
+                                'is_deleted'       => 'n',
+                                'created_at'       => date('Y-m-d H:i:s'),
+                            ));
+                        }
+                    }
+                }
+
+                $this->session->set_flashdata('success', 'Staff member registered and all required documents uploaded successfully!');
                 redirect('staff/profile/' . $staff_id);
+                return;
             }
         }
 
@@ -261,11 +334,13 @@ class Staff extends MY_Controller {
         $designations = $this->Designation_model->get_all();
 
         $this->render('pages/staff/add', array(
-            'title'        => 'Staff Registration',
-            'page_key'     => 'staff_add',
-            'breadcrumb'   => array('Staff Management', 'Add Staff'),
-            'departments'  => $departments,
-            'designations' => $designations,
+            'title'          => 'Staff Registration',
+            'page_key'       => 'staff_add',
+            'breadcrumb'     => array('Staff Management', 'Add Staff'),
+            'departments'    => $departments,
+            'designations'   => $designations,
+            'document_types' => $document_types,
+            'doc_errors'     => $doc_errors,
         ));
     }
 
@@ -285,13 +360,36 @@ class Staff extends MY_Controller {
             show_404();
         }
 
+        $document_types    = $this->Staff_document_type_model->get_active_types();
+        $existing_docs_map = $this->Staff_model->get_staff_documents_map($staff_id);
+        $doc_errors        = array();
+
         if ($this->input->method() === 'post') {
             $this->form_validation->set_rules('full_name', 'Staff Name', 'required|trim');
             $this->form_validation->set_rules('employee_code', 'Employee ID', 'required|trim');
             $this->form_validation->set_rules('phone', 'Phone Number', 'required|trim');
             $this->form_validation->set_rules('email', 'Email Address', 'required|valid_email|trim');
 
-            if ($this->form_validation->run() === TRUE) {
+            $allowedExtensions = array('pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx');
+            $maxFileSize = 10 * 1024 * 1024; // 10MB
+
+            // Validate any replacement documents uploaded
+            if (!empty($_FILES['staff_doc_file']['name'])) {
+                foreach ($_FILES['staff_doc_file']['name'] as $typeId => $name) {
+                    if (!empty($name) && isset($_FILES['staff_doc_file']['error'][$typeId]) && $_FILES['staff_doc_file']['error'][$typeId] === UPLOAD_ERR_OK) {
+                        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                        $size = $_FILES['staff_doc_file']['size'][$typeId];
+                        if (!in_array($ext, $allowedExtensions)) {
+                            $doc_errors[] = 'Invalid file format for replacement document (' . $name . ').';
+                        }
+                        if ($size > $maxFileSize || $size <= 0) {
+                            $doc_errors[] = 'File size exceeds 10MB limit (' . $name . ').';
+                        }
+                    }
+                }
+            }
+
+            if ($this->form_validation->run() === TRUE && empty($doc_errors)) {
                 $staffType = $this->input->post('staff_type') ?: $staff->staff_type;
                 $data = array(
                     'employee_code'     => $this->input->post('employee_code'),
@@ -317,8 +415,56 @@ class Staff extends MY_Controller {
                 );
 
                 $this->Staff_model->update($staff_id, $data);
+
+                // Process replacement or newly uploaded documents
+                $uploadDir = FCPATH . 'uploads/staff_docs/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+
+                if (!empty($_FILES['staff_doc_file']['name'])) {
+                    foreach ($_FILES['staff_doc_file']['name'] as $typeId => $origName) {
+                        if (!empty($origName) && isset($_FILES['staff_doc_file']['error'][$typeId]) && $_FILES['staff_doc_file']['error'][$typeId] === UPLOAD_ERR_OK) {
+                            $ext      = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+                            $safeName = 'doc_' . $staff_id . '_' . $typeId . '_' . time() . '_' . substr(md5(uniqid()), 0, 8) . '.' . $ext;
+                            $destPath = $uploadDir . $safeName;
+
+                            if (move_uploaded_file($_FILES['staff_doc_file']['tmp_name'][$typeId], $destPath)) {
+                                $mimeType = $_FILES['staff_doc_file']['type'][$typeId] ?: 'application/octet-stream';
+                                $fileSize = $_FILES['staff_doc_file']['size'][$typeId];
+
+                                // Find doc type name
+                                $dtObj = $this->Staff_document_type_model->get_by_id($typeId);
+                                $docName = $dtObj ? $dtObj->document_name : 'Staff Document';
+
+                                // Deactivate old document if replacing
+                                if (isset($existing_docs_map[$typeId])) {
+                                    $this->Staff_model->delete_document($existing_docs_map[$typeId]->document_id);
+                                }
+
+                                $this->Staff_model->add_document(array(
+                                    'staff_id'         => $staff_id,
+                                    'document_type_id' => $typeId,
+                                    'document_type'    => $docName,
+                                    'document_name'    => $docName,
+                                    'file_name'        => $origName,
+                                    'file_path'        => 'uploads/staff_docs/' . $safeName,
+                                    'file_type'        => $mimeType,
+                                    'file_size'        => $fileSize,
+                                    'mime_type'        => $mimeType,
+                                    'uploaded_by'      => $this->current_user->user_id ?? 1,
+                                    'status'           => 1,
+                                    'is_deleted'       => 'n',
+                                    'created_at'       => date('Y-m-d H:i:s'),
+                                ));
+                            }
+                        }
+                    }
+                }
+
                 $this->session->set_flashdata('success', 'Staff details updated successfully!');
                 redirect('staff/profile/' . $staff_id);
+                return;
             }
         }
 
@@ -326,13 +472,16 @@ class Staff extends MY_Controller {
         $designations = $this->Designation_model->get_all();
 
         $this->render('pages/staff/edit', array(
-            'title'        => 'Edit Staff: ' . $staff->full_name,
-            'page_key'     => 'staff_edit',
-            'breadcrumb'   => array('Staff Management', 'Edit Staff'),
-            'staff'        => $staff,
-            'staff_id'     => $staff_id,
-            'departments'  => $departments,
-            'designations' => $designations,
+            'title'             => 'Edit Staff: ' . $staff->full_name,
+            'page_key'          => 'staff_edit',
+            'breadcrumb'        => array('Staff Management', 'Edit Staff'),
+            'staff'             => $staff,
+            'staff_id'          => $staff_id,
+            'departments'       => $departments,
+            'designations'      => $designations,
+            'document_types'    => $document_types,
+            'existing_docs_map' => $existing_docs_map,
+            'doc_errors'        => $doc_errors,
         ));
     }
 
@@ -366,25 +515,29 @@ class Staff extends MY_Controller {
             show_404();
         }
 
-        $departments  = $this->Department_model->get_all();
-        $designations = $this->Designation_model->get_all();
-        $years        = $this->Academic_year_model->get_all();
-        $classes      = $this->Class_model->get_all();
-        $sections     = $this->Section_model->get_all();
-        $subjects     = $this->Subject_model->get_all();
+        $departments       = $this->Department_model->get_all();
+        $designations      = $this->Designation_model->get_all();
+        $years             = $this->Academic_year_model->get_all();
+        $classes           = $this->Class_model->get_all();
+        $sections          = $this->Section_model->get_all();
+        $subjects          = $this->Subject_model->get_all();
+        $document_types    = $this->Staff_document_type_model->get_active_types();
+        $existing_docs_map = $this->Staff_model->get_staff_documents_map($staff_id);
 
         $this->render('pages/staff/profile', array(
-            'title'        => 'Staff Profile: ' . $staff->full_name,
-            'page_key'     => 'staff_profile',
-            'breadcrumb'   => array('Staff Management', 'Staff Profile'),
-            'staff'        => $staff,
-            'staff_id'     => $staff_id,
-            'departments'  => $departments,
-            'designations' => $designations,
-            'years'        => $years,
-            'classes'      => $classes,
-            'sections'     => $sections,
-            'subjects'     => $subjects,
+            'title'             => 'Staff Profile: ' . $staff->full_name,
+            'page_key'          => 'staff_profile',
+            'breadcrumb'        => array('Staff Management', 'Staff Profile'),
+            'staff'             => $staff,
+            'staff_id'          => $staff_id,
+            'departments'       => $departments,
+            'designations'      => $designations,
+            'years'             => $years,
+            'classes'           => $classes,
+            'sections'          => $sections,
+            'subjects'          => $subjects,
+            'document_types'    => $document_types,
+            'existing_docs_map' => $existing_docs_map,
         ));
     }
 
@@ -457,16 +610,18 @@ class Staff extends MY_Controller {
             'department_id' => $dept_id,
         ));
 
-        $staff_list   = $this->Staff_model->get_all(array('status' => 1));
-        $departments  = $this->Department_model->get_all();
+        $staff_list     = $this->Staff_model->get_all(array('status' => 1));
+        $departments    = $this->Department_model->get_all();
+        $document_types = $this->Staff_document_type_model->get_active_types();
 
         $this->render('pages/staff/documents', array(
-            'title'        => 'Staff Documents',
-            'page_key'     => 'staff_documents',
-            'breadcrumb'   => array('Staff Management', 'Staff Documents'),
-            'documents'    => $documents,
-            'staff_list'   => $staff_list,
-            'departments'  => $departments,
+            'title'          => 'Staff Documents',
+            'page_key'       => 'staff_documents',
+            'breadcrumb'     => array('Staff Management', 'Staff Documents'),
+            'documents'      => $documents,
+            'staff_list'     => $staff_list,
+            'departments'    => $departments,
+            'document_types' => $document_types,
         ));
     }
 
@@ -474,33 +629,53 @@ class Staff extends MY_Controller {
     {
         $this->require_permission('staff.edit');
 
-        $staff_id = $this->input->post('staff_id');
-        $doc_type = $this->input->post('document_type');
-        $doc_name = $this->input->post('document_name');
+        $staff_id = (int)$this->input->post('staff_id');
+        $type_id  = (int)$this->input->post('document_type_id');
+        $doc_name = trim($this->input->post('document_name'));
         $redirect = $this->input->post('redirect_to') ?: ('staff/profile/' . $staff_id);
 
-        if (!empty($staff_id) && !empty($doc_name)) {
-            $filePath = 'uploads/staff_docs/doc_' . time() . '.pdf';
-            if (!empty($_FILES['document_file']['name'])) {
-                $uploadPath = FCPATH . 'uploads/staff_docs/';
-                if (!is_dir($uploadPath)) {
-                    mkdir($uploadPath, 0777, true);
-                }
-                $fileName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $_FILES['document_file']['name']);
-                if (move_uploaded_file($_FILES['document_file']['tmp_name'], $uploadPath . $fileName)) {
-                    $filePath = 'uploads/staff_docs/' . $fileName;
-                }
-            }
+        $dtObj = $this->Staff_document_type_model->get_by_id($type_id);
+        $typeName = $dtObj ? $dtObj->document_name : ($this->input->post('document_type') ?: 'Other');
+        if (empty($doc_name)) {
+            $doc_name = $typeName;
+        }
 
-            $this->Staff_model->add_document(array(
-                'staff_id'      => $staff_id,
-                'document_type' => $doc_type ?: 'Other',
-                'document_name' => $doc_name,
-                'file_path'     => $filePath,
-                'status'        => 1,
-                'created_at'    => date('Y-m-d H:i:s'),
-            ));
-            $this->session->set_flashdata('success', 'Staff document uploaded successfully!');
+        if (!empty($staff_id) && !empty($_FILES['document_file']['name']) && $_FILES['document_file']['error'] === UPLOAD_ERR_OK) {
+            $allowedExtensions = array('pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx');
+            $origName = $_FILES['document_file']['name'];
+            $ext      = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+
+            if (in_array($ext, $allowedExtensions)) {
+                $uploadDir = FCPATH . 'uploads/staff_docs/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+
+                $safeName = 'doc_' . $staff_id . '_' . ($type_id ?: 'other') . '_' . time() . '_' . substr(md5(uniqid()), 0, 8) . '.' . $ext;
+                if (move_uploaded_file($_FILES['document_file']['tmp_name'], $uploadDir . $safeName)) {
+                    $mimeType = $_FILES['document_file']['type'] ?: 'application/octet-stream';
+                    $fileSize = $_FILES['document_file']['size'];
+
+                    $this->Staff_model->add_document(array(
+                        'staff_id'         => $staff_id,
+                        'document_type_id' => $type_id ?: NULL,
+                        'document_type'    => $typeName,
+                        'document_name'    => $doc_name,
+                        'file_name'        => $origName,
+                        'file_path'        => 'uploads/staff_docs/' . $safeName,
+                        'file_type'        => $mimeType,
+                        'file_size'        => $fileSize,
+                        'mime_type'        => $mimeType,
+                        'uploaded_by'      => $this->current_user->user_id ?? 1,
+                        'status'           => 1,
+                        'is_deleted'       => 'n',
+                        'created_at'       => date('Y-m-d H:i:s'),
+                    ));
+                    $this->session->set_flashdata('success', 'Staff document uploaded successfully!');
+                }
+            } else {
+                $this->session->set_flashdata('error', 'Invalid file type. Allowed formats: PDF, JPG, PNG, DOC, DOCX.');
+            }
         }
 
         redirect($redirect);
@@ -516,6 +691,81 @@ class Staff extends MY_Controller {
             $this->session->set_flashdata('success', 'Staff document removed.');
         }
         redirect($redirect);
+    }
+
+    /* =========================================================================
+       Secure Document View & Download Handlers
+       ========================================================================= */
+    public function view_document($document_id = NULL)
+    {
+        $this->require_permission('staff.view');
+
+        if (empty($document_id)) {
+            show_404();
+            return;
+        }
+
+        $doc = $this->Staff_model->get_document_by_id($document_id);
+        if (!$doc || empty($doc->file_path)) {
+            show_404();
+            return;
+        }
+
+        $filePath = FCPATH . $doc->file_path;
+        if (!file_exists($filePath)) {
+            show_error('Document file not found on server.', 404, '404 File Not Found');
+            return;
+        }
+
+        $mime = $doc->mime_type ?: mime_content_type($filePath) ?: 'application/octet-stream';
+        $fileName = $doc->file_name ?: basename($filePath);
+
+        // Security headers
+        header('Content-Type: ' . $mime);
+        header('Content-Disposition: inline; filename="' . addslashes($fileName) . '"');
+        header('Content-Length: ' . filesize($filePath));
+        header('Cache-Control: private, max-age=3600');
+        header('X-Content-Type-Options: nosniff');
+        
+        readfile($filePath);
+        exit;
+    }
+
+    public function download_document($document_id = NULL)
+    {
+        $this->require_permission('staff.view');
+
+        if (empty($document_id)) {
+            show_404();
+            return;
+        }
+
+        $doc = $this->Staff_model->get_document_by_id($document_id);
+        if (!$doc || empty($doc->file_path)) {
+            show_404();
+            return;
+        }
+
+        $filePath = FCPATH . $doc->file_path;
+        if (!file_exists($filePath)) {
+            show_error('Document file not found on server.', 404, '404 File Not Found');
+            return;
+        }
+
+        $fileName = $doc->file_name ?: basename($filePath);
+
+        // Download headers
+        header('Content-Description: File Transfer');
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . addslashes($fileName) . '"');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+        header('Content-Length: ' . filesize($filePath));
+        header('X-Content-Type-Options: nosniff');
+        
+        readfile($filePath);
+        exit;
     }
 
     /* =========================================================================

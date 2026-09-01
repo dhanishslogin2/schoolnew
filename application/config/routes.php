@@ -355,6 +355,14 @@ $route['users/audit_logs']                   = 'users/audit_logs';
 
 $route['settings']                           = 'settings/index';
 $route['settings/overview']                  = 'settings/index';
+$route['settings/staff_documents']           = 'settings/staff_documents';
+$route['settings/staff_documents/add']       = 'settings/staff_documents_add';
+$route['settings/staff_documents/edit/(:num)']   = 'settings/staff_documents_edit/$1';
+$route['settings/staff_documents/delete/(:num)'] = 'settings/staff_documents_delete/$1';
+$route['settings/staff_documents/toggle/(:num)'] = 'settings/staff_documents_toggle/$1';
+
+$route['staff/view_document/(:num)']         = 'staff/view_document/$1';
+$route['staff/download_document/(:num)']     = 'staff/download_document/$1';
 
 $route['unauthorized']                       = 'unauthorized/index';
 

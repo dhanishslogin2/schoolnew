@@ -227,6 +227,8 @@ const PAGE_URLS = {
   // School Settings
   "settings": "settings",
   "settings-overview": "settings",
+  "staff-document-settings": "settings/staff_documents",
+  "settings-staff-documents": "settings/staff_documents",
   "portal-dashboard": "dashboard",
   "portal-profile": "students",
   "portal-attendance": "attendance",
@@ -841,6 +843,7 @@ const NAV = [
     groups: [
       { key: "settings", label: "Overview" },
       { key: "settings", label: "Login2 Profile" },
+      { key: "staff-document-settings", label: "Staff Document" },
       {
         label: "Academic Settings",
         items: [
@@ -863,7 +866,7 @@ const PAGE_TITLES = {
   "student-categories": "Student Categories", "student-houses": "Student Houses", "student-roll": "Roll Number Assignment", "student-promote": "Student Promotion",
   "student-documents": "Student Documents", "student-id-cards": "Student ID Cards", "student-promotion": "Student Promotion", "student-transfers": "Transfer / TC Management", "student-search": "Student Search", "student-reports": "Student Reports",
   "staff": "Staff Directory", "staff-directory": "Staff Directory", "staff-search": "Staff Search", "teachers": "Teacher Profiles", "non-teaching-staff": "Staff Profiles",
-  "departments-designations": "Departments & Designations", "departments": "Departments", "designations": "Designations", "staff-documents": "Staff Documents",
+  "departments-designations": "Departments & Designations", "departments": "Departments", "designations": "Designations", "staff-documents": "Staff Documents", "staff-document-settings": "Staff Document Settings", "settings-staff-documents": "Staff Document Settings",
   "teacher-workload": "Teacher Workload", "staff-attendance": "Staff Attendance", "staff-leave": "Staff Leave Management", "staff-reports": "Staff Reports",
   "academics": "Academic Management", "academic-years": "Academic Years", "classes": "Class Management", "sections": "Section Management",
   "subjects": "Subject Management", "class-teachers": "Class Teachers", "subject-teachers": "Subject Teachers",

@@ -15,14 +15,19 @@
       </div>
     </div>
 
-    <?php if (validation_errors()): ?>
-      <div class="p-4 mb-5 rounded-xl bg-error-container/30 border border-error/30 text-error text-body-md">
+    <?php if (validation_errors() || !empty($doc_errors)): ?>
+      <div class="p-4 mb-5 rounded-xl bg-error-container/30 border border-error/30 text-error text-body-md space-y-1">
         <?php echo validation_errors(); ?>
+        <?php if (!empty($doc_errors)): ?>
+          <?php foreach ($doc_errors as $err): ?>
+            <div>• <?php echo html_escape($err); ?></div>
+          <?php endforeach; ?>
+        <?php endif; ?>
       </div>
     <?php endif; ?>
 
     <div class="elevation-1 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 p-6 max-w-4xl">
-      <?php echo form_open('staff/edit/' . $staff_id, array('class' => 'space-y-6')); ?>
+      <?php echo form_open_multipart('staff/edit/' . $staff_id, array('class' => 'space-y-6', 'id' => 'edit_staff_form')); ?>
         
         <!-- SECTION 1: Personal Details -->
         <div>
@@ -154,6 +159,72 @@
               <input type="text" name="specialization" value="<?php echo html_escape($staff->specialization); ?>" placeholder="e.g. Mathematics, Science" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest"/>
             </div>
           </div>
+        </div>
+
+        <!-- SECTION 5: Staff Documents (Dynamic) -->
+        <div class="pt-4 border-t border-outline-variant/40">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-[20px]">folder_shared</span>5. Staff Documents
+            </h3>
+            <span class="text-[12px] text-on-surface-variant">Manage or replace uploaded documents</span>
+          </div>
+
+          <?php if (empty($document_types)): ?>
+            <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/60 text-body-md text-on-surface-variant">
+              No active staff document definitions found in Settings.
+            </div>
+          <?php else: ?>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-body-md">
+              <?php foreach ($document_types as $dt): ?>
+                <?php 
+                  $existingDoc = $existing_docs_map[$dt->id] ?? ($existing_docs_map[strtolower(trim($dt->document_name))] ?? null);
+                ?>
+                <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/60 hover:border-outline transition-colors">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="font-semibold text-on-surface text-label-md flex items-center gap-1">
+                      <?php echo html_escape($dt->document_name); ?> <span class="text-error font-bold">*</span>
+                    </span>
+                    <?php if ($existingDoc): ?>
+                      <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-secondary bg-secondary-container/50 px-2 py-0.5 rounded-full">
+                        <span class="material-symbols-outlined text-[13px]">check_circle</span> Uploaded
+                      </span>
+                    <?php else: ?>
+                      <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded-full">
+                        Not Uploaded
+                      </span>
+                    <?php endif; ?>
+                  </div>
+
+                  <?php if ($existingDoc): ?>
+                    <div class="text-[12px] text-on-surface-variant mb-3 bg-surface-container-lowest p-2.5 rounded-lg border border-outline-variant/40 flex items-center justify-between gap-2">
+                      <div class="truncate min-w-0">
+                        <span class="text-[11px] text-on-surface-variant block">Current file:</span>
+                        <span class="font-medium text-on-surface text-[12px] truncate block"><?php echo html_escape($existingDoc->file_name ?: basename($existingDoc->file_path)); ?></span>
+                      </div>
+                      <a href="<?php echo site_url('staff/view_document/' . $existingDoc->document_id); ?>" target="_blank" class="px-2 py-1 rounded bg-surface-container-high text-on-surface text-[11px] font-medium hover:bg-surface-container-highest transition-colors shrink-0 inline-flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[13px]">visibility</span>View
+                      </a>
+                    </div>
+
+                    <div>
+                      <label class="block text-[11px] font-semibold text-on-surface-variant mb-1">Replace Document:</label>
+                      <input type="file" 
+                        name="staff_doc_file[<?php echo $dt->id; ?>]" 
+                        class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-[12px] text-on-surface file:mr-2.5 file:py-1 file:px-2 file:rounded file:border-0 file:text-[11px] file:font-semibold file:bg-surface-container-high file:text-on-surface hover:file:bg-surface-container-highest cursor-pointer"/>
+                    </div>
+                  <?php else: ?>
+                    <div class="text-[12px] text-on-surface-variant mb-2">
+                      <?php echo html_escape($dt->description ?: 'Upload document copy'); ?>
+                    </div>
+                    <input type="file" 
+                      name="staff_doc_file[<?php echo $dt->id; ?>]" 
+                      class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-secondary/15 file:text-secondary hover:file:bg-secondary/25 cursor-pointer"/>
+                  <?php endif; ?>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
         </div>
 
         <!-- Form Actions -->

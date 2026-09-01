@@ -371,36 +371,97 @@ class Staff_model extends CI_Model {
     public function get_all_documents($filters = array())
     {
         $this->db
-            ->select('d.*, s.employee_code, s.full_name, s.staff_type, dept.department_name, desig.designation_name')
+            ->select('d.*, s.employee_code, s.full_name, s.staff_type, dept.department_name, desig.designation_name, dt.document_name as type_name')
             ->from('tbl_staff_documents d')
             ->join('tbl_staff s', 's.staff_id = d.staff_id', 'left')
             ->join('tbl_departments dept', 'dept.department_id = s.department_id', 'left')
             ->join('tbl_designations desig', 'desig.designation_id = s.designation_id', 'left')
+            ->join('tbl_staff_document_types dt', 'dt.id = d.document_type_id', 'left')
             ->where('d.status', 1)
+            ->where('d.is_deleted', 'n')
             ->order_by('d.document_id', 'DESC');
 
         if (!empty($filters['staff_id'])) {
-            $this->db->where('d.staff_id', $filters['staff_id']);
+            $this->db->where('d.staff_id', (int)$filters['staff_id']);
+        }
+        if (!empty($filters['document_type_id'])) {
+            $this->db->where('d.document_type_id', (int)$filters['document_type_id']);
         }
         if (!empty($filters['document_type'])) {
-            $this->db->where('d.document_type', $filters['document_type']);
+            $this->db->group_start()
+                ->where('d.document_type', $filters['document_type'])
+                ->or_where('d.document_name', $filters['document_type'])
+                ->or_where('dt.document_name', $filters['document_type'])
+                ->group_end();
         }
         if (!empty($filters['department_id'])) {
-            $this->db->where('s.department_id', $filters['department_id']);
+            $this->db->where('s.department_id', (int)$filters['department_id']);
         }
 
         return $this->db->get()->result();
     }
 
+    public function get_staff_documents_map($staff_id)
+    {
+        $docs = $this->db
+            ->where('staff_id', (int)$staff_id)
+            ->where('is_deleted', 'n')
+            ->where('status', 1)
+            ->order_by('document_id', 'DESC')
+            ->get('tbl_staff_documents')
+            ->result();
+
+        $map = array();
+        foreach ($docs as $doc) {
+            if (!empty($doc->document_type_id) && !isset($map[$doc->document_type_id])) {
+                $map[$doc->document_type_id] = $doc;
+            }
+            // Also map by lowercase document name as fallback
+            $nameKey = strtolower(trim($doc->document_type ?: $doc->document_name));
+            if (!isset($map[$nameKey])) {
+                $map[$nameKey] = $doc;
+            }
+        }
+        return $map;
+    }
+
+    public function get_document_by_id($document_id)
+    {
+        return $this->db
+            ->select('d.*, s.full_name, s.employee_code')
+            ->from('tbl_staff_documents d')
+            ->join('tbl_staff s', 's.staff_id = d.staff_id', 'left')
+            ->where('d.document_id', (int)$document_id)
+            ->where('d.is_deleted', 'n')
+            ->get()
+            ->row();
+    }
+
     public function add_document($data)
     {
+        if (!isset($data['created_at'])) {
+            $data['created_at'] = date('Y-m-d H:i:s');
+        }
+        if (!isset($data['is_deleted'])) {
+            $data['is_deleted'] = 'n';
+        }
         $this->db->insert('tbl_staff_documents', $data);
         return $this->db->insert_id();
     }
 
+    public function update_document($id, $data)
+    {
+        $data['updated_at'] = date('Y-m-d H:i:s');
+        return $this->db->where('document_id', (int)$id)->update('tbl_staff_documents', $data);
+    }
+
     public function delete_document($id)
     {
-        return $this->db->where('document_id', $id)->update('tbl_staff_documents', ['is_deleted' => 'y', 'status' => 0]);
+        return $this->db->where('document_id', (int)$id)->update('tbl_staff_documents', [
+            'is_deleted' => 'y',
+            'status'     => 0,
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
     }
 
     /* =========================================================================
