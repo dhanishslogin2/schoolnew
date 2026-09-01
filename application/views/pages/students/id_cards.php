@@ -274,96 +274,126 @@
               <div id="portrait-cr80-front" class="relative select-none shadow-xl transition-all duration-300 bg-white" style="width: 280px; height: 445px; aspect-ratio: 2.125 / 3.375; border-radius: 18px; overflow: hidden; border: 1px solid #cbd5e1;">
                 
                 <!-- Lanyard Slot Accent Hole -->
-                <div class="absolute top-2 left-1/2 -translate-x-1/2 w-14 h-2.5 bg-white border border-slate-300/90 rounded-full z-20 shadow-inner"></div>
+                <div class="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-2 bg-white/90 border border-slate-300/80 rounded-full z-20 shadow-inner"></div>
 
-                <!-- Organic Decorative Waves (SVG) -->
+                <!-- Geometric Teal / Charcoal / Silver Background (SVG) -->
                 <svg class="absolute inset-0 w-full h-full pointer-events-none z-1" viewBox="0 0 280 445" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <!-- Top Orange Wave -->
-                  <path d="M0 0C75 0 185 24 280 12V52C200 64 90 38 0 58V0Z" fill="#ea580c"/>
-                  <!-- Top Green Wave -->
-                  <path d="M0 0C60 0 120 36 280 24V0H0Z" fill="#006c4a"/>
-                  <!-- Decorative Accent Dots -->
-                  <circle cx="258" cy="158" r="5" fill="#ea580c"/>
-                  <circle cx="264" cy="172" r="5" fill="#006c4a"/>
-                  <circle cx="260" cy="188" r="7" fill="#fed7aa"/>
-                  <!-- Bottom Orange Wave -->
-                  <path d="M280 445C195 445 85 422 0 435V392C75 378 185 404 280 384V445Z" fill="#ea580c"/>
-                  <!-- Bottom Green Wave -->
-                  <path d="M280 445C215 445 155 406 0 420V445H280Z" fill="#006c4a"/>
+                  <defs>
+                    <!-- Deep Rich Teal Header Gradient -->
+                    <linearGradient id="frontTealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#00656e" />
+                      <stop offset="45%" stop-color="#087f8c" />
+                      <stop offset="100%" stop-color="#023b42" />
+                    </linearGradient>
+                    <!-- Dark Charcoal Diagonal Slice -->
+                    <linearGradient id="frontDarkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#1e293b" />
+                      <stop offset="100%" stop-color="#0a0f1d" />
+                    </linearGradient>
+                    <!-- Diagonal Silver Divider Stripe -->
+                    <linearGradient id="frontSilverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#f8fafc" />
+                      <stop offset="50%" stop-color="#cbd5e1" />
+                      <stop offset="100%" stop-color="#94a3b8" />
+                    </linearGradient>
+                  </defs>
+
+                  <!-- Card Base Surface -->
+                  <rect width="280" height="445" fill="#ffffff" />
+
+                  <!-- Main Upper Teal Diagonal Polygon -->
+                  <path d="M0 0 H280 V118 L0 262 Z" fill="url(#frontTealGrad)" />
+
+                  <!-- Upper-Left Overlapping Charcoal Wedge -->
+                  <path d="M0 0 H100 L0 246 Z" fill="url(#frontDarkGrad)" />
+
+                  <!-- Sleek Silver Accent Divider Stripe -->
+                  <polygon points="0,262 280,118 280,124 0,268" fill="url(#frontSilverGrad)" />
+
+                  <!-- Subtle Bottom-Right Corner Accent -->
+                  <path d="M280 445 H245 L280 410 Z" fill="url(#frontTealGrad)" opacity="0.25" />
                 </svg>
 
                 <!-- Front Content Layer -->
-                <div class="relative z-10 h-full flex flex-col justify-between p-4 pt-6 pb-3">
+                <div class="relative z-10 h-full flex flex-col justify-between p-3.5 pt-5 pb-3">
                   
-                  <!-- School Header (Logo + Public School text) -->
-                  <div class="flex flex-col items-center justify-center pt-1 text-center">
-                    <div class="h-10 flex items-center justify-center max-w-[140px]">
-                      <img id="dom-school-logo" src="<?php echo base_url('assets/logo.png'); ?>" alt="Login2 Logo" class="max-h-9 max-w-[130px] object-contain"/>
+                  <!-- Top School Header (Logo + Title) -->
+                  <div class="flex items-center justify-between px-2 pt-1">
+                    <div class="h-8 max-w-[95px] flex items-center">
+                      <img id="dom-school-logo" src="<?php echo base_url('assets/logo.png'); ?>" alt="Logo" class="max-h-7 max-w-[90px] object-contain drop-shadow-xs brightness-110"/>
                     </div>
-                    <div id="dom-school-subtitle" class="font-extrabold text-[10px] text-emerald-800 tracking-widest uppercase mt-0.5 leading-tight">
-                      <?php echo html_escape($settings->card_title ?? 'PUBLIC SCHOOL'); ?>
-                    </div>
-                  </div>
-
-                  <!-- Central Student Photo -->
-                  <div class="my-0.5 mx-auto">
-                    <div class="w-28 h-33 rounded-xl border-2 border-orange-600 p-0.5 bg-white shadow-md overflow-hidden flex items-center justify-center">
-                      <img id="dom-student-photo" src="" alt="Student Photo" class="w-full h-full object-cover rounded-lg hidden"/>
-                      <div id="dom-student-photo-fallback" class="w-full h-full bg-slate-100 rounded-lg flex items-center justify-center font-extrabold text-xl text-emerald-800">
-                        ST
+                    <div class="text-right min-w-0 flex-1 pl-2">
+                      <div class="font-black text-[11px] text-white tracking-wider uppercase truncate leading-tight drop-shadow-xs">
+                        <?php echo html_escape($settings->school_name ?? 'LOGIN2'); ?>
+                      </div>
+                      <div id="dom-school-subtitle" class="font-bold text-[8px] text-teal-100/90 tracking-widest uppercase truncate leading-tight">
+                        <?php echo html_escape($settings->card_title ?? 'PUBLIC SCHOOL'); ?>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Student ID Pill Badge -->
-                  <div class="mx-auto bg-white border border-orange-600 rounded-full px-3 py-0.5 shadow-2xs">
-                    <span class="text-[9px] font-extrabold text-orange-600 tracking-wider uppercase">STUDENT ID : </span>
-                    <span id="dom-student-adm" class="text-[9px] font-black text-orange-600 font-mono">EDU2026015</span>
+                  <!-- Central Portrait Photo Medallion -->
+                  <div class="my-0.5 mx-auto relative z-10">
+                    <div class="w-[96px] h-[96px] rounded-full p-1 bg-white shadow-lg flex items-center justify-center" style="box-shadow: 0 6px 16px rgba(0,0,0,0.2), 0 0 0 3px #cbd5e1;">
+                      <div class="w-full h-full rounded-full overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200">
+                        <img id="dom-student-photo" src="" alt="Student Photo" class="w-full h-full object-cover rounded-full hidden"/>
+                        <div id="dom-student-photo-fallback" class="w-full h-full rounded-full bg-gradient-to-br from-teal-700 to-teal-900 text-white flex items-center justify-center font-black text-xl tracking-wider">
+                          ST
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <!-- Student Full Name -->
-                  <div id="dom-student-name" class="text-center font-black text-[15px] text-emerald-900 tracking-wide uppercase leading-tight truncate px-1">
-                    TEST NEW
+                  <!-- Student Name & Title Badge -->
+                  <div class="text-center px-2 -mt-1">
+                    <div id="dom-student-name" class="font-black text-[14px] text-teal-900 tracking-wide uppercase leading-tight truncate">
+                      TEST NEW
+                    </div>
+                    <div class="font-bold text-[10px] text-teal-600 tracking-wider uppercase mt-0.5">
+                      STUDENT
+                    </div>
                   </div>
 
                   <!-- Aligned Details Grid Table -->
-                  <div class="px-2">
-                    <table class="w-full text-[9.5px] leading-tight">
+                  <div class="px-2 bg-slate-50/70 rounded-xl p-2 border border-slate-200/60 shadow-2xs">
+                    <table class="w-full text-[9px] leading-tight">
+                      <tr>
+                        <td class="w-20 font-bold text-teal-700 py-0.5 uppercase">ID</td>
+                        <td class="w-2 text-center text-slate-400 font-bold">:</td>
+                        <td id="dom-student-adm" class="font-black text-slate-900 py-0.5 font-mono truncate pl-1">EDU2026015</td>
+                      </tr>
                       <tr id="row-guardian-name">
-                        <td class="w-22 font-bold text-slate-700 py-0.5">Father's Name</td>
-                        <td class="w-2.5 text-center text-slate-500 font-bold">:</td>
-                        <td id="dom-student-father" class="font-extrabold text-slate-900 py-0.5 truncate">test</td>
+                        <td class="font-bold text-teal-700 py-0.5 uppercase">Father's Name</td>
+                        <td class="text-center text-slate-400 font-bold">:</td>
+                        <td id="dom-student-father" class="font-bold text-slate-800 py-0.5 truncate pl-1">test</td>
                       </tr>
                       <tr>
-                        <td class="font-bold text-slate-700 py-0.5">Class</td>
-                        <td class="text-center text-slate-500 font-bold">:</td>
-                        <td id="dom-student-class" class="font-extrabold text-slate-900 py-0.5 truncate">Grade 10</td>
-                      </tr>
-                      <tr>
-                        <td class="font-bold text-slate-700 py-0.5">Section</td>
-                        <td class="text-center text-slate-500 font-bold">:</td>
-                        <td id="dom-student-section" class="font-extrabold text-slate-900 py-0.5 truncate">A</td>
+                        <td class="font-bold text-teal-700 py-0.5 uppercase">Class & Sec</td>
+                        <td class="text-center text-slate-400 font-bold">:</td>
+                        <td class="font-bold text-slate-800 py-0.5 truncate pl-1">
+                          <span id="dom-student-class">Grade 10</span> - <span id="dom-student-section">A</span>
+                        </td>
                       </tr>
                       <tr id="row-roll-no">
-                        <td class="font-bold text-slate-700 py-0.5">Roll No.</td>
-                        <td class="text-center text-slate-500 font-bold">:</td>
-                        <td id="dom-student-roll" class="font-extrabold text-slate-900 py-0.5 font-mono truncate">0125</td>
+                        <td class="font-bold text-teal-700 py-0.5 uppercase">Roll No.</td>
+                        <td class="text-center text-slate-400 font-bold">:</td>
+                        <td id="dom-student-roll" class="font-bold text-slate-800 py-0.5 font-mono truncate pl-1">0125</td>
                       </tr>
                       <tr>
-                        <td class="font-bold text-slate-700 py-0.5">DOB</td>
-                        <td class="text-center text-slate-500 font-bold">:</td>
-                        <td id="dom-student-dob" class="font-extrabold text-slate-900 py-0.5 truncate">15-06-2012</td>
+                        <td class="font-bold text-teal-700 py-0.5 uppercase">D.O.B</td>
+                        <td class="text-center text-slate-400 font-bold">:</td>
+                        <td id="dom-student-dob" class="font-bold text-slate-800 py-0.5 truncate pl-1">15-06-2012</td>
                       </tr>
                       <tr id="row-blood-group">
-                        <td class="font-bold text-slate-700 py-0.5">Blood Group</td>
-                        <td class="text-center text-slate-500 font-bold">:</td>
-                        <td id="dom-student-blood" class="font-black text-red-600 py-0.5">A+</td>
+                        <td class="font-bold text-teal-700 py-0.5 uppercase">Blood Group</td>
+                        <td class="text-center text-slate-400 font-bold">:</td>
+                        <td id="dom-student-blood" class="font-black text-rose-600 py-0.5 pl-1">A+</td>
                       </tr>
                     </table>
                   </div>
 
-                  <!-- Bottom spacer -->
-                  <div class="h-1.5"></div>
+                  <!-- Subtle Bottom Padding -->
+                  <div class="h-0.5"></div>
 
                 </div>
 
@@ -390,83 +420,124 @@
               <div id="portrait-cr80-back" class="relative select-none shadow-xl transition-all duration-300 bg-white" style="width: 280px; height: 445px; aspect-ratio: 2.125 / 3.375; border-radius: 18px; overflow: hidden; border: 1px solid #cbd5e1;">
                 
                 <!-- Lanyard Slot Accent Hole -->
-                <div class="absolute top-2 left-1/2 -translate-x-1/2 w-14 h-2.5 bg-white border border-slate-300/90 rounded-full z-20 shadow-inner"></div>
+                <div class="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-2 bg-white/90 border border-slate-300/80 rounded-full z-20 shadow-inner"></div>
 
-                <!-- Organic Decorative Waves (SVG) -->
+                <!-- Geometric Teal / Charcoal / Silver Background (SVG) -->
                 <svg class="absolute inset-0 w-full h-full pointer-events-none z-1" viewBox="0 0 280 445" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M0 0C75 0 185 24 280 12V52C200 64 90 38 0 58V0Z" fill="#ea580c"/>
-                  <path d="M0 0C60 0 120 36 280 24V0H0Z" fill="#006c4a"/>
-                  <circle cx="254" cy="115" r="4.5" fill="#ea580c"/>
-                  <circle cx="248" cy="128" r="6" fill="#fed7aa"/>
-                  <circle cx="260" cy="130" r="4.5" fill="#006c4a"/>
-                  <path d="M280 445C195 445 85 422 0 435V392C75 378 185 404 280 384V445Z" fill="#006c4a"/>
-                  <path d="M280 445C215 445 155 406 0 420V445H280Z" fill="#ea580c"/>
+                  <defs>
+                    <linearGradient id="backTealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#00656e" />
+                      <stop offset="45%" stop-color="#087f8c" />
+                      <stop offset="100%" stop-color="#023b42" />
+                    </linearGradient>
+                    <linearGradient id="backDarkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#1e293b" />
+                      <stop offset="100%" stop-color="#0a0f1d" />
+                    </linearGradient>
+                    <linearGradient id="backSilverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#f8fafc" />
+                      <stop offset="50%" stop-color="#cbd5e1" />
+                      <stop offset="100%" stop-color="#94a3b8" />
+                    </linearGradient>
+                  </defs>
+
+                  <!-- Card Base Surface -->
+                  <rect width="280" height="445" fill="#ffffff" />
+
+                  <!-- Top-Left Teal Geometric Diagonal -->
+                  <path d="M0 0 H185 L0 98 Z" fill="url(#backTealGrad)" />
+                  <!-- Top-Left Dark Accent Wedge -->
+                  <path d="M0 0 H65 L0 92 Z" fill="url(#backDarkGrad)" />
+                  <!-- Top-Left Silver Stripe -->
+                  <polygon points="185,0 191,0 0,104 0,98" fill="url(#backSilverGrad)" />
+
+                  <!-- Bottom-Right Teal Geometric Diagonal -->
+                  <path d="M95 445 L280 348 V445 Z" fill="url(#backTealGrad)" />
+                  <!-- Bottom-Right Dark Accent Wedge -->
+                  <path d="M215 445 L280 353 V445 Z" fill="url(#backDarkGrad)" />
+                  <!-- Bottom-Right Silver Stripe -->
+                  <polygon points="95,445 89,445 280,342 280,348" fill="url(#backSilverGrad)" />
                 </svg>
 
                 <!-- Back Content Layer -->
-                <div class="relative z-10 h-full flex flex-col justify-between p-4 pt-9 pb-3 text-center">
+                <div class="relative z-10 h-full flex flex-col justify-between p-3.5 pt-5 pb-3">
                   
-                  <!-- Contact Header & Phone -->
-                  <div class="space-y-0.5">
-                    <div class="text-[9.5px] font-black text-orange-600 tracking-widest uppercase">
-                      CONTACT
+                  <!-- Top Branding Area -->
+                  <div class="text-right pr-1 pt-1">
+                    <div class="font-black text-[11px] text-teal-800 tracking-wider uppercase leading-tight">
+                      <?php echo html_escape($settings->school_name ?? 'LOGIN2'); ?>
                     </div>
-                    <div class="flex items-center justify-center gap-1.5 font-black text-sm text-emerald-900 font-mono">
-                      <span class="material-symbols-outlined text-[15px] text-emerald-700">call</span>
-                      <span id="dom-back-main-phone"><?php echo html_escape($settings->phone ?? '001 123 456 789'); ?></span>
-                    </div>
-                  </div>
-
-                  <!-- School Address Block -->
-                  <div class="space-y-0.5 px-2">
-                    <div class="text-[9.5px] font-black text-emerald-800 tracking-widest uppercase">
-                      SCHOOL ADDRESS
-                    </div>
-                    <div id="dom-back-address" class="text-[10px] text-slate-700 font-semibold leading-snug px-1">
-                      100/1 Bryant Lane<br>Manor, Orla land, New York
+                    <div class="text-[8px] font-bold text-slate-500 tracking-widest uppercase">
+                      <?php echo html_escape($settings->card_title ?? 'PUBLIC SCHOOL'); ?>
                     </div>
                   </div>
 
-                  <!-- Detailed Contact List with Icons -->
-                  <div class="px-3 space-y-1 text-left text-[10px] font-semibold text-slate-800">
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-[15px] text-orange-600 shrink-0">call</span>
-                      <span id="dom-back-phone-list"><?php echo html_escape($settings->phone ?? '001 123 456 789'); ?></span>
+                  <!-- Terms and Conditions Block -->
+                  <div class="px-2 space-y-1.5">
+                    <div class="font-extrabold text-[10px] text-teal-800 tracking-wider uppercase flex items-center gap-1.5">
+                      <span class="w-1.5 h-1.5 rounded-full bg-teal-600"></span>
+                      <span>Terms and conditions</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-[15px] text-emerald-700 shrink-0">mail</span>
-                      <span id="dom-back-email-list" class="truncate"><?php echo html_escape($settings->email ?? 'info@login2school.com'); ?></span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-[15px] text-emerald-700 shrink-0">language</span>
-                      <span id="dom-back-web-list" class="truncate"><?php echo html_escape($settings->website ?? 'www.login2school.com'); ?></span>
-                    </div>
-                    <div class="flex items-start gap-2 pt-0.5">
-                      <span class="material-symbols-outlined text-[15px] text-emerald-700 shrink-0 mt-0.5">support_agent</span>
-                      <div class="leading-tight">
-                        <div class="text-[9px] text-slate-500 font-bold">Emergency Contact</div>
-                        <div id="dom-back-emergency-list" class="text-slate-900 font-extrabold font-mono"><?php echo html_escape($settings->emergency_contact ?? '001 987 654 321'); ?></div>
+
+                    <div class="space-y-1 text-[8.5px] text-slate-700 leading-snug font-medium pl-0.5">
+                      <div class="flex items-start gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-teal-600/80 mt-1 shrink-0"></span>
+                        <span>Students are required to carry this card while on campus.</span>
+                      </div>
+                      <div class="flex items-start gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-teal-600/80 mt-1 shrink-0"></span>
+                        <span>If the card is lost or damaged, a duplicate will be issued per school regulations.</span>
+                      </div>
+                      <div class="flex items-start gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-teal-600/80 mt-1 shrink-0"></span>
+                        <span>If you find this card, please return it to the school address below.</span>
                       </div>
                     </div>
                   </div>
 
                   <!-- Principal Signature Block -->
-                  <div class="text-center pt-1">
-                    <div class="h-8 flex items-center justify-center">
-                      <img id="dom-back-sig-img" src="" alt="Signature" class="max-h-7 max-w-[110px] object-contain hidden"/>
-                      <!-- Elegant signature script placeholder if none uploaded -->
-                      <div id="dom-back-sig-script" class="font-serif italic text-base text-slate-800 tracking-wider">
+                  <div class="text-center pt-0.5">
+                    <div class="h-7 flex items-center justify-center">
+                      <img id="dom-back-sig-img" src="" alt="Signature" class="max-h-6 max-w-[100px] object-contain hidden"/>
+                      <div id="dom-back-sig-script" class="font-serif italic text-sm text-slate-800 tracking-wider">
                         John
                       </div>
                     </div>
-                    <div class="text-[9px] font-bold text-slate-600">
-                      Principal Signature
+                    <div class="w-24 h-px bg-slate-300 mx-auto my-0.5"></div>
+                    <div class="text-[8.5px] font-bold text-slate-500 uppercase tracking-wider">
+                      Authorized Signature
                     </div>
                   </div>
 
-                  <!-- Return Notice Disclaimer (Orange) -->
-                  <div id="dom-back-return-text" class="text-[9.5px] font-bold text-orange-600 leading-tight px-2 pb-1">
-                    If found, please return this card<br>to the school.
+                  <!-- Dates & Validity Pill Bar -->
+                  <div class="flex items-center justify-between text-[8px] font-bold text-slate-700 px-2.5 py-1 bg-slate-50 rounded-lg border border-slate-200/60 mx-1">
+                    <div>Issue Date : <span class="text-slate-900 font-extrabold font-mono">01/06/2026</span></div>
+                    <div>Valid : <span class="text-slate-900 font-extrabold">Academic Session</span></div>
+                  </div>
+
+                  <!-- School Contact List (Icons + Text) -->
+                  <div class="px-2 space-y-0.5 text-[8.5px] text-slate-800 font-semibold">
+                    <div class="flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[13px] text-teal-700 shrink-0">call</span>
+                      <span id="dom-back-phone-list" class="font-mono"><?php echo html_escape($settings->phone ?? '001 123 456 789'); ?></span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[13px] text-teal-700 shrink-0">mail</span>
+                      <span id="dom-back-email-list" class="truncate"><?php echo html_escape($settings->email ?? 'info@login2school.com'); ?></span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[13px] text-teal-700 shrink-0">language</span>
+                      <span id="dom-back-web-list" class="truncate"><?php echo html_escape($settings->website ?? 'www.login2school.com'); ?></span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[13px] text-teal-700 shrink-0">location_on</span>
+                      <span id="dom-back-address" class="truncate text-[8px]"><?php echo html_escape($settings->school_address ?? '100/1 Bryant Lane, Manor, Orla land, New York'); ?></span>
+                    </div>
+                  </div>
+
+                  <!-- Return Notice Disclaimer (Bottom Text) -->
+                  <div id="dom-back-return-text" class="text-[8px] font-bold text-teal-700 leading-tight text-center px-1">
+                    If found, please return this card to the school.
                   </div>
 
                 </div>

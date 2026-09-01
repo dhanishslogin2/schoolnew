@@ -97,7 +97,7 @@
       z-index: 20;
     }
 
-    /* Wave Background Decorations */
+    /* Wave/Geometric Background Decorations */
     .card-waves-svg {
       position: absolute;
       top: 0;
@@ -115,211 +115,280 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 4mm 3mm 3mm 3mm;
+      padding: 3mm 2.8mm 2.4mm 2.8mm;
     }
 
     /* Header */
     .card-front-header {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding-top: 1.5mm;
+      justify-content: space-between;
+      padding-top: 1mm;
+      padding-left: 1mm;
+      padding-right: 1mm;
     }
     .school-logo-img {
-      max-height: 7.5mm;
-      max-width: 25mm;
+      max-height: 6mm;
+      max-width: 18mm;
       object-fit: contain;
+      filter: drop-shadow(0 0.2mm 0.4mm rgba(0,0,0,0.2));
+    }
+    .school-name-text {
+      font-size: 5.6pt;
+      font-weight: 900;
+      color: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      line-height: 1;
+      text-align: right;
     }
     .school-sub-text {
-      font-size: 5.2pt;
-      font-weight: 800;
-      color: #006c4a;
+      font-size: 4.2pt;
+      font-weight: 700;
+      color: #ccfbf1;
       text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-top: 0.4mm;
+      letter-spacing: 0.6px;
+      margin-top: 0.3mm;
       line-height: 1;
+      text-align: right;
     }
 
-    /* Photo Frame */
+    /* Photo Frame (Circular Medallion) */
     .student-photo-wrapper {
-      margin: 1mm auto;
-      width: 22mm;
-      height: 26mm;
-      border-radius: 2mm;
-      border: 0.6mm solid #ea580c;
+      margin: 0.6mm auto;
+      width: 18.5mm;
+      height: 18.5mm;
+      border-radius: 50%;
       background: #ffffff;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.12);
-      overflow: hidden;
+      padding: 0.4mm;
+      box-shadow: 0 1mm 2.5mm rgba(0,0,0,0.18), 0 0 0 0.5mm #cbd5e1;
       position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .student-photo-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f1f5f9;
+      border: 0.3mm solid #ffffff;
     }
     .student-photo-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      border-radius: 50%;
     }
     .student-photo-fallback {
       width: 100%;
       height: 100%;
-      background: #f1f5f9;
-      color: #006c4a;
+      background: linear-gradient(135deg, #0f766e, #044e54);
+      color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11pt;
-      font-weight: 800;
+      font-size: 8.5pt;
+      font-weight: 900;
+      letter-spacing: 0.3px;
+      border-radius: 50%;
     }
 
-    /* Student ID Badge */
-    .id-pill-badge {
-      align-self: center;
-      background: #ffffff;
-      border: 0.35mm solid #ea580c;
-      border-radius: 3mm;
-      padding: 0.3mm 2.2mm;
-      font-size: 5pt;
-      font-weight: 800;
-      color: #ea580c;
-      letter-spacing: 0.2px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-      margin-bottom: 0.6mm;
-    }
-
-    /* Student Name */
+    /* Student Name & Title */
     .student-name-title {
       text-align: center;
-      font-size: 8.5pt;
-      font-weight: 800;
-      color: #006c4a;
+      font-size: 7.2pt;
+      font-weight: 900;
+      color: #0f766e;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
-      line-height: 1.1;
+      letter-spacing: 0.2px;
+      line-height: 1;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-bottom: 0.8mm;
+      margin-top: 0.3mm;
+    }
+    .student-role-title {
+      text-align: center;
+      font-size: 4.6pt;
+      font-weight: 800;
+      color: #0d9488;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      line-height: 1;
+      margin-top: 0.3mm;
+      margin-bottom: 0.6mm;
     }
 
-    /* Two-column Aligned Details Table */
+    /* Details Table Container */
+    .details-table-box {
+      background: rgba(248, 250, 252, 0.85);
+      border: 0.2mm solid #e2e8f0;
+      border-radius: 1.8mm;
+      padding: 0.8mm 1.2mm;
+      margin-top: 0.2mm;
+    }
     .details-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 5.8pt;
-      margin-bottom: 1mm;
-      padding: 0 1mm;
+      font-size: 5pt;
+      line-height: 1.15;
     }
     .details-table td {
-      padding: 0.3mm 0;
-      vertical-align: top;
+      padding: 0.25mm 0;
+      vertical-align: middle;
     }
     .details-table .lbl-col {
-      color: #334155;
-      font-weight: 600;
-      width: 18mm;
+      color: #0f766e;
+      font-weight: 800;
+      width: 15mm;
       white-space: nowrap;
+      text-transform: uppercase;
+      font-size: 4.4pt;
     }
     .details-table .sep-col {
-      width: 2mm;
+      width: 1.5mm;
       text-align: center;
-      color: #64748b;
-      font-weight: 600;
+      color: #94a3b8;
+      font-weight: 700;
     }
     .details-table .val-col {
       color: #0f172a;
       font-weight: 700;
       word-break: break-word;
+      padding-left: 0.5mm;
     }
     .blood-highlight {
-      color: #dc2626 !important;
-      font-weight: 800 !important;
+      color: #e11d48 !important;
+      font-weight: 900 !important;
     }
 
     /* Back Side Styles */
-    .back-contact-badge {
-      font-size: 5.2pt;
-      font-weight: 800;
-      color: #ea580c;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      margin-top: 1mm;
-      text-align: center;
+    .back-header-box {
+      text-align: right;
+      padding-top: 0.8mm;
+      padding-right: 0.8mm;
     }
-    .back-main-phone {
-      text-align: center;
-      font-size: 8pt;
-      font-weight: 800;
-      color: #006c4a;
+    .back-school-name {
+      font-size: 5.6pt;
+      font-weight: 900;
+      color: #0f766e;
+      text-transform: uppercase;
       letter-spacing: 0.3px;
-      margin-top: 0.2mm;
-      margin-bottom: 1.2mm;
+      line-height: 1;
     }
-    .back-address-badge {
-      font-size: 5.2pt;
-      font-weight: 800;
-      color: #006c4a;
-      letter-spacing: 0.8px;
+    .back-school-sub {
+      font-size: 4.2pt;
+      font-weight: 700;
+      color: #64748b;
       text-transform: uppercase;
-      text-align: center;
-      margin-bottom: 0.4mm;
+      letter-spacing: 0.5px;
     }
-    .back-address-text {
-      text-align: center;
-      font-size: 5.2pt;
+
+    .back-terms-box {
+      padding: 0 0.8mm;
+    }
+    .back-terms-title {
+      font-size: 5pt;
+      font-weight: 900;
+      color: #0f766e;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 0.6mm;
+      display: flex;
+      align-items: center;
+      gap: 0.8mm;
+    }
+    .back-term-dot {
+      width: 1mm;
+      height: 1mm;
+      border-radius: 50%;
+      background: #0f766e;
+      display: inline-block;
+      flex-shrink: 0;
+      margin-top: 0.5mm;
+    }
+    .back-term-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.8mm;
+      font-size: 4.3pt;
       color: #334155;
-      line-height: 1.2;
-      padding: 0 1.5mm;
-      margin-bottom: 1.5mm;
-      font-weight: 600;
+      font-weight: 500;
+      line-height: 1.15;
+      margin-bottom: 0.5mm;
+    }
+
+    .back-sig-wrapper {
+      text-align: center;
+      margin-top: 0.3mm;
+    }
+    .back-sig-img {
+      height: 4.5mm;
+      max-width: 18mm;
+      object-fit: contain;
+      margin: 0 auto;
+      display: block;
+    }
+    .back-sig-line {
+      width: 18mm;
+      height: 0.2mm;
+      background: #cbd5e1;
+      margin: 0.3mm auto;
+    }
+    .back-sig-title {
+      font-size: 4.2pt;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .back-dates-bar {
+      display: flex;
+      justify-content: space-between;
+      font-size: 4.2pt;
+      font-weight: 700;
+      color: #334155;
+      background: #f8fafc;
+      border: 0.2mm solid #e2e8f0;
+      border-radius: 1.2mm;
+      padding: 0.4mm 1mm;
+      margin: 0.4mm 0.6mm;
     }
 
     .back-info-list {
       display: flex;
       flex-direction: column;
-      gap: 0.7mm;
-      padding: 0 1.5mm;
-      margin-bottom: 1mm;
+      gap: 0.4mm;
+      padding: 0 0.8mm;
+      margin-top: 0.2mm;
     }
     .back-info-item {
       display: flex;
       align-items: center;
-      gap: 1.2mm;
-      font-size: 5.2pt;
+      gap: 0.8mm;
+      font-size: 4.4pt;
       color: #1e293b;
       font-weight: 600;
     }
     .back-info-icon {
-      color: #006c4a;
-      font-size: 7pt;
+      color: #0f766e;
+      font-size: 5.5pt;
       flex-shrink: 0;
     }
 
-    .back-sig-wrapper {
-      text-align: center;
-      margin-top: auto;
-      padding-bottom: 0.5mm;
-    }
-    .back-sig-img {
-      height: 5.5mm;
-      max-width: 22mm;
-      object-fit: contain;
-      margin: 0 auto;
-      display: block;
-    }
-    .back-sig-title {
-      font-size: 4.8pt;
-      font-weight: 700;
-      color: #475569;
-      text-transform: capitalize;
-      margin-top: 0.3mm;
-    }
     .back-return-disclaimer {
-      font-size: 5.2pt;
+      font-size: 4.2pt;
       font-weight: 700;
-      color: #ea580c;
+      color: #0f766e;
       text-align: center;
-      line-height: 1.2;
-      padding: 0 1mm 1mm 1mm;
+      line-height: 1.1;
+      padding: 0 0.5mm 0.2mm 0.5mm;
     }
 
     /* Print media query */
@@ -406,20 +475,29 @@
             <!-- Lanyard Slot Accent -->
             <div class="lanyard-slot"></div>
 
-            <!-- Curved Waves Background (SVG) -->
+            <!-- Geometric Teal / Charcoal / Silver Background (SVG) -->
             <svg class="card-waves-svg" viewBox="0 0 204 325" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <!-- Top Orange Wave -->
-              <path d="M0 0C55 0 135 18 204 9V38C146 47 66 28 0 42V0Z" fill="#ea580c"/>
-              <!-- Top Green Wave -->
-              <path d="M0 0C44 0 88 26 204 18V0H0Z" fill="#006c4a"/>
-              <!-- Decorative Right Dots -->
-              <circle cx="188" cy="115" r="4" fill="#ea580c"/>
-              <circle cx="193" cy="125" r="4" fill="#006c4a"/>
-              <circle cx="190" cy="137" r="5" fill="#fed7aa"/>
-              <!-- Bottom Orange Wave -->
-              <path d="M204 325C142 325 62 308 0 317V286C55 276 135 295 204 280V325Z" fill="#ea580c"/>
-              <!-- Bottom Green Wave -->
-              <path d="M204 325C157 325 113 296 0 307V325H204Z" fill="#006c4a"/>
+              <defs>
+                <linearGradient id="printFrontTeal_<?php echo $st->student_id; ?>" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#00656e" />
+                  <stop offset="45%" stop-color="#087f8c" />
+                  <stop offset="100%" stop-color="#023b42" />
+                </linearGradient>
+                <linearGradient id="printFrontDark_<?php echo $st->student_id; ?>" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#1e293b" />
+                  <stop offset="100%" stop-color="#0a0f1d" />
+                </linearGradient>
+                <linearGradient id="printFrontSilver_<?php echo $st->student_id; ?>" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#f8fafc" />
+                  <stop offset="50%" stop-color="#cbd5e1" />
+                  <stop offset="100%" stop-color="#94a3b8" />
+                </linearGradient>
+              </defs>
+              <rect width="204" height="325" fill="#ffffff" />
+              <path d="M0 0 H204 V86 L0 191 Z" fill="url(#printFrontTeal_<?php echo $st->student_id; ?>)" />
+              <path d="M0 0 H73 L0 180 Z" fill="url(#printFrontDark_<?php echo $st->student_id; ?>)" />
+              <polygon points="0,191 204,86 204,91 0,196" fill="url(#printFrontSilver_<?php echo $st->student_id; ?>)" />
+              <path d="M204 325 H178 L204 299 Z" fill="url(#printFrontTeal_<?php echo $st->student_id; ?>)" opacity="0.25" />
             </svg>
 
             <!-- Card Content Layer -->
@@ -427,64 +505,71 @@
               
               <!-- Front Header -->
               <div class="card-front-header">
-                <img src="<?php echo $logoPath; ?>" alt="Login2 Logo" class="school-logo-img"/>
-                <div class="school-sub-text"><?php echo html_escape($settings->card_title ?? 'PUBLIC SCHOOL'); ?></div>
+                <img src="<?php echo $logoPath; ?>" alt="Logo" class="school-logo-img"/>
+                <div>
+                  <div class="school-name-text"><?php echo html_escape($settings->school_name ?? 'LOGIN2'); ?></div>
+                  <div class="school-sub-text"><?php echo html_escape($settings->card_title ?? 'PUBLIC SCHOOL'); ?></div>
+                </div>
               </div>
 
-              <!-- Student Photo -->
+              <!-- Student Photo Medallion -->
               <div class="student-photo-wrapper">
-                <?php if ($hasPhoto): ?>
-                  <img src="<?php echo base_url('uploads/students/' . $st->photo); ?>" alt="<?php echo html_escape($fullName); ?>" class="student-photo-img"/>
-                <?php else: ?>
-                  <div class="student-photo-fallback"><?php echo html_escape($initials); ?></div>
-                <?php endif; ?>
+                <div class="student-photo-inner">
+                  <?php if ($hasPhoto): ?>
+                    <img src="<?php echo base_url('uploads/students/' . $st->photo); ?>" alt="<?php echo html_escape($fullName); ?>" class="student-photo-img"/>
+                  <?php else: ?>
+                    <div class="student-photo-fallback"><?php echo html_escape($initials); ?></div>
+                  <?php endif; ?>
+                </div>
               </div>
 
-              <!-- Student ID Pill Badge -->
-              <div class="id-pill-badge">
-                STUDENT ID : <?php echo html_escape($st->admission_number ?? 'EDU2026015'); ?>
-              </div>
-
-              <!-- Student Name -->
-              <div class="student-name-title">
-                <?php echo html_escape($fullName); ?>
+              <!-- Student Name & Role -->
+              <div>
+                <div class="student-name-title">
+                  <?php echo html_escape($fullName); ?>
+                </div>
+                <div class="student-role-title">
+                  STUDENT
+                </div>
               </div>
 
               <!-- Details Table -->
-              <table class="details-table">
-                <tr>
-                  <td class="lbl-col">Father's Name</td>
-                  <td class="sep-col">:</td>
-                  <td class="val-col"><?php echo html_escape($st->guardian_name ?: 'test'); ?></td>
-                </tr>
-                <tr>
-                  <td class="lbl-col">Class</td>
-                  <td class="sep-col">:</td>
-                  <td class="val-col"><?php echo html_escape($classDisplay); ?></td>
-                </tr>
-                <tr>
-                  <td class="lbl-col">Section</td>
-                  <td class="sep-col">:</td>
-                  <td class="val-col"><?php echo html_escape($sectionDisplay); ?></td>
-                </tr>
-                <?php if (!empty($st->roll_number)): ?>
-                <tr>
-                  <td class="lbl-col">Roll No.</td>
-                  <td class="sep-col">:</td>
-                  <td class="val-col"><?php echo html_escape($st->roll_number); ?></td>
-                </tr>
-                <?php endif; ?>
-                <tr>
-                  <td class="lbl-col">DOB</td>
-                  <td class="sep-col">:</td>
-                  <td class="val-col"><?php echo $dobFormatted; ?></td>
-                </tr>
-                <tr>
-                  <td class="lbl-col">Blood Group</td>
-                  <td class="sep-col">:</td>
-                  <td class="val-col blood-highlight"><?php echo html_escape($st->blood_group ?: 'A+'); ?></td>
-                </tr>
-              </table>
+              <div class="details-table-box">
+                <table class="details-table">
+                  <tr>
+                    <td class="lbl-col">ID</td>
+                    <td class="sep-col">:</td>
+                    <td class="val-col" style="font-family: monospace; font-weight: 800;"><?php echo html_escape($st->admission_number ?? 'EDU2026015'); ?></td>
+                  </tr>
+                  <tr>
+                    <td class="lbl-col">Father's Name</td>
+                    <td class="sep-col">:</td>
+                    <td class="val-col"><?php echo html_escape($st->guardian_name ?: 'test'); ?></td>
+                  </tr>
+                  <tr>
+                    <td class="lbl-col">Class & Sec</td>
+                    <td class="sep-col">:</td>
+                    <td class="val-col"><?php echo html_escape($classDisplay . ' - ' . $sectionDisplay); ?></td>
+                  </tr>
+                  <?php if (!empty($st->roll_number)): ?>
+                  <tr>
+                    <td class="lbl-col">Roll No.</td>
+                    <td class="sep-col">:</td>
+                    <td class="val-col" style="font-family: monospace;"><?php echo html_escape($st->roll_number); ?></td>
+                  </tr>
+                  <?php endif; ?>
+                  <tr>
+                    <td class="lbl-col">D.O.B</td>
+                    <td class="sep-col">:</td>
+                    <td class="val-col"><?php echo $dobFormatted; ?></td>
+                  </tr>
+                  <tr>
+                    <td class="lbl-col">Blood Group</td>
+                    <td class="sep-col">:</td>
+                    <td class="val-col blood-highlight"><?php echo html_escape($st->blood_group ?: 'A+'); ?></td>
+                  </tr>
+                </table>
+              </div>
 
             </div>
           </div>
@@ -496,35 +581,86 @@
             <!-- Lanyard Slot Accent -->
             <div class="lanyard-slot"></div>
 
-            <!-- Waves Background -->
+            <!-- Geometric Teal / Charcoal / Silver Background (SVG) -->
             <svg class="card-waves-svg" viewBox="0 0 204 325" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M0 0C55 0 135 18 204 9V38C146 47 66 28 0 42V0Z" fill="#ea580c"/>
-              <path d="M0 0C44 0 88 26 204 18V0H0Z" fill="#006c4a"/>
-              <circle cx="185" cy="85" r="3.5" fill="#ea580c"/>
-              <circle cx="181" cy="94" r="4.5" fill="#fed7aa"/>
-              <circle cx="190" cy="96" r="3.5" fill="#006c4a"/>
-              <path d="M204 325C142 325 62 308 0 317V286C55 276 135 295 204 280V325Z" fill="#006c4a"/>
-              <path d="M204 325C157 325 113 296 0 307V325H204Z" fill="#ea580c"/>
+              <defs>
+                <linearGradient id="printBackTeal_<?php echo $st->student_id; ?>" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#00656e" />
+                  <stop offset="45%" stop-color="#087f8c" />
+                  <stop offset="100%" stop-color="#023b42" />
+                </linearGradient>
+                <linearGradient id="printBackDark_<?php echo $st->student_id; ?>" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#1e293b" />
+                  <stop offset="100%" stop-color="#0a0f1d" />
+                </linearGradient>
+                <linearGradient id="printBackSilver_<?php echo $st->student_id; ?>" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#f8fafc" />
+                  <stop offset="50%" stop-color="#cbd5e1" />
+                  <stop offset="100%" stop-color="#94a3b8" />
+                </linearGradient>
+              </defs>
+              <rect width="204" height="325" fill="#ffffff" />
+              <!-- Top-Left Diagonal -->
+              <path d="M0 0 H135 L0 72 Z" fill="url(#printBackTeal_<?php echo $st->student_id; ?>)" />
+              <path d="M0 0 H48 L0 67 Z" fill="url(#printBackDark_<?php echo $st->student_id; ?>)" />
+              <polygon points="135,0 139,0 0,76 0,72" fill="url(#printBackSilver_<?php echo $st->student_id; ?>)" />
+              <!-- Bottom-Right Diagonal -->
+              <path d="M69 325 L204 254 V325 Z" fill="url(#printBackTeal_<?php echo $st->student_id; ?>)" />
+              <path d="M157 325 L204 258 V325 Z" fill="url(#printBackDark_<?php echo $st->student_id; ?>)" />
+              <polygon points="69,325 65,325 204,250 204,254" fill="url(#printBackSilver_<?php echo $st->student_id; ?>)" />
             </svg>
 
             <!-- Card Content Layer -->
-            <div class="card-content-layer" style="padding-top: 6mm;">
+            <div class="card-content-layer">
               
-              <!-- Contact Header -->
-              <div class="back-contact-badge">CONTACT</div>
-              <div class="back-main-phone"><?php echo html_escape($settings->phone ?? '001 123 456 789'); ?></div>
+              <!-- Back Header -->
+              <div class="back-header-box">
+                <div class="back-school-name"><?php echo html_escape($settings->school_name ?? 'LOGIN2'); ?></div>
+                <div class="back-school-sub"><?php echo html_escape($settings->card_title ?? 'PUBLIC SCHOOL'); ?></div>
+              </div>
 
-              <!-- School Address -->
-              <div class="back-address-badge">SCHOOL ADDRESS</div>
-              <div class="back-address-text">
-                100/1 Bryant Lane<br>Manor, Orla land, New York
+              <!-- Terms and conditions -->
+              <div class="back-terms-box">
+                <div class="back-terms-title">
+                  <span class="back-term-dot" style="margin-top:0;"></span>
+                  <span>Terms and conditions</span>
+                </div>
+                <div class="back-term-item">
+                  <span class="back-term-dot"></span>
+                  <span>Students are required to carry this card while on campus.</span>
+                </div>
+                <div class="back-term-item">
+                  <span class="back-term-dot"></span>
+                  <span>If lost or damaged, a duplicate will be issued per school regulations.</span>
+                </div>
+                <div class="back-term-item">
+                  <span class="back-term-dot"></span>
+                  <span>If you find this card, please return it to the school address below.</span>
+                </div>
+              </div>
+
+              <!-- Principal Signature Block -->
+              <div class="back-sig-wrapper">
+                <?php if ($hasSig): ?>
+                  <img src="<?php echo $sigPath; ?>" alt="Signature" class="back-sig-img"/>
+                <?php else: ?>
+                  <div style="font-family: Georgia, serif; font-style: italic; font-size: 8.5pt; color: #1e293b; line-height: 1;">John</div>
+                <?php endif; ?>
+                <div class="back-sig-line"></div>
+                <div class="back-sig-title">Authorized Signature</div>
+              </div>
+
+              <!-- Dates & Validity -->
+              <div class="back-dates-bar">
+                <div>Issue Date : <strong style="color: #0f172a; font-family: monospace;">01/06/2026</strong></div>
+                <div>Valid : <strong style="color: #0f172a;">Academic Session</strong></div>
               </div>
 
               <!-- Contact Info List -->
               <div class="back-info-list">
                 <div class="back-info-item">
-                  <span class="material-symbols-outlined back-info-icon" style="color: #ea580c;">call</span>
-                  <span><?php echo html_escape($settings->phone ?? '001 123 456 789'); ?></span>
+                  <span class="material-symbols-outlined back-info-icon">call</span>
+                  <span style="font-family: monospace;"><?php echo html_escape($settings->phone ?? '001 123 456 789'); ?></span>
                 </div>
                 <div class="back-info-item">
                   <span class="material-symbols-outlined back-info-icon">mail</span>
@@ -535,24 +671,14 @@
                   <span><?php echo html_escape($settings->website ?? 'www.login2school.com'); ?></span>
                 </div>
                 <div class="back-info-item">
-                  <span class="material-symbols-outlined back-info-icon">support_agent</span>
-                  <span>Emergency: <strong style="color: #0f172a;"><?php echo html_escape($settings->emergency_contact ?? '001 987 654 321'); ?></strong></span>
+                  <span class="material-symbols-outlined back-info-icon">location_on</span>
+                  <span style="font-size: 4pt;"><?php echo html_escape($settings->school_address ?? '100/1 Bryant Lane, Manor, Orla land, New York'); ?></span>
                 </div>
               </div>
 
-              <!-- Principal Signature Block -->
-              <div class="back-sig-wrapper">
-                <?php if ($hasSig): ?>
-                  <img src="<?php echo $sigPath; ?>" alt="Signature" class="back-sig-img"/>
-                <?php else: ?>
-                  <div style="font-family: Georgia, serif; font-style: italic; font-size: 11pt; color: #1e293b; line-height: 1;">John</div>
-                <?php endif; ?>
-                <div class="back-sig-title">Principal Signature</div>
-              </div>
-
-              <!-- Return Notice Disclaimer (Orange) -->
+              <!-- Return Notice Disclaimer -->
               <div class="back-return-disclaimer">
-                If found, please return this card<br>to the school.
+                If found, please return this card to the school.
               </div>
 
             </div>
