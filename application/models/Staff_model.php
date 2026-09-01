@@ -157,7 +157,7 @@ class Staff_model extends CI_Model {
         $dir = (strtoupper($order_dir) === 'DESC') ? 'DESC' : 'ASC';
 
         $this->db
-            ->select('s.staff_id, s.employee_code, s.full_name, s.gender, s.email, s.phone, s.status, s.staff_type,
+            ->select('s.staff_id, s.employee_code, s.full_name, s.gender, s.email, s.phone, s.photo, s.status, s.staff_type,
                       d.department_name, dg.designation_name')
             ->from('tbl_staff s')
             ->join('tbl_departments d', 'd.department_id = s.department_id', 'left')
@@ -641,5 +641,26 @@ class Staff_model extends CI_Model {
     public function count_teachers()
     {
         return $this->db->where('status', 1)->where('is_deleted', 'n')->where('staff_type', 'teacher')->count_all_results($this->table);
+    }
+
+    public function update_photo($staff_id, $photo_filename)
+    {
+        return $this->db
+            ->where($this->primaryKey, (int)$staff_id)
+            ->update($this->table, array('photo' => $photo_filename, 'updated_at' => date('Y-m-d H:i:s')));
+    }
+
+    public function delete_photo($staff_id)
+    {
+        $staff = $this->get_by_id($staff_id);
+        if ($staff && !empty($staff->photo)) {
+            $filePath = FCPATH . 'uploads/staff/' . $staff->photo;
+            if (file_exists($filePath) && is_file($filePath)) {
+                @unlink($filePath);
+            }
+        }
+        return $this->db
+            ->where($this->primaryKey, (int)$staff_id)
+            ->update($this->table, array('photo' => NULL, 'updated_at' => date('Y-m-d H:i:s')));
     }
 }

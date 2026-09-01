@@ -59,6 +59,7 @@
                 $initials = '';
                 foreach ($nameParts as $np) { if (!empty($np)) $initials .= strtoupper($np[0]); }
                 if (strlen($initials) > 2) $initials = substr($initials, 0, 2);
+                $hasPhoto = (!empty($st->photo) && file_exists(FCPATH . 'uploads/staff/' . $st->photo));
               ?>
               <tr class='hover:bg-surface-container-low transition-colors'>
                 <td class="px-4 py-3 text-body-md font-mono text-primary font-medium whitespace-nowrap">
@@ -66,7 +67,11 @@
                 </td>
                 <td class="px-4 py-3 text-body-md font-body-md text-on-surface whitespace-nowrap">
                   <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-full bg-surface-container-high text-on-surface flex items-center justify-center text-[11px] font-semibold shrink-0"><?php echo html_escape($initials); ?></div>
+                    <?php if ($hasPhoto): ?>
+                      <img src="<?php echo base_url('uploads/staff/' . $st->photo); ?>" alt="<?php echo html_escape($st->full_name); ?>" class="w-8 h-8 rounded-full object-cover shrink-0 border border-outline-variant/60 shadow-sm"/>
+                    <?php else: ?>
+                      <div class="w-8 h-8 rounded-full bg-surface-container-high text-on-surface flex items-center justify-center text-[11px] font-semibold shrink-0"><?php echo html_escape($initials); ?></div>
+                    <?php endif; ?>
                     <div>
                       <div class="font-medium text-on-surface"><?php echo html_escape($st->full_name); ?></div>
                       <div class="text-[12px] text-on-surface-variant"><?php echo html_escape($st->gender . ($st->qualification ? ' · ' . $st->qualification : '')); ?></div>

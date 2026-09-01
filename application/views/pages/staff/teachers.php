@@ -39,13 +39,18 @@
           $initials = '';
           foreach ($nameParts as $np) { if (!empty($np)) $initials .= strtoupper($np[0]); }
           if (strlen($initials) > 2) $initials = substr($initials, 0, 2);
+          $hasPhoto = (!empty($t->photo) && file_exists(FCPATH . 'uploads/staff/' . $t->photo));
         ?>
         <div class="elevation-1 rounded-2xl overflow-hidden border border-outline-variant/60 bg-surface-container-lowest flex flex-col justify-between hover:shadow-md transition-shadow">
           <div class="p-5">
             <div class="flex items-start gap-4 mb-4">
-              <div class="w-14 h-14 rounded-xl bg-primary-fixed text-primary flex items-center justify-center font-bold text-xl shrink-0 shadow-sm">
-                <?php echo html_escape($initials); ?>
-              </div>
+              <?php if ($hasPhoto): ?>
+                <img src="<?php echo base_url('uploads/staff/' . $t->photo); ?>" alt="<?php echo html_escape($t->full_name); ?>" class="w-14 h-16 rounded-xl object-cover border border-outline-variant/60 shadow-sm shrink-0"/>
+              <?php else: ?>
+                <div class="w-14 h-14 rounded-xl bg-primary-fixed text-primary flex items-center justify-center font-bold text-xl shrink-0 shadow-sm">
+                  <?php echo html_escape($initials); ?>
+                </div>
+              <?php endif; ?>
               <div class="min-w-0 flex-1">
                 <a href="<?php echo site_url('staff/profile/' . $t->staff_id); ?>" class="font-headline-md text-headline-md text-on-surface hover:text-primary hover:underline block truncate font-bold" style="font-size:16px">
                   <?php echo html_escape($t->full_name); ?>

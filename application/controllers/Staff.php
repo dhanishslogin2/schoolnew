@@ -104,8 +104,12 @@ class Staff extends MY_Controller {
 
             $codeCol = '<a href="' . site_url('staff/profile/' . $s->staff_id) . '" class="text-primary font-medium hover:underline font-mono">' . html_escape($s->employee_code ?: '—') . '</a>';
 
+            $avatarImg = (!empty($s->photo) && file_exists(FCPATH . 'uploads/staff/' . $s->photo))
+                ? '<img src="' . base_url('uploads/staff/' . $s->photo) . '" alt="' . html_escape($s->full_name) . '" class="w-8 h-8 rounded-full object-cover shrink-0 border border-outline-variant/60 shadow-sm"/>'
+                : '<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[11px] font-semibold shrink-0">' . html_escape($initials) . '</div>';
+
             $nameCol = '<div class="flex items-center gap-2.5">' .
-                '<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[11px] font-semibold shrink-0">' . html_escape($initials) . '</div>' .
+                $avatarImg .
                 '<div>' .
                     '<div class="font-medium text-on-surface">' . html_escape($s->full_name) . '</div>' .
                     '<div class="text-[12px] text-on-surface-variant">' . html_escape($s->staff_type ?: 'Staff') . '</div>' .
@@ -219,6 +223,7 @@ class Staff extends MY_Controller {
 
         $document_types = $this->Staff_document_type_model->get_active_types();
         $doc_errors = array();
+        $photo_error = NULL;
 
         if ($this->input->method() === 'post') {
             $this->form_validation->set_rules('full_name', 'Staff Name', 'required|trim');
@@ -230,7 +235,16 @@ class Staff extends MY_Controller {
             $this->form_validation->set_rules('designation_id', 'Designation', 'required');
             $this->form_validation->set_rules('joining_date', 'Joining Date', 'required');
 
-            // Validate Dynamic Required Staff Documents
+            // 1. Process Staff Profile Photo (Crop / Upload)
+            $photo_result = $this->process_staff_photo();
+            $photo_filename = NULL;
+            if ($photo_result['success'] === FALSE) {
+                $photo_error = $photo_result['error'];
+            } else {
+                $photo_filename = $photo_result['file_name'];
+            }
+
+            // 2. Validate Dynamic Required Staff Documents
             $allowedExtensions = array('pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx');
             $maxFileSize = 10 * 1024 * 1024; // 10MB
 
@@ -259,7 +273,7 @@ class Staff extends MY_Controller {
 
             $formValid = $this->form_validation->run();
 
-            if ($formValid === TRUE && empty($doc_errors)) {
+            if ($formValid === TRUE && empty($doc_errors) && empty($photo_error)) {
                 $staffType = $this->input->post('staff_type');
                 $data = array(
                     'employee_code'     => $this->input->post('employee_code'),
@@ -281,6 +295,7 @@ class Staff extends MY_Controller {
                     'experience'        => $this->input->post('experience') ?: NULL,
                     'specialization'    => ($staffType === 'teacher') ? ($this->input->post('specialization') ?: NULL) : NULL,
                     'employment_status' => $this->input->post('employment_status') ?: 'Active',
+                    'photo'             => $photo_filename,
                     'status'            => 1,
                     'created_at'        => date('Y-m-d H:i:s'),
                 );
@@ -324,7 +339,7 @@ class Staff extends MY_Controller {
                     }
                 }
 
-                $this->session->set_flashdata('success', 'Staff member registered and all required documents uploaded successfully!');
+                $this->session->set_flashdata('success', 'Staff member registered successfully!');
                 redirect('staff/profile/' . $staff_id);
                 return;
             }
@@ -341,6 +356,7 @@ class Staff extends MY_Controller {
             'designations'   => $designations,
             'document_types' => $document_types,
             'doc_errors'     => $doc_errors,
+            'photo_error'    => $photo_error,
         ));
     }
 
@@ -363,12 +379,28 @@ class Staff extends MY_Controller {
         $document_types    = $this->Staff_document_type_model->get_active_types();
         $existing_docs_map = $this->Staff_model->get_staff_documents_map($staff_id);
         $doc_errors        = array();
+        $photo_error       = NULL;
 
         if ($this->input->method() === 'post') {
             $this->form_validation->set_rules('full_name', 'Staff Name', 'required|trim');
             $this->form_validation->set_rules('employee_code', 'Employee ID', 'required|trim');
             $this->form_validation->set_rules('phone', 'Phone Number', 'required|trim');
             $this->form_validation->set_rules('email', 'Email Address', 'required|valid_email|trim');
+
+            // Handle Photo Removal if requested
+            if ($this->input->post('remove_photo') === '1') {
+                $this->Staff_model->delete_photo($staff_id);
+                $staff->photo = NULL;
+            }
+
+            // Handle New/Replaced Photo Upload
+            $new_photo = NULL;
+            $photo_result = $this->process_staff_photo($staff_id);
+            if ($photo_result['success'] === FALSE) {
+                $photo_error = $photo_result['error'];
+            } elseif (!empty($photo_result['file_name'])) {
+                $new_photo = $photo_result['file_name'];
+            }
 
             $allowedExtensions = array('pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx');
             $maxFileSize = 10 * 1024 * 1024; // 10MB
@@ -389,7 +421,7 @@ class Staff extends MY_Controller {
                 }
             }
 
-            if ($this->form_validation->run() === TRUE && empty($doc_errors)) {
+            if ($this->form_validation->run() === TRUE && empty($doc_errors) && empty($photo_error)) {
                 $staffType = $this->input->post('staff_type') ?: $staff->staff_type;
                 $data = array(
                     'employee_code'     => $this->input->post('employee_code'),
@@ -414,7 +446,20 @@ class Staff extends MY_Controller {
                     'updated_at'        => date('Y-m-d H:i:s'),
                 );
 
+                if (!empty($new_photo)) {
+                    $oldPhoto = $staff->photo;
+                    $data['photo'] = $new_photo;
+                }
+
                 $this->Staff_model->update($staff_id, $data);
+
+                // If photo was successfully updated and an old photo file existed, unlink the old file
+                if (!empty($new_photo) && !empty($oldPhoto) && $oldPhoto !== $new_photo) {
+                    $oldFilePath = FCPATH . 'uploads/staff/' . $oldPhoto;
+                    if (file_exists($oldFilePath) && is_file($oldFilePath)) {
+                        @unlink($oldFilePath);
+                    }
+                }
 
                 // Process replacement or newly uploaded documents
                 $uploadDir = FCPATH . 'uploads/staff_docs/';
@@ -482,7 +527,137 @@ class Staff extends MY_Controller {
             'document_types'    => $document_types,
             'existing_docs_map' => $existing_docs_map,
             'doc_errors'        => $doc_errors,
+            'photo_error'       => $photo_error,
         ));
+    }
+
+    public function remove_photo($staff_id = NULL)
+    {
+        $this->require_permission('staff.edit');
+
+        if (empty($staff_id)) {
+            show_404();
+            return;
+        }
+
+        $this->Staff_model->delete_photo($staff_id);
+
+        if ($this->input->is_ajax_request()) {
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode(array('success' => TRUE, 'message' => 'Staff photo removed successfully.')));
+            return;
+        }
+
+        $this->session->set_flashdata('success', 'Staff photo removed.');
+        $redirect = $this->input->get('redirect_to') ?: ('staff/edit/' . $staff_id);
+        redirect($redirect);
+    }
+
+    /* =========================================================================
+       Private: Process and Validate Staff Photo Upload / Base64 Cropped Data
+       ========================================================================= */
+    private function process_staff_photo($staff_id = NULL)
+    {
+        $uploadDir = FCPATH . 'uploads/staff/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $maxSize = 3 * 1024 * 1024; // 3 MB
+        $allowedExts = array('jpg', 'jpeg', 'png', 'webp');
+        $allowedMimes = array('image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/x-png', 'image/webp');
+        $allowedTypes = array(IMAGETYPE_JPEG, IMAGETYPE_PNG);
+        if (defined('IMAGETYPE_WEBP')) {
+            $allowedTypes[] = IMAGETYPE_WEBP;
+        }
+
+        // 1. Check if cropped image payload is submitted (Base64 data URL from Cropper)
+        $croppedData = $this->input->post('cropped_image_data');
+        if (!empty($croppedData)) {
+            if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+\/=\r\n]+)$/i', $croppedData, $matches)) {
+                $ext = strtolower($matches[1]);
+                if ($ext === 'jpeg') $ext = 'jpg';
+                $decoded = base64_decode($matches[2]);
+
+                if ($decoded === FALSE || strlen($decoded) < 50) {
+                    return array('success' => FALSE, 'error' => 'The selected file is not a valid image.');
+                }
+
+                if (strlen($decoded) > $maxSize) {
+                    return array('success' => FALSE, 'error' => 'Staff image must not exceed 3 MB.');
+                }
+
+                $imgInfo = @getimagesizefromstring($decoded);
+                if ($imgInfo === FALSE) {
+                    return array('success' => FALSE, 'error' => 'The selected file is not a valid image.');
+                }
+
+                $detectedType = isset($imgInfo[2]) ? $imgInfo[2] : 0;
+                $detectedMime = isset($imgInfo['mime']) ? strtolower($imgInfo['mime']) : '';
+                if (!in_array($detectedType, $allowedTypes, TRUE) && !in_array($detectedMime, $allowedMimes, TRUE)) {
+                    return array('success' => FALSE, 'error' => 'Only JPG, JPEG, PNG, and WEBP images are allowed.');
+                }
+
+                $safeName = 'staff_' . ($staff_id ?: 'new') . '_' . date('YmdHis') . '_' . substr(md5(uniqid(mt_rand(), true)), 0, 6) . '.' . $ext;
+                $destPath = $uploadDir . $safeName;
+
+                if (file_put_contents($destPath, $decoded) !== FALSE) {
+                    return array('success' => TRUE, 'file_name' => $safeName);
+                } else {
+                    return array('success' => FALSE, 'error' => 'Unable to upload staff image. Please try again.');
+                }
+            } else {
+                return array('success' => FALSE, 'error' => 'Invalid cropped image format.');
+            }
+        }
+
+        // 2. Fallback check: Direct standard file upload $_FILES['staff_image']
+        if (isset($_FILES['staff_image']['name']) && !empty($_FILES['staff_image']['name'])) {
+            $fileError = isset($_FILES['staff_image']['error']) ? (int)$_FILES['staff_image']['error'] : UPLOAD_ERR_NO_FILE;
+            if ($fileError !== UPLOAD_ERR_OK) {
+                if ($fileError === UPLOAD_ERR_INI_SIZE || $fileError === UPLOAD_ERR_FORM_SIZE) {
+                    return array('success' => FALSE, 'error' => 'Staff image must not exceed 3 MB.');
+                }
+                return array('success' => FALSE, 'error' => 'Unable to upload staff image. Please try again.');
+            }
+
+            $origName = $_FILES['staff_image']['name'];
+            $fileSize = $_FILES['staff_image']['size'];
+            $ext      = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+
+            if (!in_array($ext, $allowedExts, TRUE)) {
+                return array('success' => FALSE, 'error' => 'Only JPG, JPEG, PNG, and WEBP images are allowed.');
+            }
+
+            if ($fileSize > $maxSize || $fileSize <= 0) {
+                return array('success' => FALSE, 'error' => 'Staff image must not exceed 3 MB.');
+            }
+
+            $imgInfo = @getimagesize($_FILES['staff_image']['tmp_name']);
+            if ($imgInfo === FALSE) {
+                return array('success' => FALSE, 'error' => 'The selected file is not a valid image.');
+            }
+
+            $detectedType = isset($imgInfo[2]) ? $imgInfo[2] : 0;
+            $detectedMime = isset($imgInfo['mime']) ? strtolower($imgInfo['mime']) : '';
+            if (!in_array($detectedType, $allowedTypes, TRUE) && !in_array($detectedMime, $allowedMimes, TRUE)) {
+                return array('success' => FALSE, 'error' => 'Only JPG, JPEG, PNG, and WEBP images are allowed.');
+            }
+
+            if ($ext === 'jpeg') $ext = 'jpg';
+            $safeName = 'staff_' . ($staff_id ?: 'new') . '_' . date('YmdHis') . '_' . substr(md5(uniqid(mt_rand(), true)), 0, 6) . '.' . $ext;
+            $destPath = $uploadDir . $safeName;
+
+            if (move_uploaded_file($_FILES['staff_image']['tmp_name'], $destPath)) {
+                return array('success' => TRUE, 'file_name' => $safeName);
+            } else {
+                return array('success' => FALSE, 'error' => 'Unable to upload staff image. Please try again.');
+            }
+        }
+
+        // No image provided
+        return array('success' => TRUE, 'file_name' => NULL);
     }
 
     /* =========================================================================

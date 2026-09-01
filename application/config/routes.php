@@ -363,6 +363,7 @@ $route['settings/staff_documents/toggle/(:num)'] = 'settings/staff_documents_tog
 
 $route['staff/view_document/(:num)']         = 'staff/view_document/$1';
 $route['staff/download_document/(:num)']     = 'staff/download_document/$1';
+$route['staff/remove_photo/(:num)']           = 'staff/remove_photo/$1';
 
 $route['unauthorized']                       = 'unauthorized/index';
 

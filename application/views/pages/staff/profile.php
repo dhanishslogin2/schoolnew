@@ -7,6 +7,7 @@
   foreach ($nameParts as $np) { if (!empty($np)) $initials .= strtoupper($np[0]); }
   if (strlen($initials) > 2) $initials = substr($initials, 0, 2);
   $isTeacher = ($staff->staff_type === 'teacher');
+  $hasPhoto = (!empty($staff->photo) && file_exists(FCPATH . 'uploads/staff/' . $staff->photo));
   $statusBadge = ($staff->status == 1)
     ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-secondary-container text-on-secondary-container">Active</span>'
     : '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-surface-container-high text-on-surface-variant">Inactive</span>';
@@ -18,7 +19,11 @@
   <!-- Header Card -->
   <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-5 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div class="flex items-center gap-4">
-      <div class="w-16 h-16 rounded-xl bg-primary-fixed text-primary flex items-center justify-center text-2xl font-bold shrink-0 shadow-sm"><?php echo html_escape($initials); ?></div>
+      <?php if ($hasPhoto): ?>
+        <img src="<?php echo base_url('uploads/staff/' . $staff->photo); ?>" alt="<?php echo html_escape($fullName); ?>" class="w-16 h-20 rounded-xl object-cover border border-outline-variant/60 shadow-sm shrink-0"/>
+      <?php else: ?>
+        <div class="w-16 h-16 rounded-xl bg-primary-fixed text-primary flex items-center justify-center text-2xl font-bold shrink-0 shadow-sm"><?php echo html_escape($initials); ?></div>
+      <?php endif; ?>
       <div class="min-w-0">
         <div class="flex items-center gap-2.5 flex-wrap">
           <h2 class="font-headline-md text-headline-md text-on-surface"><?php echo html_escape($fullName); ?></h2>

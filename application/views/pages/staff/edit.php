@@ -15,9 +15,12 @@
       </div>
     </div>
 
-    <?php if (validation_errors() || !empty($doc_errors)): ?>
+    <?php if (validation_errors() || !empty($doc_errors) || !empty($photo_error)): ?>
       <div class="p-4 mb-5 rounded-xl bg-error-container/30 border border-error/30 text-error text-body-md space-y-1">
         <?php echo validation_errors(); ?>
+        <?php if (!empty($photo_error)): ?>
+          <div>• <?php echo html_escape($photo_error); ?></div>
+        <?php endif; ?>
         <?php if (!empty($doc_errors)): ?>
           <?php foreach ($doc_errors as $err): ?>
             <div>• <?php echo html_escape($err); ?></div>
@@ -82,7 +85,7 @@
               <input type="email" name="email" required value="<?php echo html_escape($staff->email); ?>" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest"/>
             </div>
             <div class="sm:col-span-3">
-              <label class="block text-label-md text-on-surface mb-1">Residential Address</label>
+              <label class="block text-label-md text-on-surface mb-1">Full Residential Address</label>
               <input type="text" name="address" value="<?php echo html_escape($staff->address); ?>" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest"/>
             </div>
           </div>
@@ -109,7 +112,9 @@
               <label class="block text-label-md text-on-surface mb-1">Department *</label>
               <select name="department_id" required class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest">
                 <?php foreach ($departments as $dept): ?>
-                  <option value="<?php echo $dept->department_id; ?>" <?php echo ($staff->department_id == $dept->department_id) ? 'selected' : ''; ?>><?php echo html_escape($dept->department_name); ?></option>
+                  <option value="<?php echo $dept->department_id; ?>" <?php echo ($staff->department_id == $dept->department_id) ? 'selected' : ''; ?>>
+                    <?php echo html_escape($dept->department_name); ?>
+                  </option>
                 <?php endforeach; ?>
               </select>
             </div>
@@ -117,7 +122,9 @@
               <label class="block text-label-md text-on-surface mb-1">Designation *</label>
               <select name="designation_id" required class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest">
                 <?php foreach ($designations as $desig): ?>
-                  <option value="<?php echo $desig->designation_id; ?>" <?php echo ($staff->designation_id == $desig->designation_id) ? 'selected' : ''; ?>><?php echo html_escape($desig->designation_name); ?></option>
+                  <option value="<?php echo $desig->designation_id; ?>" <?php echo ($staff->designation_id == $desig->designation_id) ? 'selected' : ''; ?>>
+                    <?php echo html_escape($desig->designation_name); ?>
+                  </option>
                 <?php endforeach; ?>
               </select>
             </div>
@@ -161,11 +168,76 @@
           </div>
         </div>
 
-        <!-- SECTION 5: Staff Documents (Dynamic) -->
+        <!-- SECTION 5: Staff Profile Photo (Interactive Cropper & Management) -->
         <div class="pt-4 border-t border-outline-variant/40">
           <div class="flex items-center justify-between gap-2 mb-3">
             <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary text-[20px]">folder_shared</span>5. Staff Documents
+              <span class="material-symbols-outlined text-primary text-[20px]">account_box</span>5. Staff Profile Photo
+            </h3>
+            <span class="text-[12px] text-on-surface-variant">3:4 Portrait Ratio · Max 3 MB</span>
+          </div>
+
+          <?php 
+            $hasPhoto = (!empty($staff->photo) && file_exists(FCPATH . 'uploads/staff/' . $staff->photo));
+            $initials = school_initials($staff->full_name);
+          ?>
+
+          <div class="p-5 rounded-2xl bg-surface-container-low border border-outline-variant/60 flex flex-col sm:flex-row items-center gap-6">
+            <!-- Hidden inputs -->
+            <input type="hidden" name="cropped_image_data" id="cropped_image_data" value=""/>
+            <input type="hidden" name="remove_photo" id="remove_photo_input" value="0"/>
+            <input type="file" id="staff_photo_file_input" accept="image/jpeg,image/png,image/jpg" class="hidden"/>
+
+            <!-- Portrait Photo Preview Box (3:4 Ratio) -->
+            <div class="relative w-32 h-40 rounded-xl overflow-hidden border-2 border-outline-variant bg-surface-container-lowest flex items-center justify-center shrink-0 shadow-inner">
+              <img id="staff-photo-preview-img" 
+                   src="<?php echo $hasPhoto ? base_url('uploads/staff/' . $staff->photo) : ''; ?>" 
+                   alt="Staff Photo" 
+                   class="w-full h-full object-cover <?php echo $hasPhoto ? '' : 'hidden'; ?>"/>
+              <div id="staff-photo-placeholder" class="flex flex-col items-center justify-center text-on-surface-variant/60 p-2 text-center <?php echo $hasPhoto ? 'hidden' : ''; ?>">
+                <div class="w-14 h-14 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-lg font-bold mb-1">
+                  <?php echo html_escape($initials); ?>
+                </div>
+                <span class="text-[11px] font-medium leading-tight">No Photo<br/>Uploaded</span>
+              </div>
+            </div>
+
+            <!-- Controls & Instructions -->
+            <div class="flex-1 space-y-2 text-center sm:text-left">
+              <div>
+                <h4 class="font-semibold text-on-surface" id="photo-status-title">
+                  <?php echo $hasPhoto ? 'Current Staff Photograph' : 'Upload Staff Photograph'; ?>
+                </h4>
+                <p class="text-[12px] text-on-surface-variant mt-0.5">
+                  <?php echo $hasPhoto ? 'You can replace the photo using the cropper tool or remove it.' : 'Upload a clean portrait photograph for teacher profile, ID card, and directories.'; ?>
+                </p>
+              </div>
+
+              <div class="flex items-center justify-center sm:justify-start gap-2 pt-1 flex-wrap">
+                <button type="button" id="btn-choose-photo" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer shadow-sm">
+                  <span class="material-symbols-outlined text-[18px]">photo_camera</span>
+                  <span id="btn-photo-label"><?php echo $hasPhoto ? 'Change Photo' : 'Choose Image'; ?></span>
+                </button>
+
+                <button type="button" id="btn-remove-photo" class="<?php echo $hasPhoto ? '' : 'hidden'; ?> inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-error/30 text-error hover:bg-error-container/30 text-label-md transition-colors cursor-pointer">
+                  <span class="material-symbols-outlined text-[16px]">delete</span>Remove Photo
+                </button>
+              </div>
+
+              <div class="text-[11px] text-on-surface-variant/80 flex items-center justify-center sm:justify-start gap-3 pt-1">
+                <span>✓ JPG, JPEG, PNG</span>
+                <span>✓ Maximum 3 MB</span>
+                <span>✓ Interactive 3:4 Cropper</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 6: Staff Documents (Dynamic) -->
+        <div class="pt-4 border-t border-outline-variant/40">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-[20px]">folder_shared</span>6. Staff Documents
             </h3>
             <span class="text-[12px] text-on-surface-variant">Manage or replace uploaded documents</span>
           </div>
@@ -238,6 +310,72 @@
       <?php echo form_close(); ?>
     </div>
 
+    <!-- Image Cropper Modal -->
+    <div id="cropper-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 hidden backdrop-blur-sm">
+      <div class="elevation-3 rounded-2xl bg-surface-container-lowest border border-outline-variant w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh] shadow-2xl">
+        
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/60 bg-surface-container-low">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-[22px]">crop</span>
+            <h3 class="font-headline-md text-headline-md text-on-surface text-base font-bold">Crop Staff Profile Image</h3>
+          </div>
+          <button type="button" id="btn-cropper-close" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer" title="Close">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        <!-- Modal Body / Cropper Area -->
+        <div class="p-4 bg-slate-950/80 flex-1 overflow-hidden flex items-center justify-center relative select-none" style="min-height: 300px; max-height: 380px;">
+          <div class="w-full h-full flex items-center justify-center overflow-hidden">
+            <img id="cropper-image-target" src="" alt="Source Image" class="max-w-full block" style="max-height: 360px;"/>
+          </div>
+        </div>
+
+        <!-- Modal Controls Toolbar -->
+        <div class="px-6 py-3.5 bg-surface-container-lowest border-t border-outline-variant/40 flex flex-wrap items-center justify-between gap-4">
+          
+          <!-- Zoom Controls with Sync -->
+          <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+            <button type="button" id="btn-cropper-zoom-out" title="Zoom Out" class="p-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors cursor-pointer shrink-0">
+              <span class="material-symbols-outlined text-[18px]">zoom_out</span>
+            </button>
+            <input type="range" id="cropper-zoom-range" min="0.1" max="3" step="0.05" value="1" class="w-full h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary" title="Zoom Slider"/>
+            <button type="button" id="btn-cropper-zoom-in" title="Zoom In" class="p-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors cursor-pointer shrink-0">
+              <span class="material-symbols-outlined text-[18px]">zoom_in</span>
+            </button>
+          </div>
+
+          <!-- Rotation & Reset Controls -->
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button type="button" id="btn-cropper-rotate-left" title="Rotate Left (-90°)" class="px-2.5 py-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors text-xs font-medium cursor-pointer inline-flex items-center gap-1">
+              <span class="material-symbols-outlined text-[16px]">rotate_left</span>-90°
+            </button>
+            <button type="button" id="btn-cropper-rotate-right" title="Rotate Right (+90°)" class="px-2.5 py-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors text-xs font-medium cursor-pointer inline-flex items-center gap-1">
+              <span class="material-symbols-outlined text-[16px]">rotate_right</span>+90°
+            </button>
+            <button type="button" id="btn-cropper-reset" title="Reset View" class="px-2.5 py-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors text-xs font-medium cursor-pointer inline-flex items-center gap-1">
+              <span class="material-symbols-outlined text-[16px]">restart_alt</span>Reset
+            </button>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="px-6 py-3.5 border-t border-outline-variant/60 bg-surface-container-low flex items-center justify-between gap-3">
+          <button type="button" id="btn-cropper-change-file" class="text-label-md text-primary hover:underline font-medium cursor-pointer flex items-center gap-1 text-[13px]">
+            <span class="material-symbols-outlined text-[16px]">folder_open</span>Choose Another Image
+          </button>
+          <div class="flex items-center gap-2.5">
+            <button type="button" id="btn-cropper-cancel" class="px-4 py-2 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-high text-label-md cursor-pointer transition-colors">Cancel</button>
+            <button type="button" id="btn-cropper-apply" class="px-5 py-2 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer shadow-sm flex items-center gap-1.5 font-medium">
+              <span class="material-symbols-outlined text-[18px]">crop</span>Apply Crop
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
     <script>
       function toggleTeacherFields(type) {
         var specBox = document.getElementById('teacher_specialization_box');
@@ -246,5 +384,237 @@
         } else {
           specBox.style.display = 'block';
         }
+      }
+
+      // ==========================================
+      // Staff Profile Image Cropper Implementation
+      // ==========================================
+      var cropperInstance = null;
+      var fileInput = document.getElementById('staff_photo_file_input');
+      var chooseBtn = document.getElementById('btn-choose-photo');
+      var removeBtn = document.getElementById('btn-remove-photo');
+      var photoLabel = document.getElementById('btn-photo-label');
+      var previewImg = document.getElementById('staff-photo-preview-img');
+      var placeholder = document.getElementById('staff-photo-placeholder');
+      var hiddenInput = document.getElementById('cropped_image_data');
+      var removePhotoInput = document.getElementById('remove_photo_input');
+
+      var modal = document.getElementById('cropper-modal');
+      var cropperImage = document.getElementById('cropper-image-target');
+      var zoomRange = document.getElementById('cropper-zoom-range');
+      var zoomInBtn = document.getElementById('btn-cropper-zoom-in');
+      var zoomOutBtn = document.getElementById('btn-cropper-zoom-out');
+      var rotateLeftBtn = document.getElementById('btn-cropper-rotate-left');
+      var rotateRightBtn = document.getElementById('btn-cropper-rotate-right');
+      var resetBtn = document.getElementById('btn-cropper-reset');
+      var closeBtn = document.getElementById('btn-cropper-close');
+      var cancelBtn = document.getElementById('btn-cropper-cancel');
+      var applyBtn = document.getElementById('btn-cropper-apply');
+      var changeFileBtn = document.getElementById('btn-cropper-change-file');
+
+      if (chooseBtn) {
+        chooseBtn.addEventListener('click', function() {
+          fileInput.value = '';
+          fileInput.click();
+        });
+      }
+
+      if (changeFileBtn) {
+        changeFileBtn.addEventListener('click', function() {
+          fileInput.value = '';
+          fileInput.click();
+        });
+      }
+
+      if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+          var file = e.target.files[0];
+          if (!file) return;
+
+          // Frontend validation: format and max 3MB
+          var allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+          var ext = file.name.split('.').pop().toLowerCase();
+          if (!allowedTypes.includes(file.type) && !['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+            alert('Unsupported image format. Please select a JPG, JPEG, PNG, or WEBP image.');
+            fileInput.value = '';
+            return;
+          }
+
+          if (file.size > 3 * 1024 * 1024) {
+            alert('Image file size exceeds the 3 MB limit. Please choose a smaller image.');
+            fileInput.value = '';
+            return;
+          }
+
+          var reader = new FileReader();
+          reader.onload = function(evt) {
+            openCropperModal(evt.target.result);
+          };
+          reader.onerror = function() {
+            alert('Failed to read image file. Please try again.');
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function openCropperModal(imageSrc) {
+        if (typeof Cropper === 'undefined') {
+          alert('Image Cropper library is not ready. Please refresh the page.');
+          return;
+        }
+
+        if (cropperInstance) {
+          cropperInstance.destroy();
+          cropperInstance = null;
+        }
+
+        cropperImage.src = imageSrc;
+        zoomRange.value = 1;
+        modal.classList.remove('hidden');
+
+        cropperImage.onload = function() {
+          if (cropperInstance) {
+            cropperInstance.destroy();
+            cropperInstance = null;
+          }
+          initCropper();
+        };
+
+        if (cropperImage.complete) {
+          initCropper();
+        }
+      }
+
+      function initCropper() {
+        if (cropperInstance) return;
+        cropperInstance = new Cropper(cropperImage, {
+          aspectRatio: 3 / 4,
+          viewMode: 1,
+          autoCropArea: 0.9,
+          responsive: true,
+          restore: false,
+          guides: true,
+          center: true,
+          highlight: false,
+          checkOrientation: true,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
+          toggleDragModeOnDblclick: false,
+          ready: function() {
+            zoomRange.value = 1;
+          },
+          zoom: function(e) {
+            if (e.detail && typeof e.detail.ratio === 'number') {
+              var r = Math.min(3, Math.max(0.1, parseFloat(e.detail.ratio.toFixed(2))));
+              zoomRange.value = r;
+            }
+          }
+        });
+      }
+
+      function closeCropperModal() {
+        modal.classList.add('hidden');
+        if (cropperInstance) {
+          cropperInstance.destroy();
+          cropperInstance = null;
+        }
+        cropperImage.src = '';
+        fileInput.value = '';
+      }
+
+      if (closeBtn) closeBtn.addEventListener('click', closeCropperModal);
+      if (cancelBtn) cancelBtn.addEventListener('click', closeCropperModal);
+
+      // Zoom slider
+      if (zoomRange) {
+        zoomRange.addEventListener('input', function() {
+          if (!cropperInstance) return;
+          var val = parseFloat(this.value);
+          if (!isNaN(val) && val >= 0.1 && val <= 3) {
+            cropperInstance.zoomTo(val);
+          }
+        });
+      }
+
+      // Zoom In button
+      if (zoomInBtn) {
+        zoomInBtn.addEventListener('click', function() {
+          if (!cropperInstance) return;
+          cropperInstance.zoom(0.1);
+        });
+      }
+
+      // Zoom Out button
+      if (zoomOutBtn) {
+        zoomOutBtn.addEventListener('click', function() {
+          if (!cropperInstance) return;
+          cropperInstance.zoom(-0.1);
+        });
+      }
+
+      // Rotate Left (-90 deg)
+      if (rotateLeftBtn) {
+        rotateLeftBtn.addEventListener('click', function() {
+          if (!cropperInstance) return;
+          cropperInstance.rotate(-90);
+        });
+      }
+
+      // Rotate Right (+90 deg)
+      if (rotateRightBtn) {
+        rotateRightBtn.addEventListener('click', function() {
+          if (!cropperInstance) return;
+          cropperInstance.rotate(90);
+        });
+      }
+
+      // Reset
+      if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+          if (!cropperInstance) return;
+          cropperInstance.reset();
+          zoomRange.value = 1;
+        });
+      }
+
+      // Apply crop
+      if (applyBtn) {
+        applyBtn.addEventListener('click', function() {
+          if (!cropperInstance) return;
+
+          var canvas = cropperInstance.getCroppedCanvas({
+            width: 600,
+            height: 800,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high'
+          });
+
+          if (canvas) {
+            var croppedBase64 = canvas.toDataURL('image/jpeg', 0.92);
+            hiddenInput.value = croppedBase64;
+            removePhotoInput.value = '0';
+            previewImg.src = croppedBase64;
+            previewImg.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            removeBtn.classList.remove('hidden');
+            photoLabel.textContent = 'Change Photo';
+          }
+
+          closeCropperModal();
+        });
+      }
+
+      // Remove photo
+      if (removeBtn) {
+        removeBtn.addEventListener('click', function() {
+          hiddenInput.value = '';
+          fileInput.value = '';
+          removePhotoInput.value = '1';
+          previewImg.src = '';
+          previewImg.classList.add('hidden');
+          placeholder.classList.remove('hidden');
+          removeBtn.classList.add('hidden');
+          photoLabel.textContent = 'Choose Image';
+        });
       }
     </script>

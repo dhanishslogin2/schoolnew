@@ -8,8 +8,10 @@
 <link href="<?php echo base_url('assets/fonts/inter.css'); ?>" rel="stylesheet"/>
 <link href="<?php echo base_url('assets/vendor/datatables/jquery.dataTables.min.css'); ?>" rel="stylesheet"/>
 <link href="<?php echo base_url('assets/vendor/datatables/responsive.dataTables.min.css'); ?>" rel="stylesheet"/>
+<link href="<?php echo base_url('assets/vendor/cropper/cropper.min.css'); ?>" rel="stylesheet"/>
 <link href="<?php echo base_url('assets/app.css'); ?>" rel="stylesheet"/>
 <script src="<?php echo base_url('assets/vendor/jquery.min.js'); ?>"></script>
+<script src="<?php echo base_url('assets/vendor/cropper/cropper.min.js'); ?>"></script>
 <script src="<?php echo base_url('assets/vendor/datatables/jquery.dataTables.min.js'); ?>"></script>
 <script src="<?php echo base_url('assets/vendor/datatables/dataTables.responsive.min.js'); ?>"></script>
 <script id="tailwind-config">
