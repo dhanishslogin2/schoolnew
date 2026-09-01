@@ -102,6 +102,7 @@ $route['students/get_sections_ajax']         = 'students/get_sections_ajax';
 $route['students/get_classes_ajax']          = 'students/get_classes_ajax';
 $route['students/transfers']  = 'students/transfers';
 $route['students/search']     = 'students/search';
+$route['students/remove_photo/(:num)'] = 'students/remove_photo/$1';
 $route['students/tc/(:num)']  = 'students/tc/$1';
 $route['academics/get_next_section_ajax']    = 'academics/get_next_section_ajax';
 

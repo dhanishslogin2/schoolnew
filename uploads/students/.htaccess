@@ -1,0 +1,10 @@
+# Secure uploads directory for student profile photos
+<FilesMatch "(?i)\.(php|phtml|php3|php4|php5|php7|phps|sh|pl|cgi|exe|bat)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+Options -ExecCGI -Indexes
+AddType image/jpeg .jpg .jpeg
+AddType image/png .png
+AddType image/webp .webp

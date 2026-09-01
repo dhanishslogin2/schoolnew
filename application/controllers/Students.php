@@ -461,6 +461,97 @@ class Students extends MY_Controller {
                 return;
             }
 
+            $max_size = 3 * 1024 * 1024; // 3 MB
+            $allowed_ext = array('jpg', 'jpeg', 'png', 'webp');
+            $allowed_mimes = array('image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/x-png', 'image/webp');
+            $allowed_types = array(IMAGETYPE_JPEG, IMAGETYPE_PNG);
+            if (defined('IMAGETYPE_WEBP')) {
+                $allowed_types[] = IMAGETYPE_WEBP;
+            }
+
+            $temp_dir = FCPATH . 'uploads/photo_temp/';
+            if (!is_dir($temp_dir)) {
+                @mkdir($temp_dir, 0775, TRUE);
+            }
+
+            // 1. Check if cropped image payload is submitted (Base64 data URL from Cropper)
+            $croppedData = $this->input->post('cropped_image_data');
+            if (!empty($croppedData)) {
+                if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+\/=\r\n]+)$/i', $croppedData, $matches)) {
+                    $ext = strtolower($matches[1]);
+                    if ($ext === 'jpeg') $ext = 'jpg';
+                    $decoded = base64_decode($matches[2]);
+
+                    if ($decoded === FALSE || strlen($decoded) < 50) {
+                        $this->output->set_content_type('application/json')
+                                     ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please select a valid JPG, JPEG, PNG, or WEBP image.')));
+                        return;
+                    }
+
+                    if (strlen($decoded) > $max_size) {
+                        $this->output->set_content_type('application/json')
+                                     ->set_output(json_encode(array('success' => FALSE, 'error' => 'Image size must not exceed 3 MB.')));
+                        return;
+                    }
+
+                    $img_info = @getimagesizefromstring($decoded);
+                    if ($img_info === FALSE) {
+                        $this->output->set_content_type('application/json')
+                                     ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please select a valid JPG, JPEG, PNG, or WEBP image.')));
+                        return;
+                    }
+
+                    $detected_type = isset($img_info[2]) ? $img_info[2] : 0;
+                    $detected_mime = isset($img_info['mime']) ? strtolower($img_info['mime']) : '';
+                    if (!in_array($detected_type, $allowed_types, TRUE) && !in_array($detected_mime, $allowed_mimes, TRUE)) {
+                        $this->output->set_content_type('application/json')
+                                     ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please select a valid JPG, JPEG, PNG, or WEBP image.')));
+                        return;
+                    }
+
+                    $safe_name = 'photo_temp_' . time() . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
+                    if (file_put_contents($temp_dir . $safe_name, $decoded) === FALSE) {
+                        $this->output->set_content_type('application/json')
+                                     ->set_output(json_encode(array('success' => FALSE, 'error' => 'Failed to store image.')));
+                        return;
+                    }
+
+                    // Clean up any previously uploaded temp photo for this wizard session
+                    $wizard = $this->session->userdata('student_registration_wizard') ?: array();
+                    $old_sd = isset($wizard['student_details']) ? $wizard['student_details'] : array();
+                    if (!empty($old_sd['photo_temp_path'])) {
+                        $old_file = FCPATH . $old_sd['photo_temp_path'];
+                        if (is_file($old_file) && $old_file !== ($temp_dir . $safe_name)) {
+                            @unlink($old_file);
+                        }
+                    }
+
+                    $temp_path = 'uploads/photo_temp/' . $safe_name;
+                    $orig_name = $this->input->post('photo_display_name') ?: ('student_photo.' . $ext);
+
+                    if (!isset($wizard['student_details'])) {
+                        $wizard['student_details'] = array();
+                    }
+                    $wizard['student_details']['photo_temp_path']    = $temp_path;
+                    $wizard['student_details']['photo_display_name'] = $orig_name;
+                    $this->session->set_userdata('student_registration_wizard', $wizard);
+
+                    $this->output->set_content_type('application/json')
+                                 ->set_output(json_encode(array(
+                                     'success'      => TRUE,
+                                     'temp_path'    => $temp_path,
+                                     'display_name' => $orig_name,
+                                     'preview_url'  => base_url($temp_path),
+                                 )));
+                    return;
+                } else {
+                    $this->output->set_content_type('application/json')
+                                 ->set_output(json_encode(array('success' => FALSE, 'error' => 'Invalid image format.')));
+                    return;
+                }
+            }
+
+            // 2. Direct multipart upload
             if (empty($_FILES['student_image']['name'])) {
                 $this->output->set_content_type('application/json')
                              ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please select an image to upload.')));
@@ -471,7 +562,7 @@ class Students extends MY_Controller {
             if ($upload_err !== UPLOAD_ERR_OK) {
                 $err_msg = 'Upload error. Please try again.';
                 if ($upload_err === UPLOAD_ERR_INI_SIZE || $upload_err === UPLOAD_ERR_FORM_SIZE) {
-                    $err_msg = 'Student image must not exceed 3 MB.';
+                    $err_msg = 'Image size must not exceed 3 MB.';
                 } elseif ($upload_err === UPLOAD_ERR_NO_FILE) {
                     $err_msg = 'Please select an image to upload.';
                 }
@@ -480,86 +571,43 @@ class Students extends MY_Controller {
                 return;
             }
 
-            // 1. Check extension whitelist (jpg, jpeg, png)
             $orig_name = $_FILES['student_image']['name'];
             $ext = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
-            $allowed_ext = array('jpg', 'jpeg', 'png');
 
             if (!in_array($ext, $allowed_ext, TRUE)) {
                 $this->output->set_content_type('application/json')
-                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please select a valid JPG, JPEG, PNG, or WEBP image.')));
                 return;
             }
 
-            // 2. Binary Image Structure & MIME Validation (PHP core getimagesize — works without ext-fileinfo)
+            if ($_FILES['student_image']['size'] > $max_size) {
+                $this->output->set_content_type('application/json')
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Image size must not exceed 3 MB.')));
+                return;
+            }
+
             $img_info = @getimagesize($_FILES['student_image']['tmp_name']);
             if ($img_info === FALSE) {
                 $this->output->set_content_type('application/json')
-                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please select a valid JPG, JPEG, PNG, or WEBP image.')));
                 return;
             }
 
-            // Validate detected image type constant and MIME string
             $detected_type = isset($img_info[2]) ? $img_info[2] : 0;
             $detected_mime = isset($img_info['mime']) ? strtolower($img_info['mime']) : '';
-            $allowed_types = array(IMAGETYPE_JPEG, IMAGETYPE_PNG);
-            $allowed_mimes = array('image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/x-png');
-
-            if (!in_array($detected_type, $allowed_types, TRUE) || !in_array($detected_mime, $allowed_mimes, TRUE)) {
+            if (!in_array($detected_type, $allowed_types, TRUE) && !in_array($detected_mime, $allowed_mimes, TRUE)) {
                 $this->output->set_content_type('application/json')
-                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please select a valid JPG, JPEG, PNG, or WEBP image.')));
                 return;
             }
 
-            // Additional fileinfo/mime_content_type check if available on the server
-            if (function_exists('finfo_open') && function_exists('finfo_file')) {
-                $finfo = @finfo_open(FILEINFO_MIME_TYPE);
-                if (is_resource($finfo)) {
-                    $fi_mime = @finfo_file($finfo, $_FILES['student_image']['tmp_name']);
-                    @finfo_close($finfo);
-                    if ($fi_mime && !in_array(strtolower($fi_mime), $allowed_mimes, TRUE)) {
-                        $this->output->set_content_type('application/json')
-                                     ->set_output(json_encode(array('success' => FALSE, 'error' => 'Please upload a JPG, JPEG, or PNG image.')));
-                        return;
-                    }
-                }
-            }
-
-            // 3. Size check: 3 MB maximum
-            $max_size = 3 * 1024 * 1024;
-            if ($_FILES['student_image']['size'] > $max_size) {
-                $this->output->set_content_type('application/json')
-                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Student image must not exceed 3 MB.')));
-                return;
-            }
-
-            // 4. Safe unique filename & temporary storage
-            try {
-                $rand_token = bin2hex(random_bytes(6));
-            } catch (Exception $re) {
-                $rand_token = substr(md5(uniqid(mt_rand(), true)), 0, 12);
-            }
-            $safe_name = 'photo_temp_' . time() . '_' . $rand_token . '.' . ($ext === 'jpeg' ? 'jpg' : $ext);
-            $temp_dir  = FCPATH . 'uploads/photo_temp/';
-
-            if (!is_dir($temp_dir)) {
-                @mkdir($temp_dir, 0775, TRUE);
-            }
-            if (!is_dir($temp_dir)) {
-                $temp_dir = './uploads/photo_temp/';
-                if (!is_dir($temp_dir)) {
-                    @mkdir($temp_dir, 0775, TRUE);
-                }
-            }
-
+            $safe_name = 'photo_temp_' . time() . '_' . bin2hex(random_bytes(6)) . '.' . ($ext === 'jpeg' ? 'jpg' : $ext);
             if (!@move_uploaded_file($_FILES['student_image']['tmp_name'], $temp_dir . $safe_name)) {
-                log_message('error', 'wizard_photo_upload: move_uploaded_file failed to ' . $temp_dir . $safe_name);
                 $this->output->set_content_type('application/json')
-                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Failed to store image. Please check upload folder permissions.')));
+                             ->set_output(json_encode(array('success' => FALSE, 'error' => 'Failed to store image.')));
                 return;
             }
 
-            // Clean up any previously uploaded temp photo for this wizard session
             $wizard = $this->session->userdata('student_registration_wizard') ?: array();
             $old_sd = isset($wizard['student_details']) ? $wizard['student_details'] : array();
             if (!empty($old_sd['photo_temp_path'])) {
@@ -571,7 +619,6 @@ class Students extends MY_Controller {
 
             $temp_path = 'uploads/photo_temp/' . $safe_name;
 
-            // Save in session
             if (!isset($wizard['student_details'])) {
                 $wizard['student_details'] = array();
             }
@@ -591,7 +638,7 @@ class Students extends MY_Controller {
             $this->output->set_content_type('application/json')
                          ->set_output(json_encode(array(
                              'success' => FALSE,
-                             'error'   => 'Image upload failed. Please ensure the file is a valid JPG/PNG image.'
+                             'error'   => 'Image upload failed. Please ensure the file is a valid image.'
                          )));
         }
     }
@@ -1240,32 +1287,56 @@ class Students extends MY_Controller {
             return;
         }
 
+        $photo_error = NULL;
+
         if ($this->input->method() === 'post') {
             $this->form_validation->set_rules('first_name', 'First Name', 'required|trim');
             $this->form_validation->set_rules('admission_number', 'Admission Number', 'required|trim');
 
             if ($this->form_validation->run() === TRUE) {
-                $data = array(
-                    'admission_number' => $this->input->post('admission_number', TRUE),
-                    'first_name'       => $this->input->post('first_name', TRUE),
-                    'last_name'        => $this->input->post('last_name', TRUE),
-                    'gender'           => $this->input->post('gender', TRUE),
-                    'date_of_birth'    => $this->input->post('date_of_birth', TRUE) ?: $student->date_of_birth,
-                    'blood_group'      => $this->input->post('blood_group', TRUE),
-                    'academic_year_id' => $this->input->post('academic_year_id') ?: $student->academic_year_id,
-                    'class_id'         => $this->input->post('class_id') ?: $student->class_id,
-                    'section_id'       => $this->input->post('section_id') ?: $student->section_id,
-                    'roll_number'      => $this->input->post('roll_number', TRUE),
-                    'guardian_name'    => $this->input->post('guardian_name', TRUE),
-                    'guardian_relation'=> $this->input->post('guardian_relation', TRUE) ?: $student->guardian_relation,
-                    'guardian_phone'   => $this->input->post('guardian_phone', TRUE),
-                    'guardian_email'   => $this->input->post('guardian_email', TRUE),
-                    'address'          => $this->input->post('address', TRUE),
-                );
-                $this->Student_model->update($student_id, $data);
-                $this->session->set_flashdata('success', 'Student details updated successfully.');
-                redirect('students/profile/' . $student_id);
-                return;
+                $photo_result = $this->process_student_photo($student_id);
+                if ($photo_result['success'] === FALSE && !empty($photo_result['error'])) {
+                    $photo_error = $photo_result['error'];
+                } else {
+                    $data = array(
+                        'admission_number' => $this->input->post('admission_number', TRUE),
+                        'first_name'       => $this->input->post('first_name', TRUE),
+                        'last_name'        => $this->input->post('last_name', TRUE),
+                        'gender'           => $this->input->post('gender', TRUE),
+                        'date_of_birth'    => $this->input->post('date_of_birth', TRUE) ?: $student->date_of_birth,
+                        'blood_group'      => $this->input->post('blood_group', TRUE),
+                        'academic_year_id' => $this->input->post('academic_year_id') ?: $student->academic_year_id,
+                        'class_id'         => $this->input->post('class_id') ?: $student->class_id,
+                        'section_id'       => $this->input->post('section_id') ?: $student->section_id,
+                        'roll_number'      => $this->input->post('roll_number', TRUE),
+                        'guardian_name'    => $this->input->post('guardian_name', TRUE),
+                        'guardian_relation'=> $this->input->post('guardian_relation', TRUE) ?: $student->guardian_relation,
+                        'guardian_phone'   => $this->input->post('guardian_phone', TRUE),
+                        'guardian_email'   => $this->input->post('guardian_email', TRUE),
+                        'address'          => $this->input->post('address', TRUE),
+                        'updated_at'       => date('Y-m-d H:i:s'),
+                    );
+
+                    // Check if photo was requested to be removed
+                    if ($this->input->post('remove_photo') === '1') {
+                        $this->Student_model->delete_photo($student_id);
+                        $data['photo'] = NULL;
+                    } elseif (!empty($photo_result['file_name'])) {
+                        // Unlink old photo if exists before replacing
+                        if (!empty($student->photo)) {
+                            $oldFile = FCPATH . 'uploads/students/' . $student->photo;
+                            if (file_exists($oldFile) && is_file($oldFile)) {
+                                @unlink($oldFile);
+                            }
+                        }
+                        $data['photo'] = $photo_result['file_name'];
+                    }
+
+                    $this->Student_model->update($student_id, $data);
+                    $this->session->set_flashdata('success', 'Student details updated successfully.');
+                    redirect('students/profile/' . $student_id);
+                    return;
+                }
             }
         }
 
@@ -1274,15 +1345,144 @@ class Students extends MY_Controller {
         $years    = $this->Academic_year_model->get_all();
 
         $this->render('pages/students/edit', array(
-            'title'      => 'Edit Student',
-            'page_key'   => 'students',
-            'breadcrumb' => array('Student Management', 'Edit Student'),
-            'student'    => $student,
-            'student_id' => $student_id,
-            'classes'    => $classes,
-            'sections'   => $sections,
-            'years'      => $years,
+            'title'       => 'Edit Student',
+            'page_key'    => 'students',
+            'breadcrumb'  => array('Student Management', 'Edit Student'),
+            'student'     => $student,
+            'student_id'  => $student_id,
+            'classes'     => $classes,
+            'sections'    => $sections,
+            'years'       => $years,
+            'photo_error' => $photo_error,
         ));
+    }
+
+    public function remove_photo($student_id = NULL)
+    {
+        $this->require_permission('students.edit');
+
+        if (empty($student_id)) {
+            show_404();
+            return;
+        }
+
+        $this->Student_model->delete_photo($student_id);
+
+        if ($this->input->is_ajax_request()) {
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode(array('success' => TRUE, 'message' => 'Student photo removed successfully.')));
+            return;
+        }
+
+        $this->session->set_flashdata('success', 'Student photo removed.');
+        $redirect = $this->input->get('redirect_to') ?: ('students/edit/' . $student_id);
+        redirect($redirect);
+    }
+
+    /* =========================================================================
+       Private: Process and Validate Student Photo Upload / Base64 Cropped Data
+       ========================================================================= */
+    private function process_student_photo($student_id = NULL)
+    {
+        $uploadDir = FCPATH . 'uploads/students/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $maxSize = 3 * 1024 * 1024; // 3 MB
+        $allowedExts = array('jpg', 'jpeg', 'png', 'webp');
+        $allowedMimes = array('image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/x-png', 'image/webp');
+        $allowedTypes = array(IMAGETYPE_JPEG, IMAGETYPE_PNG);
+        if (defined('IMAGETYPE_WEBP')) {
+            $allowedTypes[] = IMAGETYPE_WEBP;
+        }
+
+        // 1. Check if cropped image payload is submitted (Base64 data URL from Cropper)
+        $croppedData = $this->input->post('cropped_image_data');
+        if (!empty($croppedData)) {
+            if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+\/=\r\n]+)$/i', $croppedData, $matches)) {
+                $ext = strtolower($matches[1]);
+                if ($ext === 'jpeg') $ext = 'jpg';
+                $decoded = base64_decode($matches[2]);
+
+                if ($decoded === FALSE || strlen($decoded) < 50) {
+                    return array('success' => FALSE, 'error' => 'The selected file is not a valid image.');
+                }
+
+                if (strlen($decoded) > $maxSize) {
+                    return array('success' => FALSE, 'error' => 'Student image must not exceed 3 MB.');
+                }
+
+                $imgInfo = @getimagesizefromstring($decoded);
+                if ($imgInfo === FALSE) {
+                    return array('success' => FALSE, 'error' => 'The selected file is not a valid image.');
+                }
+
+                $detectedType = isset($imgInfo[2]) ? $imgInfo[2] : 0;
+                $detectedMime = isset($imgInfo['mime']) ? strtolower($imgInfo['mime']) : '';
+                if (!in_array($detectedType, $allowedTypes, TRUE) && !in_array($detectedMime, $allowedMimes, TRUE)) {
+                    return array('success' => FALSE, 'error' => 'Only JPG, JPEG, PNG, and WEBP images are allowed.');
+                }
+
+                $safeName = 'student_' . ($student_id ?: 'new') . '_' . date('YmdHis') . '_' . substr(md5(uniqid(mt_rand(), true)), 0, 6) . '.' . $ext;
+                $destPath = $uploadDir . $safeName;
+
+                if (file_put_contents($destPath, $decoded) !== FALSE) {
+                    return array('success' => TRUE, 'file_name' => $safeName);
+                } else {
+                    return array('success' => FALSE, 'error' => 'Unable to upload student image. Please try again.');
+                }
+            } else {
+                return array('success' => FALSE, 'error' => 'Invalid cropped image format.');
+            }
+        }
+
+        // 2. Fallback check: Direct standard file upload $_FILES['student_image']
+        if (isset($_FILES['student_image']['name']) && !empty($_FILES['student_image']['name'])) {
+            $fileError = isset($_FILES['student_image']['error']) ? (int)$_FILES['student_image']['error'] : UPLOAD_ERR_NO_FILE;
+            if ($fileError !== UPLOAD_ERR_OK) {
+                if ($fileError === UPLOAD_ERR_INI_SIZE || $fileError === UPLOAD_ERR_FORM_SIZE) {
+                    return array('success' => FALSE, 'error' => 'Student image must not exceed 3 MB.');
+                }
+                return array('success' => FALSE, 'error' => 'Unable to upload student image. Please try again.');
+            }
+
+            $origName = $_FILES['student_image']['name'];
+            $fileSize = $_FILES['student_image']['size'];
+            $ext      = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+
+            if (!in_array($ext, $allowedExts, TRUE)) {
+                return array('success' => FALSE, 'error' => 'Only JPG, JPEG, PNG, and WEBP images are allowed.');
+            }
+
+            if ($fileSize > $maxSize || $fileSize <= 0) {
+                return array('success' => FALSE, 'error' => 'Student image must not exceed 3 MB.');
+            }
+
+            $imgInfo = @getimagesize($_FILES['student_image']['tmp_name']);
+            if ($imgInfo === FALSE) {
+                return array('success' => FALSE, 'error' => 'The selected file is not a valid image.');
+            }
+
+            $detectedType = isset($imgInfo[2]) ? $imgInfo[2] : 0;
+            $detectedMime = isset($imgInfo['mime']) ? strtolower($imgInfo['mime']) : '';
+            if (!in_array($detectedType, $allowedTypes, TRUE) && !in_array($detectedMime, $allowedMimes, TRUE)) {
+                return array('success' => FALSE, 'error' => 'Only JPG, JPEG, PNG, and WEBP images are allowed.');
+            }
+
+            if ($ext === 'jpeg') $ext = 'jpg';
+            $safeName = 'student_' . ($student_id ?: 'new') . '_' . date('YmdHis') . '_' . substr(md5(uniqid(mt_rand(), true)), 0, 6) . '.' . $ext;
+            $destPath = $uploadDir . $safeName;
+
+            if (move_uploaded_file($_FILES['student_image']['tmp_name'], $destPath)) {
+                return array('success' => TRUE, 'file_name' => $safeName);
+            } else {
+                return array('success' => FALSE, 'error' => 'Unable to upload student image. Please try again.');
+            }
+        }
+
+        return array('success' => TRUE, 'file_name' => NULL);
     }
 
     /* =========================================================================

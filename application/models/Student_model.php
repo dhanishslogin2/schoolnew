@@ -1081,6 +1081,28 @@ class Student_model extends CI_Model {
             'message'        => $inserted_count . ' students added successfully.'
         );
     }
+
+    public function update_photo($student_id, $photo_filename)
+    {
+        return $this->db
+            ->where($this->primaryKey, (int)$student_id)
+            ->update($this->table, array('photo' => $photo_filename, 'updated_at' => date('Y-m-d H:i:s')));
+    }
+
+    public function delete_photo($student_id)
+    {
+        $student = $this->get_by_id($student_id);
+        if ($student && !empty($student->photo)) {
+            $filePath = FCPATH . 'uploads/students/' . $student->photo;
+            if (file_exists($filePath) && is_file($filePath)) {
+                @unlink($filePath);
+            }
+        }
+        return $this->db
+            ->where($this->primaryKey, (int)$student_id)
+            ->update($this->table, array('photo' => NULL, 'updated_at' => date('Y-m-d H:i:s')));
+    }
 }
+
 
 
