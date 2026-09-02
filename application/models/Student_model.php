@@ -936,10 +936,11 @@ class Student_model extends CI_Model {
             $guardian_relation = isset($row['guardian_relation']) ? trim($row['guardian_relation']) : 'Father';
             if (empty($guardian_relation)) $guardian_relation = 'Father';
 
-            // 7. Guardian Phone (Required)
-            $guardian_phone = isset($row['guardian_phone']) ? trim($row['guardian_phone']) : '';
-            if (empty($guardian_phone)) {
-                $guardian_phone = '—';
+            // 7. Parent/Guardian Contact Number (Mandatory)
+            $guardian_phone = isset($row['guardian_phone']) ? trim((string)$row['guardian_phone']) : '';
+            if ($guardian_phone === '' || $guardian_phone === '—' || $guardian_phone === '-') {
+                $errors[] = 'Parent/Guardian Contact Number is required.';
+                $guardian_phone = '';
             }
 
             // 8. Guardian Email
@@ -1036,6 +1037,14 @@ class Student_model extends CI_Model {
         }
 
         foreach ($valid_rows as $row) {
+            $first_name = isset($row['first_name']) ? trim($row['first_name']) : '';
+            $guardian_phone = isset($row['guardian_phone']) ? trim((string)$row['guardian_phone']) : '';
+
+            // Mandatory validation check before database insertion
+            if (empty($first_name) || $guardian_phone === '' || $guardian_phone === '—' || $guardian_phone === '-') {
+                continue;
+            }
+
             // Generate unique admission number if needed
             $adm = isset($row['admission_number']) ? trim($row['admission_number']) : '';
             if (empty($adm) || $adm === '(Auto-generate)') {
@@ -1044,7 +1053,7 @@ class Student_model extends CI_Model {
 
             $student_data = array(
                 'admission_number'  => $adm,
-                'first_name'        => $row['first_name'],
+                'first_name'        => $first_name,
                 'middle_name'       => !empty($row['middle_name']) ? $row['middle_name'] : NULL,
                 'last_name'         => !empty($row['last_name']) ? $row['last_name'] : '',
                 'gender'            => !empty($row['gender']) ? $row['gender'] : 'Male',
@@ -1052,7 +1061,7 @@ class Student_model extends CI_Model {
                 'blood_group'       => !empty($row['blood_group']) ? $row['blood_group'] : '',
                 'guardian_name'     => !empty($row['guardian_name']) ? $row['guardian_name'] : 'Parent',
                 'guardian_relation' => !empty($row['guardian_relation']) ? $row['guardian_relation'] : 'Father',
-                'guardian_phone'    => !empty($row['guardian_phone']) ? $row['guardian_phone'] : '',
+                'guardian_phone'    => $guardian_phone,
                 'guardian_email'    => !empty($row['guardian_email']) ? $row['guardian_email'] : '',
                 'address'           => !empty($row['address']) ? $row['address'] : '',
                 'roll_number'       => !empty($row['roll_number']) ? $row['roll_number'] : '',

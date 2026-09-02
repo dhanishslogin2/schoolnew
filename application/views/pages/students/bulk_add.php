@@ -167,7 +167,7 @@
             <div class="space-y-1.5 text-[11px] text-slate-500">
               <div class="flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-[14px] text-emerald-600">check_circle</span>
-                <span>Required: First Name, DOB, Gender, Guardian</span>
+                <span>Required: First Name, DOB, Gender, Guardian, Contact Number</span>
               </div>
               <div class="flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-[14px] text-emerald-600">check_circle</span>
@@ -230,7 +230,7 @@
                   <th class="p-3">Gender</th>
                   <th class="p-3">Blood</th>
                   <th class="p-3">Guardian</th>
-                  <th class="p-3">Contact</th>
+                  <th class="p-3">Contact <span class="text-rose-600">*</span></th>
                   <th class="p-3">Adm No.</th>
                   <th class="p-3 pr-4">Validation Notes</th>
                 </tr>
@@ -563,6 +563,10 @@
         ? `<div class="text-rose-700 font-semibold text-[11px]">${r.errors.map(e => `• ${escapeHtml(e)}`).join('<br>')}</div>`
         : '<span class="text-slate-400">—</span>';
 
+      const contactDisplay = (r.guardian_phone && r.guardian_phone !== '—' && r.guardian_phone !== '-')
+        ? escapeHtml(r.guardian_phone)
+        : '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">Missing</span>';
+
       tbodyHtml += `
         <tr class="hover:bg-slate-50/80 ${!r.is_valid ? 'bg-rose-50/30' : ''}">
           <td class="p-3 pl-4 font-mono font-bold text-slate-500">${r.row_num}</td>
@@ -572,7 +576,7 @@
           <td class="p-3">${escapeHtml(r.gender)}</td>
           <td class="p-3 font-semibold">${escapeHtml(r.blood_group || '—')}</td>
           <td class="p-3">${escapeHtml(r.guardian_name)}</td>
-          <td class="p-3 font-mono">${escapeHtml(r.guardian_phone)}</td>
+          <td class="p-3 font-mono">${contactDisplay}</td>
           <td class="p-3 font-mono font-bold text-emerald-800">${escapeHtml(r.admission_number)}</td>
           <td class="p-3 pr-4">${errorNotes}</td>
         </tr>
@@ -763,21 +767,59 @@
 
     const rows = document.getElementById('bulk-entry-tbody').children;
     const entries = [];
+    let hasClientErrors = false;
+    let clientErrorMessages = [];
+
+    // Reset error styling on all rows and inputs
+    for (let i = 0; i < rows.length; i++) {
+      const tr = rows[i];
+      tr.classList.remove('bg-rose-50/40');
+      tr.querySelectorAll('input, select').forEach(el => {
+        el.classList.remove('!border-rose-500', '!ring-rose-500', '!bg-rose-50/50');
+      });
+    }
 
     for (let i = 0; i < rows.length; i++) {
       const tr = rows[i];
-      const fn = tr.querySelector('input[name="first_name"]').value.trim();
+      const fnInput = tr.querySelector('input[name="first_name"]');
+      const gpInput = tr.querySelector('input[name="guardian_phone"]');
+      const dobInput = tr.querySelector('input[name="date_of_birth"]');
+      const gnInput = tr.querySelector('input[name="guardian_name"]');
+
+      const fn = fnInput.value.trim();
       const ln = tr.querySelector('input[name="last_name"]').value.trim();
-      const dob = tr.querySelector('input[name="date_of_birth"]').value.trim();
+      const dob = dobInput.value.trim();
       const g = tr.querySelector('select[name="gender"]').value;
       const bg = tr.querySelector('select[name="blood_group"]').value;
-      const gn = tr.querySelector('input[name="guardian_name"]').value.trim();
+      const gn = gnInput.value.trim();
       const gr = tr.querySelector('select[name="guardian_relation"]').value;
-      const gp = tr.querySelector('input[name="guardian_phone"]').value.trim();
+      const gp = gpInput.value.trim();
       const adm = tr.querySelector('input[name="admission_number"]').value.trim();
       const roll = tr.querySelector('input[name="roll_number"]').value.trim();
 
-      if (fn || ln || gn || adm) {
+      // Check if this row is filled/active
+      if (fn || ln || gn || adm || gp || dob) {
+        let rowErrors = [];
+
+        if (!fn) {
+          fnInput.classList.add('!border-rose-500', '!ring-rose-500', '!bg-rose-50/50');
+          rowErrors.push('First Name is required');
+        }
+        if (!gp) {
+          gpInput.classList.add('!border-rose-500', '!ring-rose-500', '!bg-rose-50/50');
+          rowErrors.push('Parent/Guardian Contact Number is required');
+        }
+        if (!dob) {
+          dobInput.classList.add('!border-rose-500', '!ring-rose-500', '!bg-rose-50/50');
+          rowErrors.push('Date of Birth is required');
+        }
+
+        if (rowErrors.length > 0) {
+          hasClientErrors = true;
+          tr.classList.add('bg-rose-50/40');
+          clientErrorMessages.push(`Row ${i + 1}: ${rowErrors.join(', ')}`);
+        }
+
         entries.push({
           first_name: fn,
           last_name: ln,
@@ -795,6 +837,11 @@
 
     if (entries.length === 0) {
       alert('Please enter details for at least one student.');
+      return;
+    }
+
+    if (hasClientErrors) {
+      alert('Please fix the following validation error(s):\n\n' + clientErrorMessages.join('\n'));
       return;
     }
 
@@ -827,10 +874,26 @@
           showSuccessModal(res.inserted_count, $('#bulk-academic-year option:selected').text(), $('#bulk-class-id option:selected').text() + ' - ' + $('#bulk-section-id option:selected').text(), classId, yearId);
         } else {
           if (res && res.rows && res.error_count > 0) {
-            let errMsg = `Validation failed on ${res.error_count} row(s):\n`;
+            let errMsg = `Validation failed on ${res.error_count} row(s):\n\n`;
             res.rows.forEach(r => {
               if (!r.is_valid) {
                 errMsg += `Row ${r.row_num}: ${r.errors.join(', ')}\n`;
+                const targetRow = rows[r.row_num - 1];
+                if (targetRow) {
+                  targetRow.classList.add('bg-rose-50/40');
+                  if (r.errors.some(e => e.includes('Contact Number'))) {
+                    const gField = targetRow.querySelector('input[name="guardian_phone"]');
+                    if (gField) gField.classList.add('!border-rose-500', '!ring-rose-500', '!bg-rose-50/50');
+                  }
+                  if (r.errors.some(e => e.includes('First Name'))) {
+                    const fnField = targetRow.querySelector('input[name="first_name"]');
+                    if (fnField) fnField.classList.add('!border-rose-500', '!ring-rose-500', '!bg-rose-50/50');
+                  }
+                  if (r.errors.some(e => e.includes('Date of Birth'))) {
+                    const dobField = targetRow.querySelector('input[name="date_of_birth"]');
+                    if (dobField) dobField.classList.add('!border-rose-500', '!ring-rose-500', '!bg-rose-50/50');
+                  }
+                }
               }
             });
             alert(errMsg);

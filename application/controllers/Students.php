@@ -1800,7 +1800,8 @@ class Students extends MY_Controller {
 
         if ($pending && !empty($pending['rows'])) {
             foreach ($pending['rows'] as $r) {
-                if (!empty($r['is_valid'])) {
+                $g_phone = isset($r['guardian_phone']) ? trim((string)$r['guardian_phone']) : '';
+                if (!empty($r['is_valid']) && $g_phone !== '' && $g_phone !== '—' && $g_phone !== '-') {
                     $rows_to_insert[] = $r;
                 }
             }
@@ -1813,14 +1814,20 @@ class Students extends MY_Controller {
         if (empty($rows_to_insert)) {
             $raw_posted = $this->input->post('valid_rows');
             if (!empty($raw_posted) && is_array($raw_posted)) {
-                $rows_to_insert = $raw_posted;
+                $validation = $this->Student_model->bulk_validate_students($raw_posted, $academic_year_id, $class_id, $section_id);
+                foreach ($validation['rows'] as $r) {
+                    $g_phone = isset($r['guardian_phone']) ? trim((string)$r['guardian_phone']) : '';
+                    if (!empty($r['is_valid']) && $g_phone !== '' && $g_phone !== '—' && $g_phone !== '-') {
+                        $rows_to_insert[] = $r;
+                    }
+                }
             }
         }
 
         if (empty($rows_to_insert)) {
             return $this->output->set_content_type('application/json')->set_output(json_encode(array(
                 'status'  => false,
-                'message' => 'No valid student records found to import.',
+                'message' => 'No valid student records with required contact numbers found to import.',
                 'csrf_token_name' => $this->security->get_csrf_token_name(),
                 'csrf_hash'       => $this->security->get_csrf_hash()
             )));
