@@ -655,12 +655,21 @@ class Student_model extends CI_Model {
      * @param int $academic_year_id
      * @return array
      */
-    public function get_classes_with_student_count($academic_year_id)
+    public function get_classes_with_student_count($academic_year_id, $status = 1)
     {
         $academic_year_id = (int)$academic_year_id;
+        $status_sql = "";
+        $params = [$academic_year_id];
+
+        if ($status !== NULL && $status !== '' && $status !== 'All') {
+            $status_sql = " AND st.status = ? ";
+            $params[] = (int)$status;
+        }
+        $params[] = $academic_year_id;
+
         return $this->db->query("
             SELECT c.class_id, c.class_name, c.class_code, c.academic_year_id,
-                   COUNT(st.student_id) as total_students,
+                   COUNT(DISTINCT st.student_id) as total_students,
                    SUM(CASE WHEN st.status = 1 THEN 1 ELSE 0 END) as active_students,
                    SUM(CASE WHEN st.gender = 'Male' THEN 1 ELSE 0 END) as male_students,
                    SUM(CASE WHEN st.gender = 'Female' THEN 1 ELSE 0 END) as female_students
@@ -668,11 +677,12 @@ class Student_model extends CI_Model {
             LEFT JOIN tbl_students st ON st.class_id = c.class_id 
                  AND st.academic_year_id = ? 
                  AND st.is_deleted = 'n'
+                 {$status_sql}
             WHERE c.status = 1 AND c.is_deleted = 'n'
               AND (c.academic_year_id = ? OR c.academic_year_id IS NULL OR c.academic_year_id = 0)
             GROUP BY c.class_id, c.class_name
             ORDER BY c.class_id ASC
-        ", [$academic_year_id, $academic_year_id])->result();
+        ", $params)->result();
     }
 
     /**

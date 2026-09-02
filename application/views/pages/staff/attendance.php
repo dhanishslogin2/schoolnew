@@ -26,9 +26,10 @@
             <?php endforeach; ?>
           </select>
         </div>
-        <div class="flex items-end gap-2">
-          <button type="button" onclick="markAllStatus('Present')" class="px-3 py-2.5 rounded-lg border border-secondary text-secondary hover:bg-secondary/10 text-label-md flex-1">Mark All Present</button>
-          <button type="button" onclick="markAllStatus('Absent')" class="px-3 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-high text-label-md">All Absent</button>
+        <div class="flex items-end">
+          <button type="button" onclick="markAllStatus('Present')" class="w-full px-3 py-2.5 rounded-lg border border-secondary text-secondary hover:bg-secondary/10 text-label-md flex items-center justify-center gap-1.5 transition-colors">
+            <span class="material-symbols-outlined text-[18px]">done_all</span>Mark All Present
+          </button>
         </div>
       </div>
     </div>
@@ -73,20 +74,16 @@
                   <td class="px-4 py-3 whitespace-nowrap">
                     <div class="flex items-center gap-3">
                       <label class="inline-flex items-center gap-1 cursor-pointer">
-                        <input type="radio" name="attendance[<?php echo $st->staff_id; ?>][status]" value="Present" <?php echo ($currentStatus === 'Present') ? 'checked' : ''; ?> class="att-radio-present text-secondary"/>
+                        <input type="radio" name="attendance[<?php echo $st->staff_id; ?>][status]" value="Present" <?php echo ($currentStatus === 'Present') ? 'checked' : ''; ?> class="att-radio-present text-secondary accent-secondary focus:ring-secondary"/>
                         <span class="text-[13px] font-medium text-secondary">Present</span>
                       </label>
                       <label class="inline-flex items-center gap-1 cursor-pointer">
-                        <input type="radio" name="attendance[<?php echo $st->staff_id; ?>][status]" value="Late / Half Day" <?php echo ($currentStatus === 'Half Day' || $currentStatus === 'Late / Half Day') ? 'checked' : ''; ?> class="att-radio-half text-tertiary"/>
+                        <input type="radio" name="attendance[<?php echo $st->staff_id; ?>][status]" value="Late / Half Day" <?php echo ($currentStatus === 'Half Day' || $currentStatus === 'Late / Half Day') ? 'checked' : ''; ?> class="att-radio-half text-tertiary accent-tertiary focus:ring-tertiary"/>
                         <span class="text-[13px] font-medium text-tertiary">Half Day</span>
                       </label>
                       <label class="inline-flex items-center gap-1 cursor-pointer">
-                        <input type="radio" name="attendance[<?php echo $st->staff_id; ?>][status]" value="Leave" <?php echo ($currentStatus === 'Leave') ? 'checked' : ''; ?> class="att-radio-leave text-primary"/>
-                        <span class="text-[13px] font-medium text-primary">Leave</span>
-                      </label>
-                      <label class="inline-flex items-center gap-1 cursor-pointer">
-                        <input type="radio" name="attendance[<?php echo $st->staff_id; ?>][status]" value="Absent" <?php echo ($currentStatus === 'Absent') ? 'checked' : ''; ?> class="att-radio-absent text-error"/>
-                        <span class="text-[13px] font-medium text-error">Absent</span>
+                        <input type="radio" name="attendance[<?php echo $st->staff_id; ?>][status]" value="Leave" <?php echo ($currentStatus === 'Leave') ? 'checked' : ''; ?> class="att-radio-leave text-error accent-error focus:ring-error"/>
+                        <span class="text-[13px] font-medium text-error">Leave</span>
                       </label>
                     </div>
                   </td>
@@ -118,8 +115,6 @@
       function markAllStatus(status) {
         if (status === 'Present') {
           document.querySelectorAll('.att-radio-present').forEach(function(r) { r.checked = true; });
-        } else if (status === 'Absent') {
-          document.querySelectorAll('.att-radio-absent').forEach(function(r) { r.checked = true; });
         }
       }
     </script>

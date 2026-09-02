@@ -50,7 +50,7 @@ class Students extends MY_Controller {
             $selected_year = (int)$years[0]->academic_year_id;
         }
 
-        $classes_with_counts = $this->Student_model->get_classes_with_student_count($selected_year);
+        $classes_with_counts = $this->Student_model->get_classes_with_student_count($selected_year, 1);
         $selected_class = $this->input->get('class_id') ? (int)$this->input->get('class_id') : NULL;
 
         // If no class is explicitly selected in URL, choose the first class with students or first available class
@@ -73,7 +73,7 @@ class Students extends MY_Controller {
     }
 
     /**
-     * AJAX endpoint for loading class list and student counts when academic year changes.
+     * AJAX endpoint for loading class list and student counts when academic year or status filter changes.
      */
     public function class_counts_ajax()
     {
@@ -83,7 +83,10 @@ class Students extends MY_Controller {
             $academic_year_id = $this->academic_year_id;
         }
 
-        $classes = $this->Student_model->get_classes_with_student_count($academic_year_id);
+        $status_raw = $this->input->get_post('status');
+        $status = ($status_raw !== NULL && $status_raw !== '' && $status_raw !== 'All' && is_numeric($status_raw)) ? (int)$status_raw : ($status_raw === 'All' ? 'All' : 1);
+
+        $classes = $this->Student_model->get_classes_with_student_count($academic_year_id, $status);
 
         return $this->output
             ->set_content_type('application/json')
@@ -151,7 +154,13 @@ class Students extends MY_Controller {
             'search'           => $effective_search,
         );
 
-        $records_total    = $this->Student_model->count_all_students(array('academic_year_id' => $academic_year_id, 'class_id' => $class_id));
+        $total_filters = array(
+            'academic_year_id' => $academic_year_id,
+            'class_id'         => $class_id,
+            'status'           => $status,
+        );
+
+        $records_total    = $this->Student_model->count_all_students($total_filters);
         $records_filtered = $this->Student_model->count_all_students($filters);
         $students         = $this->Student_model->get_all_students_paginated($filters, $length, $start, $order_col, $order_dir);
 
@@ -383,6 +392,11 @@ class Students extends MY_Controller {
      */
     public function register()
     {
+        // Fresh registration entry point: clear any stale/submitted wizard state
+        $wizard = $this->session->userdata('student_registration_wizard');
+        if (!empty($wizard['submitted'])) {
+            $this->session->unset_userdata('student_registration_wizard');
+        }
         $this->add();
     }
 
@@ -403,6 +417,13 @@ class Students extends MY_Controller {
 
         $step    = (int)($this->input->get('step') ?: 1);
         $wizard  = $this->session->userdata('student_registration_wizard') ?: array();
+
+        // If visiting step 1 directly or if wizard was marked submitted, reset submitted state
+        if ($step === 1 && !empty($wizard['submitted'])) {
+            $wizard['submitted'] = FALSE;
+            $wizard['wizard_token'] = sha1(uniqid('wiz_', TRUE));
+            $this->session->set_userdata('student_registration_wizard', $wizard);
+        }
 
         // ── Guard: disallow skipping ahead ────────────────────────────────────
         if ($step === 2 && empty($wizard['student_details'])) {
@@ -425,6 +446,7 @@ class Students extends MY_Controller {
         // ── Initialise a wizard token on first visit ───────────────────────────
         if (empty($wizard['wizard_token'])) {
             $wizard['wizard_token'] = sha1(uniqid('wiz_', TRUE));
+            $wizard['submitted'] = FALSE;
             $this->session->set_userdata('student_registration_wizard', $wizard);
         }
 
@@ -672,7 +694,8 @@ class Students extends MY_Controller {
         // Store step-1 data in session (no DB write)
         $wizard = $this->session->userdata('student_registration_wizard') ?: array();
 
-        // Initialise token if somehow missing
+        // Fresh or updated step 1 always resets submitted status
+        $wizard['submitted'] = FALSE;
         if (empty($wizard['wizard_token'])) {
             $wizard['wizard_token'] = sha1(uniqid('wiz_', TRUE));
         }
@@ -985,6 +1008,7 @@ class Students extends MY_Controller {
         }
         $academic_details['extracurricular'] = $extracurricular;
 
+        $wizard['submitted'] = FALSE;
         $wizard['academic_details'] = $academic_details;
         $this->session->set_userdata('student_registration_wizard', $wizard);
 
@@ -1034,7 +1058,12 @@ class Students extends MY_Controller {
             return;
         }
 
-        $this->form_validation->set_rules('guardian_name', 'Guardian Name', 'required|trim');
+        $this->form_validation->set_rules('guardian_name', 'Guardian Name', 'required|trim', array(
+            'required' => 'Guardian name is required.'
+        ));
+        $this->form_validation->set_rules('guardian_phone', 'Parent / Guardian Contact Number', 'required|trim', array(
+            'required' => 'Parent / Guardian contact number is required.'
+        ));
 
         if ($this->form_validation->run() !== TRUE) {
             $this->output
@@ -1050,165 +1079,192 @@ class Students extends MY_Controller {
         $wizard['submitted'] = TRUE;
         $this->session->set_userdata('student_registration_wizard', $wizard);
 
-        $parent_details = array(
-            'guardian_name'     => $this->input->post('guardian_name',     TRUE),
-            'guardian_relation' => $this->input->post('guardian_relation', TRUE) ?: 'Father',
-            'guardian_phone'    => $this->input->post('guardian_phone',    TRUE),
-            'guardian_email'    => $this->input->post('guardian_email',    TRUE),
-            'address'           => $this->input->post('address',           TRUE),
-        );
+        try {
+            $parent_details = array(
+                'guardian_name'     => $this->input->post('guardian_name',     TRUE),
+                'guardian_relation' => $this->input->post('guardian_relation', TRUE) ?: 'Father',
+                'guardian_phone'    => $this->input->post('guardian_phone',    TRUE),
+                'guardian_email'    => $this->input->post('guardian_email',    TRUE),
+                'address'           => $this->input->post('address',           TRUE),
+            );
 
-        // ── Merge all three steps ──────────────────────────────────────────────
-        $sd = $wizard['student_details'];
-        $ad = $wizard['academic_details'];
+            // ── Merge all three steps ──────────────────────────────────────────────
+            $sd = $wizard['student_details'];
+            $ad = $wizard['academic_details'];
 
-        $class_id = !empty($ad['class_id']) ? (int)$ad['class_id'] : 1;
-        $section_id = !empty($ad['section_id']) ? (int)$ad['section_id'] : $this->Section_model->get_default_section_id($class_id);
+            $class_id = !empty($ad['class_id']) ? (int)$ad['class_id'] : 1;
+            $section_id = !empty($ad['section_id']) ? (int)$ad['section_id'] : $this->Section_model->get_default_section_id($class_id);
 
-        // ── Photo Handling: Move from temp → permanent uploads/students/ ──────
-        $photo_filename   = NULL;
-        $moved_photo_path = NULL;
-        if (!empty($sd['photo_temp_path'])) {
-            $temp_photo = FCPATH . $sd['photo_temp_path'];
-            if (is_file($temp_photo)) {
-                $photo_dest_dir = FCPATH . 'uploads/students/';
-                if (!is_dir($photo_dest_dir)) {
-                    mkdir($photo_dest_dir, 0755, TRUE);
-                }
-                $photo_ext = strtolower(pathinfo($sd['photo_temp_path'], PATHINFO_EXTENSION));
-                if ($photo_ext === 'jpeg') $photo_ext = 'jpg';
-                $photo_filename = 'photo_' . time() . '_' . bin2hex(random_bytes(6)) . '.' . $photo_ext;
-                $photo_dest_path = $photo_dest_dir . $photo_filename;
-                if (rename($temp_photo, $photo_dest_path)) {
-                    $moved_photo_path = $photo_dest_path;
-                } else {
-                    $photo_filename = NULL;
+            // ── Photo Handling: Move from temp → permanent uploads/students/ ──────
+            $photo_filename   = NULL;
+            $moved_photo_path = NULL;
+            if (!empty($sd['photo_temp_path'])) {
+                $temp_photo = FCPATH . $sd['photo_temp_path'];
+                if (is_file($temp_photo)) {
+                    $photo_dest_dir = FCPATH . 'uploads/students/';
+                    if (!is_dir($photo_dest_dir)) {
+                        mkdir($photo_dest_dir, 0755, TRUE);
+                    }
+                    $photo_ext = strtolower(pathinfo($sd['photo_temp_path'], PATHINFO_EXTENSION));
+                    if ($photo_ext === 'jpeg') $photo_ext = 'jpg';
+                    $photo_filename = 'photo_' . time() . '_' . bin2hex(random_bytes(6)) . '.' . $photo_ext;
+                    $photo_dest_path = $photo_dest_dir . $photo_filename;
+                    if (rename($temp_photo, $photo_dest_path)) {
+                        $moved_photo_path = $photo_dest_path;
+                    } else {
+                        $photo_filename = NULL;
+                    }
                 }
             }
-        }
 
-        $student_data = array(
-            'admission_number'  => $sd['admission_number'],
-            'first_name'        => $sd['first_name'],
-            'last_name'         => $sd['last_name']         ?: '',
-            'gender'            => $sd['gender']            ?: 'Male',
-            'date_of_birth'     => $sd['date_of_birth']     ?: date('Y-m-d'),
-            'blood_group'       => $sd['blood_group']       ?: '',
-            'photo'             => $photo_filename,
-            'academic_year_id'  => !empty($ad['academic_year_id']) ? (int)$ad['academic_year_id'] : $this->academic_year_id,
-            'class_id'          => $class_id,
-            'section_id'        => $section_id,
-            'roll_number'       => !empty($ad['roll_number']) ? trim($ad['roll_number']) : '',
-            'guardian_name'     => $parent_details['guardian_name'],
-            'guardian_relation' => $parent_details['guardian_relation'],
-            'guardian_phone'    => $parent_details['guardian_phone']    ?: '',
-            'guardian_email'    => $parent_details['guardian_email']    ?: '',
-            'address'           => $parent_details['address']           ?: '',
-            'status'            => 1,
-            'is_deleted'        => 'n',
-            'created_at'        => date('Y-m-d H:i:s'),
-        );
+            $student_data = array(
+                'admission_number'  => $sd['admission_number'],
+                'first_name'        => $sd['first_name'],
+                'last_name'         => $sd['last_name']         ?: '',
+                'gender'            => $sd['gender']            ?: 'Male',
+                'date_of_birth'     => $sd['date_of_birth']     ?: date('Y-m-d'),
+                'blood_group'       => $sd['blood_group']       ?: '',
+                'photo'             => $photo_filename,
+                'academic_year_id'  => !empty($ad['academic_year_id']) ? (int)$ad['academic_year_id'] : $this->academic_year_id,
+                'class_id'          => $class_id,
+                'section_id'        => $section_id,
+                'roll_number'       => !empty($ad['roll_number']) ? trim($ad['roll_number']) : '',
+                'guardian_name'     => $parent_details['guardian_name'],
+                'guardian_relation' => $parent_details['guardian_relation'],
+                'guardian_phone'    => $parent_details['guardian_phone']    ?: '',
+                'guardian_email'    => $parent_details['guardian_email']    ?: '',
+                'address'           => $parent_details['address']           ?: '',
+                'status'            => 1,
+                'is_deleted'        => 'n',
+                'created_at'        => date('Y-m-d H:i:s'),
+            );
 
-        // ── Database transaction ──────────────────────────────────────────────
-        $this->db->trans_start();
+            // ── Database transaction ──────────────────────────────────────────────
+            $this->db->trans_start();
 
-        // 1. Insert core student record
-        $this->db->insert('tbl_students', $student_data);
-        $new_id = (int)$this->db->insert_id();
+            // 1. Insert core student record
+            $this->db->insert('tbl_students', $student_data);
+            $new_id = (int)$this->db->insert_id();
 
-        if ($new_id > 0) {
-            $no_prev_school = !empty($ad['no_previous_school']);
-            $prev_school    = isset($ad['prev_school']) ? $ad['prev_school'] : array();
+            if ($new_id > 0) {
+                $no_prev_school = !empty($ad['no_previous_school']);
+                $prev_school    = isset($ad['prev_school']) ? $ad['prev_school'] : array();
 
-            // 2. Previous school record
-            if (!$no_prev_school && !empty($prev_school['school_name'])) {
-                $tc_document_id = NULL;
+                // 2. Previous school record
+                if (!$no_prev_school && !empty($prev_school['school_name'])) {
+                    $tc_document_id = NULL;
 
-                // Move TC file from temp → permanent location
-                if (!empty($prev_school['tc_temp_path'])) {
-                    $temp_path  = FCPATH . $prev_school['tc_temp_path'];
-                    $dest_dir   = FCPATH . 'uploads/documents/';
-                    if (!is_dir($dest_dir)) {
-                        mkdir($dest_dir, 0755, TRUE);
+                    // Move TC file from temp → permanent location
+                    if (!empty($prev_school['tc_temp_path'])) {
+                        $temp_path  = FCPATH . $prev_school['tc_temp_path'];
+                        $dest_dir   = FCPATH . 'uploads/documents/';
+                        if (!is_dir($dest_dir)) {
+                            mkdir($dest_dir, 0755, TRUE);
+                        }
+                        $dest_name = 'tc_' . $new_id . '_' . basename($prev_school['tc_temp_path']);
+                        $dest_path = $dest_dir . $dest_name;
+
+                        if (is_file($temp_path) && rename($temp_path, $dest_path)) {
+                            $perm_path      = 'uploads/documents/' . $dest_name;
+                            $tc_document_id = $this->Student_academic_model->insert_tc_document(
+                                $new_id,
+                                $perm_path,
+                                isset($prev_school['tc_number']) ? $prev_school['tc_number'] : ''
+                            );
+                        }
                     }
-                    $dest_name = 'tc_' . $new_id . '_' . basename($prev_school['tc_temp_path']);
-                    $dest_path = $dest_dir . $dest_name;
 
-                    if (is_file($temp_path) && rename($temp_path, $dest_path)) {
-                        $perm_path      = 'uploads/documents/' . $dest_name;
-                        $tc_document_id = $this->Student_academic_model->insert_tc_document(
-                            $new_id,
-                            $perm_path,
-                            isset($prev_school['tc_number']) ? $prev_school['tc_number'] : ''
+                    $prev_school_data = array(
+                        'student_id'             => $new_id,
+                        'school_name'            => $prev_school['school_name'],
+                        'school_address'         => isset($prev_school['school_address'])         ? $prev_school['school_address']         : NULL,
+                        'school_board'           => isset($prev_school['school_board'])           ? $prev_school['school_board']           : NULL,
+                        'previous_class'         => isset($prev_school['previous_class'])         ? $prev_school['previous_class']         : NULL,
+                        'previous_academic_year' => isset($prev_school['previous_academic_year']) ? $prev_school['previous_academic_year'] : NULL,
+                        'date_of_leaving'        => !empty($prev_school['date_of_leaving'])       ? $prev_school['date_of_leaving']        : NULL,
+                        'reason_for_leaving'     => isset($prev_school['reason_for_leaving'])     ? $prev_school['reason_for_leaving']     : NULL,
+                        'tc_number'              => isset($prev_school['tc_number'])               ? $prev_school['tc_number']               : NULL,
+                        'tc_document_id'         => $tc_document_id,
+                        'previous_percentage'    => isset($prev_school['previous_percentage'])    ? $prev_school['previous_percentage']    : NULL,
+                        'status'                 => 1,
+                        'created_at'             => date('Y-m-d H:i:s'),
+                    );
+                    $this->Student_academic_model->insert_previous_school($prev_school_data);
+                }
+
+                // 3. Academic activities
+                $all_activities = array();
+
+                if (!empty($ad['activities']) && is_array($ad['activities'])) {
+                    foreach ($ad['activities'] as $act) {
+                        if (!is_array($act) || empty($act['activity_name'])) continue;
+                        $all_activities[] = array(
+                            'student_id'      => $new_id,
+                            'category'        => 'Academic',
+                            'activity_type'   => !empty($act['activity_type']) && is_string($act['activity_type']) ? $act['activity_type'] : 'Achievement',
+                            'activity_name'   => is_string($act['activity_name']) ? $act['activity_name'] : '',
+                            'level'           => !empty($act['level']) && is_string($act['level']) ? $act['level'] : NULL,
+                            'position_result' => !empty($act['position_result']) && is_string($act['position_result']) ? $act['position_result'] : NULL,
+                            'year'            => !empty($act['year']) && is_numeric($act['year']) ? (int)$act['year'] : (int)date('Y'),
+                            'description'     => !empty($act['description']) && is_string($act['description']) ? $act['description'] : NULL,
+                            'status'          => 1,
+                            'created_at'      => date('Y-m-d H:i:s'),
                         );
                     }
                 }
 
-                $prev_school_data = array(
-                    'student_id'             => $new_id,
-                    'school_name'            => $prev_school['school_name'],
-                    'school_address'         => isset($prev_school['school_address'])         ? $prev_school['school_address']         : NULL,
-                    'school_board'           => isset($prev_school['school_board'])           ? $prev_school['school_board']           : NULL,
-                    'previous_class'         => isset($prev_school['previous_class'])         ? $prev_school['previous_class']         : NULL,
-                    'previous_academic_year' => isset($prev_school['previous_academic_year']) ? $prev_school['previous_academic_year'] : NULL,
-                    'date_of_leaving'        => !empty($prev_school['date_of_leaving'])       ? $prev_school['date_of_leaving']        : NULL,
-                    'reason_for_leaving'     => isset($prev_school['reason_for_leaving'])     ? $prev_school['reason_for_leaving']     : NULL,
-                    'tc_number'              => isset($prev_school['tc_number'])               ? $prev_school['tc_number']               : NULL,
-                    'tc_document_id'         => $tc_document_id,
-                    'previous_percentage'    => isset($prev_school['previous_percentage'])    ? $prev_school['previous_percentage']    : NULL,
-                    'status'                 => 1,
-                    'created_at'             => date('Y-m-d H:i:s'),
-                );
-                $this->Student_academic_model->insert_previous_school($prev_school_data);
-            }
+                if (!empty($ad['extracurricular']) && is_array($ad['extracurricular'])) {
+                    foreach ($ad['extracurricular'] as $extra) {
+                        if (!is_array($extra) || empty($extra['activity_name'])) continue;
+                        $all_activities[] = array(
+                            'student_id'      => $new_id,
+                            'category'        => 'Extracurricular',
+                            'activity_type'   => !empty($extra['activity_type']) && is_string($extra['activity_type']) ? $extra['activity_type'] : 'Sports',
+                            'activity_name'   => is_string($extra['activity_name']) ? $extra['activity_name'] : '',
+                            'level'           => !empty($extra['level']) && is_string($extra['level']) ? $extra['level'] : NULL,
+                            'position_result' => !empty($extra['position_result']) && is_string($extra['position_result']) ? $extra['position_result'] : NULL,
+                            'year'            => !empty($extra['year']) && is_numeric($extra['year']) ? (int)$extra['year'] : (int)date('Y'),
+                            'description'     => !empty($extra['description']) && is_string($extra['description']) ? $extra['description'] : NULL,
+                            'status'          => 1,
+                            'created_at'      => date('Y-m-d H:i:s'),
+                        );
+                    }
+                }
 
-            // 3. Academic activities
-            $all_activities = array();
-
-            if (!empty($ad['activities']) && is_array($ad['activities'])) {
-                foreach ($ad['activities'] as $act) {
-                    if (empty($act['activity_name'])) continue;
-                    $all_activities[] = array(
-                        'student_id'      => $new_id,
-                        'category'        => 'Academic',
-                        'activity_type'   => isset($act['activity_type'])   ? $act['activity_type']   : 'Competition',
-                        'activity_name'   => $act['activity_name'],
-                        'position_result' => isset($act['position_result']) ? $act['position_result'] : NULL,
-                        'year'            => !empty($act['year'])           ? (int)$act['year']        : (int)date('Y'),
-                        'description'     => isset($act['description'])     ? $act['description']     : NULL,
-                        'status'          => 1,
-                        'created_at'      => date('Y-m-d H:i:s'),
-                    );
+                if (!empty($all_activities)) {
+                    $this->Student_academic_model->insert_activities_batch($all_activities);
                 }
             }
 
-            if (!empty($ad['extracurricular']) && is_array($ad['extracurricular'])) {
-                foreach ($ad['extracurricular'] as $extra) {
-                    if (empty($extra['activity_name'])) continue;
-                    $all_activities[] = array(
-                        'student_id'      => $new_id,
-                        'category'        => 'Extracurricular',
-                        'activity_type'   => isset($extra['activity_type'])   ? $extra['activity_type']   : 'Sports',
-                        'activity_name'   => $extra['activity_name'],
-                        'level'           => isset($extra['level'])           ? $extra['level']           : NULL,
-                        'position_result' => isset($extra['position_result']) ? $extra['position_result'] : NULL,
-                        'year'            => !empty($extra['year'])           ? (int)$extra['year']        : (int)date('Y'),
-                        'description'     => isset($extra['description'])     ? $extra['description']     : NULL,
-                        'status'          => 1,
-                        'created_at'      => date('Y-m-d H:i:s'),
-                    );
-                }
+            $this->db->trans_complete();
+
+            if (!$this->db->trans_status() || !$new_id) {
+                // Roll back happened automatically; clear submitted flag so user can retry
+                $wizard['submitted'] = FALSE;
+                $this->session->set_userdata('student_registration_wizard', $wizard);
+
+                $this->output
+                    ->set_content_type('application/json')
+                    ->set_output(json_encode(array(
+                        'success' => FALSE,
+                        'message' => 'Failed to save student. Please try again.',
+                    )));
+                return;
             }
 
-            if (!empty($all_activities)) {
-                $this->Student_academic_model->insert_activities_batch($all_activities);
-            }
-        }
+            // ── Success: clear wizard session data ────────────────────────────────
+            $this->session->unset_userdata('student_registration_wizard');
+            $this->session->set_flashdata('success', 'Student registered successfully.');
 
-        $this->db->trans_complete();
-
-        if (!$this->db->trans_status() || !$new_id) {
-            // Roll back happened automatically; clear submitted flag so user can retry
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode(array(
+                    'success'  => TRUE,
+                    'redirect' => site_url('students/profile/' . $new_id),
+                )));
+        } catch (Throwable $e) {
+            log_message('error', 'wizard_save exception: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->db->trans_rollback();
             $wizard['submitted'] = FALSE;
             $this->session->set_userdata('student_registration_wizard', $wizard);
 
@@ -1216,21 +1272,9 @@ class Students extends MY_Controller {
                 ->set_content_type('application/json')
                 ->set_output(json_encode(array(
                     'success' => FALSE,
-                    'message' => 'Failed to save student. Please try again.',
+                    'message' => 'An error occurred while saving: ' . $e->getMessage(),
                 )));
-            return;
         }
-
-        // ── Success: clear wizard session data ────────────────────────────────
-        $this->session->unset_userdata('student_registration_wizard');
-        $this->session->set_flashdata('success', 'Student registered successfully.');
-
-        $this->output
-            ->set_content_type('application/json')
-            ->set_output(json_encode(array(
-                'success'  => TRUE,
-                'redirect' => site_url('students/profile/' . $new_id),
-            )));
     }
 
     /* ─────────────────────────────────────────────────────────────────────────
@@ -1514,6 +1558,9 @@ class Students extends MY_Controller {
     public function profile($student_id = NULL)
     {
         $this->require_permission('students.view');
+        if (!$student_id) {
+            $student_id = $this->input->get('student_id');
+        }
         if (!$student_id) {
             $first = $this->Student_model->get_all(array('academic_year_id' => $this->academic_year_id));
             $student_id = !empty($first) ? $first[0]->student_id : 1;
@@ -2037,9 +2084,18 @@ class Students extends MY_Controller {
     public function id_cards()
     {
         $this->require_permission('students.view');
+        $student_id = $this->input->get('student_id');
         $class_id   = $this->input->get('class_id');
         $section_id = $this->input->get('section_id');
-        $student_id = $this->input->get('student_id');
+
+        $selected_student = null;
+        if (!empty($student_id)) {
+            $selected_student = $this->Id_card_model->get_student_card_data((int)$student_id);
+            if ($selected_student && empty($class_id)) {
+                $class_id = $selected_student->class_id;
+                $section_id = $selected_student->section_id;
+            }
+        }
 
         $students = $this->Student_model->get_all(array(
             'academic_year_id' => $this->academic_year_id,
@@ -2052,11 +2108,7 @@ class Students extends MY_Controller {
         $sections = $this->Section_model->get_all();
         $settings = $this->Id_card_model->get_settings();
 
-        // Selected student for initial preview
-        $selected_student = null;
-        if (!empty($student_id)) {
-            $selected_student = $this->Id_card_model->get_student_card_data($student_id);
-        } elseif (!empty($students)) {
+        if (!$selected_student && !empty($students)) {
             $selected_student = $this->Id_card_model->get_student_card_data($students[0]->student_id);
         }
 

@@ -36,7 +36,7 @@
     </div>
     <div class="flex items-center gap-2 flex-wrap shrink-0">
       <a href="<?php echo site_url('students/edit/' . $student_id); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[18px]">edit</span>Edit</a>
-      <a href="<?php echo site_url('students/id_cards?class_id=' . $student->class_id); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors shadow-sm"><span class="material-symbols-outlined text-[18px]">badge</span>ID Card</a>
+      <a href="<?php echo site_url('students/id_cards?student_id=' . (int)$student->student_id); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors shadow-sm"><span class="material-symbols-outlined text-[18px]">badge</span>ID Card</a>
       <?php if (!empty($student->transfer)): ?>
         <a href="<?php echo site_url('students/tc/' . $student->transfer->transfer_id); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-tertiary text-on-tertiary text-label-md hover:opacity-90 transition-opacity"><span class="material-symbols-outlined text-[18px]">description</span>Print TC</a>
       <?php endif; ?>

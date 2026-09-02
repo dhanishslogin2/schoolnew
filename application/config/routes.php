@@ -88,6 +88,7 @@ $route['students/admissions'] = 'students/admissions';
 $route['students/roll']       = 'students/index';
 $route['students/roll_numbers']= 'students/index';
 $route['students/profile']    = 'students/profile';
+$route['students/profile/(:num)'] = 'students/profile/$1';
 $route['students/documents']                = 'students/documents';
 $route['students/id_cards']                  = 'students/id_cards';
 $route['students/id_card_preview_ajax']      = 'students/id_card_preview_ajax';

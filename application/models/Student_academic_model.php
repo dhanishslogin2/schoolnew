@@ -73,7 +73,17 @@ class Student_academic_model extends CI_Model
         if (empty($rows)) {
             return TRUE;
         }
-        return (bool)$this->db->insert_batch('tbl_student_activities', $rows);
+
+        foreach ($rows as $row) {
+            if (is_array($row) && !empty($row['activity_name'])) {
+                $clean_row = array();
+                foreach ($row as $k => $v) {
+                    $clean_row[$k] = is_array($v) ? json_encode($v) : $v;
+                }
+                $this->db->insert('tbl_student_activities', $clean_row);
+            }
+        }
+        return TRUE;
     }
 
     /**

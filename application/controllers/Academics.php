@@ -16,6 +16,7 @@ class Academics extends MY_Controller {
         $this->load->model('Period_model');
         $this->load->model('Timetable_model');
         $this->load->model('Academic_calendar_model');
+        $this->load->model('Setting_model');
         $this->load->library('form_validation');
     }
 
@@ -767,15 +768,31 @@ class Academics extends MY_Controller {
                 ));
                 $this->session->set_flashdata('success', 'Academic calendar event updated successfully!');
             }
-            redirect('academics/calendar');
+
+            $redirect_params = array();
+            if ($this->input->post('redirect_academic_year')) $redirect_params['academic_year_id'] = $this->input->post('redirect_academic_year');
+            if ($this->input->post('redirect_month')) $redirect_params['month'] = $this->input->post('redirect_month');
+            if ($this->input->post('redirect_year')) $redirect_params['year'] = $this->input->post('redirect_year');
+            if ($this->input->post('redirect_view')) $redirect_params['view_mode'] = $this->input->post('redirect_view');
+            $qs = !empty($redirect_params) ? ('?' . http_build_query($redirect_params)) : '';
+            redirect('academics/calendar' . $qs);
+            return;
         }
 
         $years = $this->Academic_year_model->get_all();
         $active_year = $this->Academic_year_model->get_active_year();
-        $selected_year = $this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1);
-        $selected_type = $this->input->get('event_type') ?: '';
-        $selected_month = $this->input->get('month') ?: date('n');
-        $selected_cal_year = $this->input->get('year') ?: date('Y');
+        $selected_year = (int)($this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1));
+        $selected_type = trim($this->input->get('event_type') ?: '');
+        $selected_month = (int)($this->input->get('month') ?: date('n'));
+        $selected_cal_year = (int)($this->input->get('year') ?: date('Y'));
+        $view_mode = trim($this->input->get('view_mode') ?: ($this->input->get('view') ?: ''));
+
+        if ($selected_month < 1 || $selected_month > 12) {
+            $selected_month = (int)date('n');
+        }
+        if ($selected_cal_year < 1970 || $selected_cal_year > 2099) {
+            $selected_cal_year = (int)date('Y');
+        }
 
         $filters = array(
             'academic_year_id' => $selected_year,
@@ -784,6 +801,8 @@ class Academics extends MY_Controller {
 
         $events = $this->Academic_calendar_model->get_all($filters);
         $upcoming = $this->Academic_calendar_model->get_upcoming(5, $selected_year);
+        $settings = $this->Setting_model->get_settings();
+        $selected_year_obj = $this->Academic_year_model->get_by_id($selected_year);
 
         $this->render('pages/academics/calendar', array(
             'title'             => 'Academic Calendar',
@@ -793,9 +812,12 @@ class Academics extends MY_Controller {
             'upcoming'          => $upcoming,
             'years'             => $years,
             'selected_year'     => $selected_year,
+            'selected_year_obj' => $selected_year_obj,
             'selected_type'     => $selected_type,
             'selected_month'    => $selected_month,
             'selected_cal_year' => $selected_cal_year,
+            'view_mode'         => $view_mode,
+            'settings'          => $settings,
         ));
     }
 
@@ -806,7 +828,102 @@ class Academics extends MY_Controller {
             $this->Academic_calendar_model->soft_delete($id);
             $this->session->set_flashdata('success', 'Calendar event removed.');
         }
-        redirect('academics/calendar');
+
+        $redirect_params = array();
+        if ($this->input->get('academic_year_id')) $redirect_params['academic_year_id'] = $this->input->get('academic_year_id');
+        if ($this->input->get('month')) $redirect_params['month'] = $this->input->get('month');
+        if ($this->input->get('year')) $redirect_params['year'] = $this->input->get('year');
+        if ($this->input->get('view_mode')) $redirect_params['view_mode'] = $this->input->get('view_mode');
+        $qs = !empty($redirect_params) ? ('?' . http_build_query($redirect_params)) : '';
+        redirect('academics/calendar' . $qs);
+    }
+
+    /**
+     * Download / Print Academic Calendar PDF
+     */
+    public function calendar_pdf()
+    {
+        $this->require_permission('academics.view');
+        $active_year = $this->Academic_year_model->get_active_year();
+        $selected_year_id = (int)($this->input->get('academic_year_id') ?: ($active_year ? $active_year->academic_year_id : 1));
+        $selected_year = $this->Academic_year_model->get_by_id($selected_year_id);
+        if (!$selected_year) {
+            $selected_year = $active_year;
+            $selected_year_id = $selected_year ? (int)$selected_year->academic_year_id : 1;
+        }
+
+        $settings = $this->Setting_model->get_settings();
+
+        // Logo resolution
+        $logo_url = '';
+        if ($settings && !empty($settings->logo)) {
+            if (file_exists(FCPATH . 'uploads/settings/' . $settings->logo)) {
+                $logo_url = base_url('uploads/settings/' . $settings->logo);
+            } elseif (file_exists(FCPATH . 'uploads/id_card/' . $settings->logo)) {
+                $logo_url = base_url('uploads/id_card/' . $settings->logo);
+            }
+        }
+        if (empty($logo_url) && $settings && !empty($settings->school_logo)) {
+            if (file_exists(FCPATH . 'uploads/id_card/' . $settings->school_logo)) {
+                $logo_url = base_url('uploads/id_card/' . $settings->school_logo);
+            } elseif (file_exists(FCPATH . 'uploads/settings/' . $settings->school_logo)) {
+                $logo_url = base_url('uploads/settings/' . $settings->school_logo);
+            }
+        }
+        if (empty($logo_url) && file_exists(FCPATH . 'assets/logo.png')) {
+            $logo_url = base_url('assets/logo.png');
+        }
+
+        $events = $this->Academic_calendar_model->get_all(array(
+            'academic_year_id' => $selected_year_id
+        ));
+
+        // Group events chronologically by month
+        $events_by_month = array();
+        foreach ($events as $ev) {
+            $month_key = date('Y-m', strtotime($ev->start_date));
+            if (!isset($events_by_month[$month_key])) {
+                $events_by_month[$month_key] = array(
+                    'label'     => date('F Y', strtotime($ev->start_date)),
+                    'month_num' => (int)date('n', strtotime($ev->start_date)),
+                    'year_num'  => (int)date('Y', strtotime($ev->start_date)),
+                    'events'    => array()
+                );
+            }
+            $events_by_month[$month_key]['events'][] = $ev;
+        }
+
+        // Calculate summary counters
+        $total_events     = count($events);
+        $total_holidays   = count(array_filter($events, function($e) { return $e->event_type === 'Holiday'; }));
+        $total_exams      = count(array_filter($events, function($e) { return $e->event_type === 'Exam'; }));
+        $total_breaks     = count(array_filter($events, function($e) { return $e->event_type === 'Term Break'; }));
+        $total_activities = count(array_filter($events, function($e) { return in_array($e->event_type, array('Activity', 'Event')); }));
+        $total_meetings   = count(array_filter($events, function($e) { return $e->event_type === 'Meeting'; }));
+
+        $data = array(
+            'title'            => 'Academic Calendar - ' . ($selected_year ? $selected_year->year_name : 'Annual Calendar'),
+            'settings'         => $settings,
+            'logo_url'         => $logo_url,
+            'academic_year'    => $selected_year,
+            'events'           => $events,
+            'events_by_month'  => $events_by_month,
+            'total_events'     => $total_events,
+            'total_holidays'   => $total_holidays,
+            'total_exams'      => $total_exams,
+            'total_breaks'     => $total_breaks,
+            'total_activities' => $total_activities,
+            'total_meetings'   => $total_meetings,
+            'autoprint'        => (int)$this->input->get('autoprint'),
+            'autodownload'     => (int)$this->input->get('download')
+        );
+
+        $this->load->view('pages/academics/calendar_pdf', $data);
+    }
+
+    public function download_calendar_pdf()
+    {
+        $this->calendar_pdf();
     }
 
     /* =========================================================================

@@ -516,9 +516,10 @@
           </select>
         </div>
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1.5">Guardian Phone</label>
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5">Guardian Phone <span class="text-error">*</span></label>
           <input type="text" id="guardian_phone" name="guardian_phone" value="<?php echo wval($pd, 'guardian_phone'); ?>" placeholder="+91 98470 11223"
                  class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
+          <p class="field-error text-error text-[11px] mt-1 hidden" id="err-guardian_phone"></p>
         </div>
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1.5">Guardian Email</label>
@@ -1204,9 +1205,29 @@
     var _saved3  = false;
 
     if ($s3.length) {
-        $s3.on('submit', function (e) {
+        function validateStep3() {
+            var ok = true;
+            clearErrors();
+
+            if (!$.trim($('#guardian_name').val())) {
+                $('#err-guardian_name').text('Guardian name is required.').removeClass('hidden');
+                $('#guardian_name').addClass('!border-error');
+                ok = false;
+            }
+
+            if (!$.trim($('#guardian_phone').val())) {
+                $('#err-guardian_phone').text('Parent / Guardian contact number is required.').removeClass('hidden');
+                $('#guardian_phone').addClass('!border-error');
+                ok = false;
+            }
+
+            return ok;
+        }
+
+        $s3.off('submit').on('submit', function (e) {
             e.preventDefault();
             if (_saved3) return;
+            if (!validateStep3()) { showAlert('error', 'Please fix the errors below.'); return; }
             _saved3 = true;
             var $btn = $('#btn-save-student').prop('disabled', true)
                          .html('<span class="material-symbols-outlined text-[18px] animate-spin">autorenew</span>Saving…');
@@ -1214,9 +1235,11 @@
             $.ajax({ url: BASE_URL + 'students/wizard_save', method: 'POST', data: formDataWithCsrf($s3), dataType: 'json',
                 success: function (r) {
                     refreshCsrf(r);
-                    if (r.success) { window.location.href = r.redirect; }
-                    else if (r.redirect) { window.location.href = r.redirect; }
-                    else {
+                    if (r.success && r.redirect) {
+                        window.location.href = r.redirect;
+                    } else if (r.redirect) {
+                        window.location.href = r.redirect;
+                    } else {
                         _saved3 = false;
                         $btn.prop('disabled', false).html('<span class="material-symbols-outlined text-[18px]">check</span>Save Student');
                         if (r.errors) { showFieldErrors(r.errors); showAlert('error', 'Please fix the errors below.'); }

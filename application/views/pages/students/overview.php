@@ -160,12 +160,14 @@
             <?php foreach ($stats->recent_admissions as $st): ?>
               <div class="p-3 rounded-xl bg-surface-container-low border border-outline-variant/30 flex items-center justify-between">
                 <div class="min-w-0 pr-2">
-                  <div class="font-bold text-xs text-on-surface truncate"><?php echo html_escape($st->first_name . ' ' . $st->last_name); ?></div>
+                  <a href="<?php echo site_url('students/profile/' . (int)$st->student_id); ?>" class="font-bold text-xs text-on-surface hover:text-primary transition-colors truncate block">
+                    <?php echo html_escape($st->first_name . ' ' . $st->last_name); ?>
+                  </a>
                   <div class="text-[11px] text-on-surface-variant flex items-center gap-1 font-mono">
                     <span>#<?php echo html_escape($st->admission_number); ?></span> • <span><?php echo html_escape($st->class_name . ' ' . ($st->section_name ?? '')); ?></span>
                   </div>
                 </div>
-                <a href="<?php echo site_url('students/profile?student_id=' . $st->student_id); ?>" class="p-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-high">
+                <a href="<?php echo site_url('students/profile/' . (int)$st->student_id); ?>" class="p-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-colors" title="View Profile">
                   <span class="material-symbols-outlined text-[16px]">chevron_right</span>
                 </a>
               </div>

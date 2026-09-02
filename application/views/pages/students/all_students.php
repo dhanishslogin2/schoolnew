@@ -173,7 +173,7 @@
 
       <!-- Status Filter (2 cols) -->
       <div class="lg:col-span-2 relative">
-        <select id="all-students-status-filter" onchange="triggerDataTableReload()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600">
+        <select id="all-students-status-filter" onchange="onStatusFilterChanged()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600">
           <option value="All">All Status</option>
           <option value="1" selected>Active</option>
           <option value="0">Inactive</option>
@@ -301,6 +301,27 @@
     });
   }
 
+  // Reload Class Counts via AJAX based on active Academic Year and Status filter
+  function reloadClassCounts() {
+    const statusVal = $('#all-students-status-filter').val() || '1';
+    $.ajax({
+      url: '<?php echo site_url('students/class_counts_ajax'); ?>',
+      type: 'POST',
+      data: {
+        academic_year_id: currentAcademicYearId,
+        status: statusVal,
+        [window.CSRF_TOKEN_NAME]: window.CSRF_HASH
+      },
+      dataType: 'json',
+      success: function (res) {
+        if (res && res.csrf_hash) window.CSRF_HASH = res.csrf_hash;
+        if (res && res.status && res.classes) {
+          renderClassCardsGrid(res.classes);
+        }
+      }
+    });
+  }
+
   // Trigger DataTables Reload
   function triggerDataTableReload() {
     if (allStudentsDataTable) {
@@ -308,11 +329,18 @@
     }
   }
 
+  // Status Filter Changed
+  function onStatusFilterChanged() {
+    reloadClassCounts();
+    triggerDataTableReload();
+  }
+
   // Reset Filters
   function resetAllFilters() {
     $('#all-students-search-input').val('');
     $('#all-students-section-filter').val('');
     $('#all-students-status-filter').val('1');
+    reloadClassCounts();
     triggerDataTableReload();
   }
 
@@ -344,23 +372,7 @@
     $('#selected-year-display-badge').text(selectedYearText);
     $('#current-year-heading strong').text(selectedYearText);
 
-    // Fetch updated class counts via AJAX
-    $.ajax({
-      url: '<?php echo site_url('students/class_counts_ajax'); ?>',
-      type: 'POST',
-      data: {
-        academic_year_id: currentAcademicYearId,
-        [window.CSRF_TOKEN_NAME]: window.CSRF_HASH
-      },
-      dataType: 'json',
-      success: function (res) {
-        if (res && res.csrf_hash) window.CSRF_HASH = res.csrf_hash;
-        if (res && res.status && res.classes) {
-          renderClassCardsGrid(res.classes);
-        }
-      }
-    });
-
+    reloadClassCounts();
     triggerDataTableReload();
   }
 

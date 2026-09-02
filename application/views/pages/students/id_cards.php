@@ -943,13 +943,22 @@
     });
 
     $('#filtered-count-badge').text(visibleCards.length + ' found');
-    currentPage = 1;
+    if (resetPage) {
+      currentPage = 1;
+    }
     renderPagedCards(visibleCards);
   }
 
   // Client-side pagination
   function initClientPagination() {
-    filterStudentCards();
+    if (activeStudentId > 0) {
+      const allCards = Array.from(document.querySelectorAll('.student-select-card'));
+      const activeIdx = allCards.findIndex(c => parseInt(c.dataset.studentId, 10) === activeStudentId);
+      if (activeIdx >= 0) {
+        currentPage = Math.floor(activeIdx / pageSize) + 1;
+      }
+    }
+    filterStudentCards(false);
   }
 
   function renderPagedCards(cardsList) {
