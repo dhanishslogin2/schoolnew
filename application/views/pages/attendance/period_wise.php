@@ -120,10 +120,13 @@
           <div class="flex items-center gap-2 flex-wrap">
             <span class="text-body-md font-medium text-on-surface mr-1">Quick Mark:</span>
             <button type="button" onclick="markAllPeriodStatus('Present')" class="px-3 py-1.5 rounded-lg bg-secondary-container text-on-secondary-container hover:opacity-90 transition-opacity text-label-md font-semibold flex items-center gap-1 cursor-pointer">
-              <span class="material-symbols-outlined text-[16px]">done_all</span>Mark All Present
+              <span class="material-symbols-outlined text-[16px]">done_all</span>All Present
+            </button>
+            <button type="button" onclick="markAllPeriodStatus('Half Day')" class="px-3 py-1.5 rounded-lg bg-amber-100 text-amber-900 hover:opacity-90 transition-opacity text-label-md font-semibold flex items-center gap-1 cursor-pointer">
+              <span class="material-symbols-outlined text-[16px]">timelapse</span>All Half Day
             </button>
             <button type="button" onclick="markAllPeriodStatus('Absent')" class="px-3 py-1.5 rounded-lg bg-error-container text-on-error-container hover:opacity-90 transition-opacity text-label-md font-semibold flex items-center gap-1 cursor-pointer">
-              <span class="material-symbols-outlined text-[16px]">close</span>Mark All Absent
+              <span class="material-symbols-outlined text-[16px]">close</span>All Absent
             </button>
           </div>
 
@@ -131,9 +134,9 @@
           <div class="flex items-center gap-3 flex-wrap text-[13px] font-medium">
             <span class="px-3 py-1 rounded-lg bg-surface-container-high text-on-surface">Total: <strong id="p-cnt-total"><?php echo count($students); ?></strong></span>
             <span class="px-3 py-1 rounded-lg bg-secondary-container text-on-secondary-container">Present: <strong id="p-cnt-present">0</strong></span>
+            <span class="px-3 py-1 rounded-lg bg-amber-100 text-amber-900">Half Day: <strong id="p-cnt-halfday">0</strong></span>
+            <span class="px-3 py-1 rounded-lg bg-indigo-100 text-indigo-900">Late: <strong id="p-cnt-late">0</strong></span>
             <span class="px-3 py-1 rounded-lg bg-error-container text-on-error-container">Absent: <strong id="p-cnt-absent">0</strong></span>
-            <span class="px-3 py-1 rounded-lg bg-amber-100 text-amber-900">Late: <strong id="p-cnt-late">0</strong></span>
-            <span class="px-3 py-1 rounded-lg bg-primary-fixed text-on-primary-fixed">Excused: <strong id="p-cnt-excused">0</strong></span>
           </div>
 
           <!-- Save Button -->
@@ -164,7 +167,7 @@
                     <?php
                       $fullName = trim($st->first_name . ' ' . $st->last_name);
                       $curStatus = $st->attendance_status ?: 'Present';
-                      if ($curStatus === 'Leave') $curStatus = 'Excused';
+                      if (in_array($curStatus, array('Leave', 'Excused'))) $curStatus = 'Present';
                     ?>
                     <tr class="hover:bg-surface-container-low transition-colors period-att-row" data-student-id="<?php echo $st->student_id; ?>">
                       <!-- Roll Number -->
@@ -194,27 +197,27 @@
                             </span>
                           </label>
 
+                          <!-- Half Day -->
+                          <label class="cursor-pointer">
+                            <input type="radio" name="attendance[<?php echo $st->student_id; ?>][status]" value="Half Day" class="sr-only peer p-att-radio" <?php echo (in_array($curStatus, array('Half Day', 'Late / Half Day', 'Half-day'))) ? 'checked' : ''; ?> onchange="updatePeriodSummaryCounters()">
+                            <span class="px-3 py-1.5 rounded-lg text-[13px] font-semibold flex items-center gap-1 border border-transparent text-on-surface-variant peer-checked:bg-amber-100 peer-checked:text-amber-900 peer-checked:border-amber-400 transition-all">
+                              <span class="material-symbols-outlined text-[16px]">timelapse</span>Half Day
+                            </span>
+                          </label>
+
+                          <!-- Late Coming -->
+                          <label class="cursor-pointer">
+                            <input type="radio" name="attendance[<?php echo $st->student_id; ?>][status]" value="Late Coming" class="sr-only peer p-att-radio" <?php echo (in_array($curStatus, array('Late', 'Late Coming'))) ? 'checked' : ''; ?> onchange="updatePeriodSummaryCounters()">
+                            <span class="px-3 py-1.5 rounded-lg text-[13px] font-semibold flex items-center gap-1 border border-transparent text-on-surface-variant peer-checked:bg-indigo-100 peer-checked:text-indigo-900 peer-checked:border-indigo-400 transition-all">
+                              <span class="material-symbols-outlined text-[16px]">schedule</span>Late Coming
+                            </span>
+                          </label>
+
                           <!-- Absent -->
                           <label class="cursor-pointer">
                             <input type="radio" name="attendance[<?php echo $st->student_id; ?>][status]" value="Absent" class="sr-only peer p-att-radio" <?php echo ($curStatus === 'Absent') ? 'checked' : ''; ?> onchange="updatePeriodSummaryCounters()">
                             <span class="px-3 py-1.5 rounded-lg text-[13px] font-semibold flex items-center gap-1 border border-transparent text-on-surface-variant peer-checked:bg-error-container peer-checked:text-on-error-container peer-checked:border-error transition-all">
                               <span class="material-symbols-outlined text-[16px]">close</span>Absent
-                            </span>
-                          </label>
-
-                          <!-- Late -->
-                          <label class="cursor-pointer">
-                            <input type="radio" name="attendance[<?php echo $st->student_id; ?>][status]" value="Late" class="sr-only peer p-att-radio" <?php echo ($curStatus === 'Late') ? 'checked' : ''; ?> onchange="updatePeriodSummaryCounters()">
-                            <span class="px-3 py-1.5 rounded-lg text-[13px] font-semibold flex items-center gap-1 border border-transparent text-on-surface-variant peer-checked:bg-amber-100 peer-checked:text-amber-900 peer-checked:border-amber-500 transition-all">
-                              <span class="material-symbols-outlined text-[16px]">schedule</span>Late
-                            </span>
-                          </label>
-
-                          <!-- Excused -->
-                          <label class="cursor-pointer">
-                            <input type="radio" name="attendance[<?php echo $st->student_id; ?>][status]" value="Excused" class="sr-only peer p-att-radio" <?php echo ($curStatus === 'Excused') ? 'checked' : ''; ?> onchange="updatePeriodSummaryCounters()">
-                            <span class="px-3 py-1.5 rounded-lg text-[13px] font-semibold flex items-center gap-1 border border-transparent text-on-surface-variant peer-checked:bg-primary-fixed peer-checked:text-on-primary-fixed peer-checked:border-primary transition-all">
-                              <span class="material-symbols-outlined text-[16px]">event_available</span>Excused
                             </span>
                           </label>
                         </div>
@@ -251,21 +254,21 @@
       function updatePeriodSummaryCounters() {
         var total = document.querySelectorAll('.period-att-row').length;
         var present = document.querySelectorAll('input.p-att-radio[value="Present"]:checked').length;
+        var halfday = document.querySelectorAll('input.p-att-radio[value="Half Day"]:checked').length;
+        var late = document.querySelectorAll('input.p-att-radio[value="Late Coming"]:checked, input.p-att-radio[value="Late"]:checked').length;
         var absent = document.querySelectorAll('input.p-att-radio[value="Absent"]:checked').length;
-        var late = document.querySelectorAll('input.p-att-radio[value="Late"]:checked').length;
-        var excused = document.querySelectorAll('input.p-att-radio[value="Excused"]:checked').length;
 
         var elTot = document.getElementById('p-cnt-total');
         var elPres = document.getElementById('p-cnt-present');
-        var elAbs = document.getElementById('p-cnt-absent');
+        var elHalf = document.getElementById('p-cnt-halfday');
         var elLate = document.getElementById('p-cnt-late');
-        var elExc = document.getElementById('p-cnt-excused');
+        var elAbs = document.getElementById('p-cnt-absent');
 
         if (elTot) elTot.textContent = total;
         if (elPres) elPres.textContent = present;
-        if (elAbs) elAbs.textContent = absent;
+        if (elHalf) elHalf.textContent = halfday;
         if (elLate) elLate.textContent = late;
-        if (elExc) elExc.textContent = excused;
+        if (elAbs) elAbs.textContent = absent;
       }
 
       function markAllPeriodStatus(statusValue) {

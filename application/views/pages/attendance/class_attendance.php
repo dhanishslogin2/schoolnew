@@ -7,14 +7,43 @@
         <?php echo html_escape($this->session->flashdata('success')); ?>
       </div>
     <?php endif; ?>
+    <?php if ($this->session->flashdata('error')): ?>
+      <div class="mb-4 p-3.5 rounded-xl bg-error-container text-on-error-container text-body-md font-medium flex items-center gap-2 border border-error/20">
+        <span class="material-symbols-outlined text-[20px] text-error">error</span>
+        <?php echo html_escape($this->session->flashdata('error')); ?>
+      </div>
+    <?php endif; ?>
 
     <!-- Header & Action -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
-        <h2 class="font-headline-md text-headline-md text-on-surface">Class Attendance</h2>
-        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Multi-section attendance overview and comparative metrics for a selected class.</p>
+        <div class="flex items-center gap-2.5">
+          <h2 class="font-headline-md text-headline-md text-on-surface">Class Attendance</h2>
+          <?php if ($is_higher_sec): ?>
+            <span class="px-3 py-1 rounded-full text-[12px] font-semibold bg-primary-fixed text-on-primary-fixed border border-primary/30">
+              Period-wise (+1 / +2)
+            </span>
+          <?php else: ?>
+            <span class="px-3 py-1 rounded-full text-[12px] font-semibold bg-secondary-container text-on-secondary-container border border-secondary/30">
+              Daily Attendance (LKG – 10)
+            </span>
+          <?php endif; ?>
+        </div>
+        <p class="text-body-md font-body-md text-on-surface-variant mt-1">
+          <?php if ($is_higher_sec): ?>
+            Period-based attendance workflow for Higher Secondary (+1 & +2). Allowed: Present, Half Day, Absent, Late Coming.
+          <?php else: ?>
+            Daily morning attendance workflow for LKG through Class 10. Allowed: Present, Half Day, Absent.
+          <?php endif; ?>
+        </p>
       </div>
       <div class="flex items-center gap-2 flex-wrap shrink-0">
+        <a href="<?php echo site_url('attendance/mark_attendance?class_id=' . $class_id . '&date=' . $date . '&academic_year_id=' . $year_id); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-primary text-on-primary text-label-md font-semibold hover:opacity-90 transition-colors shadow-sm">
+          <span class="material-symbols-outlined text-[18px]">edit_calendar</span>Mark Attendance
+        </a>
+        <a href="<?php echo site_url('student-attendance/view?class_id=' . $class_id . '&academic_year_id=' . $year_id); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm">
+          <span class="material-symbols-outlined text-[18px]">visibility</span>VIEW ATTENDANCE
+        </a>
         <a href="<?php echo site_url('attendance'); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors">
           <span class="material-symbols-outlined text-[18px]">dashboard</span>Attendance Dashboard
         </a>
@@ -46,6 +75,7 @@
             <?php foreach ($classes as $cls): ?>
               <option value="<?php echo $cls->class_id; ?>" <?php echo ($class_id == $cls->class_id) ? 'selected' : ''; ?>>
                 <?php echo html_escape($cls->class_name); ?>
+                <?php echo is_higher_secondary_class($cls) ? ' (+1/+2 Period)' : ' (Daily)'; ?>
               </option>
             <?php endforeach; ?>
           </select>
@@ -54,20 +84,23 @@
     </div>
 
     <!-- Section Cards Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
       <?php if (empty($sections_overview)): ?>
         <div class="col-span-full p-8 rounded-xl bg-surface-container-lowest border border-outline-variant/50 text-center elevation-1">
           <span class="material-symbols-outlined text-[48px] text-outline mb-2">school</span>
           <h4 class="font-title-md text-title-md text-on-surface font-semibold">No Sections Found</h4>
-          <p class="text-body-md text-on-surface-variant mt-1">There are no active sections created under this class.</p>
+          <p class="text-body-md text-on-surface-variant mt-1">Default Section A is automatically created for this class.</p>
         </div>
       <?php else: ?>
         <?php foreach ($sections_overview as $sec): ?>
-          <div class="p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 hover:border-primary/40 transition-all flex flex-col justify-between">
+          <?php
+            $is_sec_active = ($section_id && (int)$section_id === (int)$sec->section_id);
+          ?>
+          <div class="p-5 rounded-2xl bg-surface-container-lowest border <?php echo $is_sec_active ? 'border-primary ring-2 ring-primary/20' : 'border-outline-variant/50'; ?> elevation-1 hover:border-primary/40 transition-all flex flex-col justify-between">
             <div>
               <div class="flex items-center justify-between pb-3 border-b border-outline-variant/40 mb-4">
                 <div>
-                  <h3 class="font-title-md text-title-md font-bold text-on-surface"><?php echo html_escape($sec->class_name . ' — ' . $sec->section_name); ?></h3>
+                  <h3 class="font-title-md text-title-md font-bold text-on-surface"><?php echo html_escape($sec->class_name . ' — Section ' . $sec->section_name); ?></h3>
                   <div class="text-[12px] text-on-surface-variant font-medium"><?php echo $sec->total_students; ?> Enrolled Students</div>
                 </div>
                 <div class="text-right">
@@ -78,34 +111,50 @@
                 </div>
               </div>
 
-              <!-- Stats Breakdown Grid -->
-              <div class="grid grid-cols-4 gap-2 text-center mb-4">
-                <div class="p-2.5 rounded-lg bg-secondary-container/20 border border-secondary/20">
-                  <div class="font-bold text-secondary text-title-md"><?php echo $sec->present_count ?: 0; ?></div>
-                  <div class="text-[11px] text-on-surface-variant">Present</div>
+              <!-- Stats Breakdown Grid: Dynamic based on Class Level -->
+              <?php if ($is_higher_sec): ?>
+                <!-- +1 and +2: Present, Half Day, Absent, Late Coming -->
+                <div class="grid grid-cols-4 gap-2 text-center mb-4">
+                  <div class="p-2.5 rounded-lg bg-secondary-container/20 border border-secondary/20">
+                    <div class="font-bold text-secondary text-title-md"><?php echo $sec->present_count ?: 0; ?></div>
+                    <div class="text-[11px] text-on-surface-variant">Present</div>
+                  </div>
+                  <div class="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200">
+                    <div class="font-bold text-amber-900 text-title-md"><?php echo $sec->half_day_count ?: 0; ?></div>
+                    <div class="text-[11px] text-on-surface-variant">Half Day</div>
+                  </div>
+                  <div class="p-2.5 rounded-lg bg-indigo-50/70 border border-indigo-200">
+                    <div class="font-bold text-indigo-900 text-title-md"><?php echo $sec->late_count ?: 0; ?></div>
+                    <div class="text-[11px] text-on-surface-variant">Late</div>
+                  </div>
+                  <div class="p-2.5 rounded-lg bg-error-container/20 border border-error/20">
+                    <div class="font-bold text-error text-title-md"><?php echo $sec->absent_count ?: 0; ?></div>
+                    <div class="text-[11px] text-on-surface-variant">Absent</div>
+                  </div>
                 </div>
-                <div class="p-2.5 rounded-lg bg-error-container/20 border border-error/20">
-                  <div class="font-bold text-error text-title-md"><?php echo $sec->absent_count ?: 0; ?></div>
-                  <div class="text-[11px] text-on-surface-variant">Absent</div>
+              <?php else: ?>
+                <!-- LKG - 10: Present, Half Day, Absent (Late Coming, Leave, Excused Removed) -->
+                <div class="grid grid-cols-3 gap-2.5 text-center mb-4">
+                  <div class="p-2.5 rounded-lg bg-secondary-container/20 border border-secondary/20">
+                    <div class="font-bold text-secondary text-title-md"><?php echo $sec->present_count ?: 0; ?></div>
+                    <div class="text-[11px] text-on-surface-variant">Present</div>
+                  </div>
+                  <div class="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200">
+                    <div class="font-bold text-amber-900 text-title-md"><?php echo $sec->half_day_count ?: 0; ?></div>
+                    <div class="text-[11px] text-on-surface-variant">Half Day</div>
+                  </div>
+                  <div class="p-2.5 rounded-lg bg-error-container/20 border border-error/20">
+                    <div class="font-bold text-error text-title-md"><?php echo $sec->absent_count ?: 0; ?></div>
+                    <div class="text-[11px] text-on-surface-variant">Absent</div>
+                  </div>
                 </div>
-                <div class="p-2.5 rounded-lg bg-amber-100 dark:bg-amber-950/30 border border-amber-300">
-                  <div class="font-bold text-amber-900 dark:text-amber-300 text-title-md"><?php echo $sec->late_count ?: 0; ?></div>
-                  <div class="text-[11px] text-on-surface-variant">Late</div>
-                </div>
-                <div class="p-2.5 rounded-lg bg-primary-fixed/30 border border-primary/20">
-                  <div class="font-bold text-primary text-title-md"><?php echo $sec->excused_count ?: 0; ?></div>
-                  <div class="text-[11px] text-on-surface-variant">Excused</div>
-                </div>
-              </div>
+              <?php endif; ?>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="flex items-center gap-2 pt-3 border-t border-outline-variant/40 mt-2">
-              <a href="<?php echo site_url('attendance/section_attendance?class_id=' . $sec->class_id . '&section_id=' . $sec->section_id . '&date=' . $date); ?>" class="flex-1 text-center py-2 px-3 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-high text-body-md font-medium transition-colors">
-                View Details
-              </a>
-              <a href="<?php echo site_url('attendance/daily?class_id=' . $sec->class_id . '&section_id=' . $sec->section_id . '&date=' . $date); ?>" class="flex-1 text-center py-2 px-3 rounded-lg bg-secondary text-on-secondary hover:bg-on-secondary-fixed-variant text-body-md font-semibold transition-colors shadow-sm">
-                <?php echo ($sec->is_marked) ? 'Edit Daily' : 'Mark Daily'; ?>
+            <!-- Action Buttons: VIEW ATTENDANCE only -->
+            <div class="pt-3 border-t border-outline-variant/40 mt-2">
+              <a href="<?php echo site_url('student-attendance/view?class_id=' . $sec->class_id . '&section_id=' . $sec->section_id . '&academic_year_id=' . $year_id); ?>" class="w-full inline-flex items-center justify-center gap-1.5 text-center py-2.5 px-3 rounded-lg bg-secondary text-on-secondary hover:bg-on-secondary-fixed-variant text-label-md font-semibold transition-colors shadow-sm">
+                <span class="material-symbols-outlined text-[17px]">visibility</span>VIEW ATTENDANCE
               </a>
             </div>
           </div>

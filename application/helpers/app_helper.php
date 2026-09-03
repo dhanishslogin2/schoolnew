@@ -502,3 +502,80 @@ if ( ! function_exists('can_change_academic_year'))
     }
 }
 
+// ---------------------------------------------------------------------------
+// Student Attendance & Class Level helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Determine whether a class is Higher Secondary (+1 or +2)
+ * e.g. "Grade 11", "Grade 12", "+1", "+2", "Class 11", "Class 12", "Plus One", "Plus Two", "XI", "XII"
+ * Returns FALSE for LKG, UKG, Class 1 through Class 10.
+ */
+if ( ! function_exists('is_higher_secondary_class'))
+{
+    function is_higher_secondary_class($class)
+    {
+        if (empty($class)) return false;
+
+        static $class_name_cache = array();
+
+        $className = '';
+        if (is_object($class)) {
+            $className = isset($class->class_name) ? $class->class_name : '';
+        } elseif (is_array($class)) {
+            $className = isset($class['class_name']) ? $class['class_name'] : '';
+        } elseif (is_int($class) || (is_string($class) && ctype_digit(trim($class)))) {
+            $cid = (int)$class;
+            if (isset($class_name_cache[$cid])) {
+                $className = $class_name_cache[$cid];
+            } elseif (function_exists('get_instance')) {
+                $CI = &get_instance();
+                if ($CI && isset($CI->db)) {
+                    $row = $CI->db->select('class_name')->where('class_id', $cid)->get('tbl_classes')->row();
+                    $className = $row ? $row->class_name : '';
+                    $class_name_cache[$cid] = $className;
+                }
+            }
+        } else {
+            $className = (string)$class;
+        }
+
+        $trimmed = trim($className);
+        if ($trimmed === '') return false;
+
+        // Matches +1, +2, Plus One, Plus Two, Grade 11, Grade 12, Class 11, Class 12, Std 11, Std 12, 11th, 12th, XI, XII
+        if (preg_match('/(\+1|\+2|plus\s*(?:one|two|1|2)|(?:grade|class|std|standard)?\s*(?:11|12)(?:th)?\b|\b(?:xi|xii)\b)/i', $trimmed)) {
+            return true;
+        }
+        return false;
+    }
+}
+
+/**
+ * Get attendance workflow type for a class: 'daily' (LKG-10) or 'period' (+1/+2)
+ */
+if ( ! function_exists('get_attendance_workflow_type'))
+{
+    function get_attendance_workflow_type($class)
+    {
+        return is_higher_secondary_class($class) ? 'period' : 'daily';
+    }
+}
+
+/**
+ * Get allowed attendance statuses based on class level
+ */
+if ( ! function_exists('get_allowed_attendance_statuses'))
+{
+    function get_allowed_attendance_statuses($class = NULL)
+    {
+        if ($class !== NULL && is_higher_secondary_class($class)) {
+            // +1 and +2: Present, Half Day, Absent, Late Coming
+            return array('Present', 'Half Day', 'Absent', 'Late Coming');
+        }
+        // LKG - Class 10: Present, Half Day, Absent
+        return array('Present', 'Half Day', 'Absent');
+    }
+}
+
+

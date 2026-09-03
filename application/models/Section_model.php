@@ -35,6 +35,11 @@ class Section_model extends CI_Model {
         if ($class_id && empty($results)) {
             $class_row = $this->db->select('class_name')->where('class_id', (int)$class_id)->get('tbl_classes')->row();
             $default_sec_id = $this->get_default_section_id($class_id);
+            $student_count = $this->db
+                ->where('class_id', (int)$class_id)
+                ->where('status', 1)
+                ->where('is_deleted', 'n')
+                ->count_all_results('tbl_students');
             $results = [
                 (object)[
                     'section_id'         => $default_sec_id,
@@ -45,7 +50,7 @@ class Section_model extends CI_Model {
                     'class_teacher_name' => null,
                     'room_no'            => '',
                     'capacity'           => 40,
-                    'student_count'      => 0,
+                    'student_count'      => $student_count,
                     'description'        => 'Default Section',
                     'status'             => 1,
                     'is_default'         => true
@@ -186,6 +191,27 @@ class Section_model extends CI_Model {
         $any_sec = $this->db->query("SELECT section_id FROM tbl_sections WHERE status = 1 AND is_deleted = 'n' LIMIT 1")->row();
         $cached_default_ids[$cache_key] = $any_sec ? (int)$any_sec->section_id : 12;
         return $cached_default_ids[$cache_key];
+    }
+
+    /**
+     * Check if a class has other configured sections besides default Section A.
+     * Uses direct query to avoid polluting CodeIgniter Active Record state.
+     *
+     * @param int $class_id
+     * @param int|null $default_sec_id
+     * @return bool
+     */
+    public function has_other_sections($class_id, $default_sec_id = NULL)
+    {
+        if (!$class_id) return false;
+        if ($default_sec_id === NULL) {
+            $default_sec_id = $this->get_default_section_id($class_id);
+        }
+        $row = $this->db->query(
+            "SELECT COUNT(*) as c FROM tbl_sections WHERE class_id = ? AND section_id != ? AND status = 1 AND is_deleted = 'n'",
+            [(int)$class_id, (int)$default_sec_id]
+        )->row();
+        return ($row && (int)$row->c > 0);
     }
 
     public function insert($data)

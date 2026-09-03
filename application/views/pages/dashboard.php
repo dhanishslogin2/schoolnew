@@ -176,9 +176,9 @@
         <div class="text-center py-8">
           <span class="material-symbols-outlined text-[40px] text-on-surface-variant mb-2 block">event_busy</span>
           <p class="text-body-md font-body-md text-on-surface-variant">No attendance marked yet for today.</p>
-          <a href="<?php echo site_url('attendance/daily'); ?>"
+          <a href="<?php echo site_url('attendance/class_attendance'); ?>"
              class="mt-3 inline-flex items-center gap-1 text-secondary text-body-md font-body-md hover:underline">
-            <span class="material-symbols-outlined text-[16px]">add</span>Mark Attendance
+            <span class="material-symbols-outlined text-[16px]">add</span>Class Attendance
           </a>
         </div>
       <?php endif; ?>

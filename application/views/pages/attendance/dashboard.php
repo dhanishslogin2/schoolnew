@@ -21,8 +21,8 @@
         <p class="text-body-md font-body-md text-on-surface-variant mt-1">Live overview of student attendance metrics, class breakdowns, and recent activity.</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap shrink-0">
-        <a href="<?php echo site_url('attendance/daily?date=' . $date); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
-          <span class="material-symbols-outlined text-[18px]">how_to_reg</span>Mark Daily Attendance
+        <a href="<?php echo site_url('attendance/class_attendance?date=' . $date); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
+          <span class="material-symbols-outlined text-[18px]">co_present</span>Class Attendance
         </a>
         <a href="<?php echo site_url('attendance/reports'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors">
           <span class="material-symbols-outlined text-[18px]">bar_chart</span>View Reports
@@ -117,14 +117,14 @@
         <div class="text-[11px] text-on-surface-variant mt-1"><?php echo $stats->late_pct; ?>% of marked</div>
       </div>
 
-      <!-- Excused Today -->
+      <!-- Half Day Today -->
       <div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/50 elevation-1">
         <div class="flex items-center justify-between mb-2">
-          <span class="text-[12px] font-medium text-primary uppercase tracking-wider">Excused</span>
-          <span class="material-symbols-outlined text-[20px] text-primary">event_available</span>
+          <span class="text-[12px] font-medium text-amber-600 uppercase tracking-wider">Half Day</span>
+          <span class="material-symbols-outlined text-[20px] text-amber-600">timelapse</span>
         </div>
-        <div class="text-2xl font-bold text-primary"><?php echo $stats->excused; ?></div>
-        <div class="text-[11px] text-on-surface-variant mt-1"><?php echo $stats->excused_pct; ?>% of marked</div>
+        <div class="text-2xl font-bold text-amber-600"><?php echo isset($stats->half_day) ? $stats->half_day : 0; ?></div>
+        <div class="text-[11px] text-on-surface-variant mt-1"><?php echo isset($stats->half_day_pct) ? $stats->half_day_pct : 0; ?>% of marked</div>
       </div>
 
       <!-- Attendance Percentage -->
@@ -189,11 +189,11 @@
 
           <div>
             <div class="flex justify-between text-body-md mb-1">
-              <span class="text-on-surface-variant">Excused Percentage</span>
-              <span class="font-semibold text-primary"><?php echo $stats->excused_pct; ?>%</span>
+              <span class="text-on-surface-variant">Half Day Percentage</span>
+              <span class="font-semibold text-amber-600"><?php echo isset($stats->half_day_pct) ? $stats->half_day_pct : 0; ?>%</span>
             </div>
             <div class="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
-              <div class="h-full bg-primary-fixed" style="width: <?php echo $stats->excused_pct; ?>%"></div>
+              <div class="h-full bg-amber-400" style="width: <?php echo isset($stats->half_day_pct) ? $stats->half_day_pct : 0; ?>%"></div>
             </div>
           </div>
         </div>
@@ -212,9 +212,6 @@
           <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
             <span class="material-symbols-outlined text-secondary text-[22px]">history</span>Recent Attendance Activity
           </h3>
-          <a href="<?php echo site_url('attendance/history'); ?>" class="text-label-md text-primary font-medium hover:underline flex items-center gap-1">
-            View All History <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
-          </a>
         </div>
 
         <?php if (empty($recent_activity)): ?>
@@ -228,8 +225,8 @@
               <?php
                 $badgeClass = 'bg-secondary-container text-on-secondary-container';
                 if ($act->attendance_status === 'Absent') $badgeClass = 'bg-error-container text-on-error-container';
-                elseif ($act->attendance_status === 'Late') $badgeClass = 'bg-amber-100 text-amber-900';
-                elseif (in_array($act->attendance_status, array('Excused', 'Leave'))) $badgeClass = 'bg-primary-fixed text-on-primary-fixed';
+                elseif (in_array($act->attendance_status, array('Half Day', 'Late / Half Day', 'Half-day'))) $badgeClass = 'bg-amber-100 text-amber-900';
+                elseif (in_array($act->attendance_status, array('Late', 'Late Coming'))) $badgeClass = 'bg-indigo-100 text-indigo-900';
               ?>
               <div class="py-2.5 flex items-center justify-between gap-3 text-body-md">
                 <div class="flex items-center gap-3 min-w-0">
@@ -279,9 +276,9 @@
               <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase tracking-wider">Class & Section</th>
               <th class="text-right px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase tracking-wider">Total</th>
               <th class="text-right px-4 py-3 text-label-md font-semibold text-secondary uppercase tracking-wider">Present</th>
+              <th class="text-right px-4 py-3 text-label-md font-semibold text-amber-600 uppercase tracking-wider">Half Day</th>
+              <th class="text-right px-4 py-3 text-label-md font-semibold text-indigo-600 uppercase tracking-wider">Late</th>
               <th class="text-right px-4 py-3 text-label-md font-semibold text-error uppercase tracking-wider">Absent</th>
-              <th class="text-right px-4 py-3 text-label-md font-semibold text-amber-600 uppercase tracking-wider">Late</th>
-              <th class="text-right px-4 py-3 text-label-md font-semibold text-primary uppercase tracking-wider">Excused</th>
               <th class="text-right px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase tracking-wider">% Present</th>
               <th class="text-center px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase tracking-wider">Status</th>
               <th class="text-center px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase tracking-wider">Action</th>
@@ -301,9 +298,9 @@
                   </td>
                   <td class="px-4 py-3 text-right font-semibold text-on-surface"><?php echo $row->total_students; ?></td>
                   <td class="px-4 py-3 text-right font-semibold text-secondary"><?php echo $row->present_count ?: 0; ?></td>
+                  <td class="px-4 py-3 text-right font-semibold text-amber-600"><?php echo $row->half_day_count ?: 0; ?></td>
+                  <td class="px-4 py-3 text-right font-semibold text-indigo-600"><?php echo (isset($row->is_higher_sec) && $row->is_higher_sec) ? ($row->late_count ?: 0) : '-'; ?></td>
                   <td class="px-4 py-3 text-right font-semibold text-error"><?php echo $row->absent_count ?: 0; ?></td>
-                  <td class="px-4 py-3 text-right font-semibold text-amber-600"><?php echo $row->late_count ?: 0; ?></td>
-                  <td class="px-4 py-3 text-right font-semibold text-primary"><?php echo $row->excused_count ?: 0; ?></td>
                   <td class="px-4 py-3 text-right font-bold <?php echo ($row->percentage >= 90) ? 'text-secondary' : (($row->percentage >= 75) ? 'text-amber-600' : 'text-error'); ?>">
                     <?php echo $row->percentage; ?>%
                   </td>
@@ -319,9 +316,8 @@
                     <?php endif; ?>
                   </td>
                   <td class="px-4 py-3 text-center whitespace-nowrap">
-                    <a href="<?php echo site_url('attendance/daily?class_id=' . $row->class_id . '&section_id=' . $row->section_id . '&date=' . $date); ?>" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-primary-fixed hover:text-primary transition-colors text-[13px] font-medium">
-                      <span class="material-symbols-outlined text-[16px]">edit</span>
-                      <?php echo ($row->is_marked) ? 'Edit' : 'Mark'; ?>
+                    <a href="<?php echo site_url('attendance/class_attendance?class_id=' . $row->class_id . '&date=' . $date); ?>" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-primary-fixed hover:text-primary transition-colors text-[13px] font-medium">
+                      <span class="material-symbols-outlined text-[16px]">visibility</span>View Class
                     </a>
                   </td>
                 </tr>

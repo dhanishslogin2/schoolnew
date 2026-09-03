@@ -15,6 +15,7 @@ class Attendance extends MY_Controller {
         $this->load->model('Student_model');
         $this->load->model('Academic_year_model');
         $this->load->model('Class_teacher_model');
+        $this->load->model('Subject_model');
     }
 
     // Permission keys: attendance.view, attendance.mark
@@ -65,79 +66,8 @@ class Attendance extends MY_Controller {
        ========================================================================= */
     public function daily()
     {
-        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
-        if ($this->input->get('academic_year_id')) {
-            set_current_academic_year($year_id);
-            $this->academic_year_id = $year_id;
-        }
-
-        $date       = normalize_date_to_academic_year($this->input->get('date'), $year_id);
-        $class_id   = $this->input->get('class_id') ?: NULL;
-        $section_id = $this->input->get('section_id') ?: NULL;
-
-        if ($this->input->method() === 'post') {
-            $this->require_permission('attendance.mark');
-
-            $post_year_id    = (int)($this->input->post('academic_year_id') ?: $year_id);
-            $post_attendance = $this->input->post('attendance'); // student_id => ['status' => ..., 'remarks' => ...]
-            $post_date       = normalize_date_to_academic_year($this->input->post('date') ?: $date, $post_year_id);
-            $post_class_id   = $this->input->post('class_id') ?: $class_id;
-            $post_section_id = $this->input->post('section_id') ?: $section_id;
-            $user_id         = $this->session->userdata('user_id');
-
-            if (is_array($post_attendance) && !empty($post_attendance)) {
-                $saved = $this->Attendance_model->save_daily_attendance(
-                    $post_attendance,
-                    $post_date,
-                    $post_year_id,
-                    $post_class_id ?: 1,
-                    $post_section_id ?: 1,
-                    $user_id
-                );
-                $this->session->set_flashdata('success', "Daily attendance saved successfully for {$saved} student(s) on " . date('d M Y', strtotime($post_date)) . '.');
-            } else {
-                $this->session->set_flashdata('error', 'No student attendance records were submitted.');
-            }
-
-            $redirect_url = 'attendance/daily?date=' . $post_date;
-            if ($post_class_id) $redirect_url .= '&class_id=' . $post_class_id;
-            if ($post_section_id) $redirect_url .= '&section_id=' . $post_section_id;
-            if ($post_year_id) $redirect_url .= '&academic_year_id=' . $post_year_id;
-
-            redirect($redirect_url);
-            return;
-        }
-
-        $students = array();
-        $is_already_marked = FALSE;
-
-        if ($class_id && $section_id) {
-            $students = $this->Attendance_model->get_daily_sheet($date, $class_id, $section_id, $year_id);
-            $is_already_marked = $this->Attendance_model->check_daily_marked($date, $class_id, $section_id, $year_id);
-        }
-
-        $current_year = get_academic_year_record($year_id);
-        $classes  = $this->Class_model->get_all($year_id);
-        $sections = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
-        $years    = $this->Academic_year_model->get_all();
-        $settings = $this->Attendance_setting_model->get_settings();
-
-        $this->render('pages/attendance/daily', array(
-            'title'              => 'Daily Attendance',
-            'page_key'           => 'attendance-daily',
-            'breadcrumb'         => array('Attendance', 'Daily Attendance'),
-            'students'           => $students,
-            'classes'            => $classes,
-            'sections'           => $sections,
-            'years'              => $years,
-            'current_year'       => $current_year,
-            'date'               => $date,
-            'class_id'           => $class_id,
-            'section_id'         => $section_id,
-            'year_id'            => $year_id,
-            'is_already_marked'  => $is_already_marked,
-            'settings'           => $settings,
-        ));
+        $query = !empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '';
+        redirect('attendance/class_attendance' . $query);
     }
 
     /* =========================================================================
@@ -271,7 +201,7 @@ class Attendance extends MY_Controller {
     }
 
     /* =========================================================================
-       4. Period-wise Attendance
+       4. Period-wise Attendance (+1 and +2 Only)
        ========================================================================= */
     public function period_wise()
     {
@@ -286,6 +216,26 @@ class Attendance extends MY_Controller {
         $section_id = $this->input->get('section_id') ?: NULL;
         $period_id  = $this->input->get('period_id') ?: NULL;
 
+        // Block and redirect LKG-10 classes away from period-wise attendance
+        if ($class_id && !is_higher_secondary_class($class_id)) {
+            $this->session->set_flashdata('error', 'Period-wise attendance is only applicable for +1 and +2 classes. Redirected to Daily Attendance.');
+            redirect("attendance/mark_attendance?class_id={$class_id}&academic_year_id={$year_id}&date={$date}");
+            return;
+        }
+
+        // Get classes and filter strictly to +1 and +2
+        $all_classes = $this->Class_model->get_all($year_id);
+        $classes = array();
+        foreach ($all_classes as $cls) {
+            if (is_higher_secondary_class($cls)) {
+                $classes[] = $cls;
+            }
+        }
+
+        if (!$class_id && !empty($classes)) {
+            $class_id = $classes[0]->class_id;
+        }
+
         if ($this->input->method() === 'post') {
             $this->require_permission('attendance.mark');
 
@@ -297,13 +247,19 @@ class Attendance extends MY_Controller {
             $post_section_id = $this->input->post('section_id') ?: $section_id;
             $user_id         = $this->session->userdata('user_id');
 
+            if (!is_higher_secondary_class($post_class_id)) {
+                $this->session->set_flashdata('error', 'Period-wise attendance cannot be marked for LKG-10 classes.');
+                redirect("attendance/mark_attendance?class_id={$post_class_id}&date={$post_date}");
+                return;
+            }
+
             if (is_array($post_attendance) && !empty($post_attendance) && $post_period_id) {
                 $saved = $this->Attendance_model->save_period_attendance(
                     $post_attendance,
                     $post_date,
                     $post_period_id,
                     $post_year_id,
-                    $post_class_id ?: 1,
+                    $post_class_id,
                     $post_section_id ?: 1,
                     $user_id
                 );
@@ -330,16 +286,15 @@ class Attendance extends MY_Controller {
         }
 
         $current_year = get_academic_year_record($year_id);
-        $classes  = $this->Class_model->get_all($year_id);
-        $sections = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
+        $sections = $class_id ? $this->Section_model->get_by_class($class_id) : array();
         $periods  = $this->Period_model->get_all(TRUE);
         $years    = $this->Academic_year_model->get_all();
         $settings = $this->Attendance_setting_model->get_settings();
 
         $this->render('pages/attendance/period_wise', array(
-            'title'             => 'Period-wise Attendance',
+            'title'             => 'Period-wise Attendance (+1 / +2)',
             'page_key'          => 'attendance-period-wise',
-            'breadcrumb'        => array('Attendance', 'Period-wise Attendance'),
+            'breadcrumb'        => array('Attendance', 'Period-wise Attendance (+1 / +2)'),
             'students'          => $students,
             'classes'           => $classes,
             'sections'          => $sections,
@@ -357,10 +312,177 @@ class Attendance extends MY_Controller {
     }
 
     /* =========================================================================
-       5. Class Attendance
+       5. Mark Attendance (Dedicated page for taking/updating attendance)
+       ========================================================================= */
+    public function mark_attendance()
+    {
+        $this->require_permission('attendance.mark');
+
+        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        if ($this->input->get('academic_year_id')) {
+            set_current_academic_year($year_id);
+            $this->academic_year_id = $year_id;
+        }
+
+        // Allow any date (including past dates)
+        $raw_date = $this->input->get('date') ?: date('Y-m-d');
+        $date     = date('Y-m-d', strtotime($raw_date));
+
+        $all_classes = $this->Class_model->get_all($year_id);
+        $classes     = $all_classes;
+
+        // Role & permission handling: Teaching staff permitted classes
+        $user_role  = $this->session->userdata('role_code') ?: ($this->current_user->role_code ?? '');
+        $staff_id   = $this->session->userdata('staff_id') ?: ($this->current_user->staff_id ?? NULL);
+        $is_teacher = ($user_role === 'TEACHER' || ($this->current_user->user_type ?? '') === 'Staff');
+        $is_admin   = $this->rbac->is_super_admin() || in_array($user_role, array('SUPER_ADMIN', 'ADMIN', 'PRINCIPAL'));
+
+        if ($is_teacher && !$is_admin && $staff_id) {
+            $assigned = $this->Class_teacher_model->get_all(array('staff_id' => $staff_id, 'academic_year_id' => $year_id));
+            if (!empty($assigned)) {
+                $assigned_class_ids = array_unique(array_map(function($a) { return (int)$a->class_id; }, $assigned));
+                $filtered = array_filter($all_classes, function($c) use ($assigned_class_ids) {
+                    return in_array((int)$c->class_id, $assigned_class_ids);
+                });
+                if (!empty($filtered)) {
+                    $classes = array_values($filtered);
+                }
+            }
+        }
+
+        $class_id = (int)($this->input->get('class_id') ?: (!empty($classes) ? $classes[0]->class_id : 1));
+
+        $years          = $this->Academic_year_model->get_all();
+        $selected_class = $this->Class_model->get_by_id($class_id);
+        $is_higher_sec  = is_higher_secondary_class($selected_class ?: $class_id);
+
+        // Section handling: Fallback to default Section A if none configured
+        $sections           = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
+        $default_section_id = $class_id ? $this->Section_model->get_default_section_id($class_id) : NULL;
+        $section_id         = $this->input->get('section_id') ? (int)$this->input->get('section_id') : $default_section_id;
+        $selected_section   = $section_id ? $this->Section_model->get_by_id($section_id) : NULL;
+
+        // Higher Secondary (+1/+2) Subject & Period handling
+        $subjects   = array();
+        $subject_id = $this->input->get('subject_id') ? (int)$this->input->get('subject_id') : NULL;
+        $periods    = array();
+        $period_id  = $this->input->get('period_id') ? (int)$this->input->get('period_id') : NULL;
+
+        if ($is_higher_sec) {
+            $subjects = $this->Subject_model->get_dropdown($class_id);
+            $periods  = $this->Period_model->get_all(TRUE);
+        }
+
+        // Handle POST submission for attendance marking/updating
+        if ($this->input->method() === 'post') {
+            $this->require_permission('attendance.mark');
+            $post_attendance = $this->input->post('attendance');
+            $post_raw_date   = $this->input->post('date') ?: $date;
+            $post_date       = date('Y-m-d', strtotime($post_raw_date));
+            $post_class_id   = (int)($this->input->post('class_id') ?: $class_id);
+            $post_section_id = (int)($this->input->post('section_id') ?: $section_id);
+            $post_year_id    = (int)($this->input->post('academic_year_id') ?: $year_id);
+            $user_id         = $this->session->userdata('user_id');
+
+            $is_post_hs = is_higher_secondary_class($post_class_id);
+
+            if ($is_post_hs) {
+                // +1 and +2: Period-wise attendance
+                $post_period_id  = (int)$this->input->post('period_id');
+                $post_subject_id = $this->input->post('subject_id') ? (int)$this->input->post('subject_id') : NULL;
+
+                if (!$post_period_id) {
+                    $this->session->set_flashdata('error', 'Please select a period to save attendance for +1 / +2.');
+                    redirect("attendance/mark_attendance?class_id={$post_class_id}&section_id={$post_section_id}&date={$post_date}&academic_year_id={$post_year_id}");
+                    return;
+                }
+
+                if (is_array($post_attendance) && !empty($post_attendance)) {
+                    $saved = $this->Attendance_model->save_period_attendance(
+                        $post_attendance, $post_date, $post_period_id, $post_year_id, $post_class_id, $post_section_id, $user_id, $post_subject_id
+                    );
+                    $this->session->set_flashdata('success', "Period attendance saved for {$saved} student(s) on " . date('d M Y', strtotime($post_date)) . '.');
+                } else {
+                    $this->session->set_flashdata('error', 'No student attendance records were submitted.');
+                }
+
+                $red = "attendance/mark_attendance?class_id={$post_class_id}&section_id={$post_section_id}&date={$post_date}&academic_year_id={$post_year_id}&period_id={$post_period_id}";
+                if ($post_subject_id) $red .= "&subject_id={$post_subject_id}";
+                redirect($red);
+                return;
+            } else {
+                // LKG - Class 10: Daily attendance
+                if (is_array($post_attendance) && !empty($post_attendance)) {
+                    $saved = $this->Attendance_model->save_daily_attendance(
+                        $post_attendance, $post_date, $post_year_id, $post_class_id, $post_section_id, $user_id
+                    );
+                    $this->session->set_flashdata('success', "Daily attendance saved for {$saved} student(s) on " . date('d M Y', strtotime($post_date)) . '.');
+                } else {
+                    $this->session->set_flashdata('error', 'No student attendance records were submitted.');
+                }
+
+                redirect("attendance/mark_attendance?class_id={$post_class_id}&section_id={$post_section_id}&date={$post_date}&academic_year_id={$post_year_id}");
+                return;
+            }
+        }
+
+        // Load students roll sheet and check existing attendance
+        $students          = array();
+        $is_already_marked = FALSE;
+
+        if ($class_id && $section_id) {
+            if ($is_higher_sec) {
+                if ($period_id) {
+                    $students          = $this->Attendance_model->get_period_sheet($date, $period_id, $class_id, $section_id, $year_id, $subject_id);
+                    $is_already_marked = $this->Attendance_model->check_period_marked($date, $period_id, $class_id, $section_id, $year_id, $subject_id);
+                }
+            } else {
+                $students          = $this->Attendance_model->get_daily_sheet($date, $class_id, $section_id, $year_id);
+                $is_already_marked = $this->Attendance_model->check_daily_marked($date, $class_id, $section_id, $year_id);
+            }
+        }
+
+        $current_year = get_academic_year_record($year_id);
+
+        $this->render('pages/attendance/mark_attendance', array(
+            'title'             => 'Mark Student Attendance',
+            'page_key'          => 'attendance-mark',
+            'breadcrumb'        => array('Attendance', 'Mark Attendance'),
+            'classes'           => $classes,
+            'years'             => $years,
+            'sections'          => $sections,
+            'current_year'      => $current_year,
+            'selected_class'    => $selected_class,
+            'selected_section'  => $selected_section,
+            'class_id'          => $class_id,
+            'section_id'        => $section_id,
+            'year_id'           => $year_id,
+            'date'              => $date,
+            'is_higher_sec'     => $is_higher_sec,
+            'subjects'          => $subjects,
+            'subject_id'        => $subject_id,
+            'periods'           => $periods,
+            'period_id'         => $period_id,
+            'students'          => $students,
+            'is_already_marked' => $is_already_marked,
+        ));
+    }
+
+    /* =========================================================================
+       6. Class Attendance (View Only - Summary & Section Cards)
        ========================================================================= */
     public function class_attendance()
     {
+        // Class Attendance is strictly VIEW-ONLY. If a POST is received, redirect to Mark Attendance.
+        if ($this->input->method() === 'post') {
+            $class_id   = $this->input->post('class_id') ?: 1;
+            $section_id = $this->input->post('section_id') ?: NULL;
+            $date       = $this->input->post('date') ?: date('Y-m-d');
+            $year_id    = $this->input->post('academic_year_id') ?: $this->academic_year_id;
+            redirect("attendance/mark_attendance?class_id={$class_id}&section_id={$section_id}&date={$date}&academic_year_id={$year_id}");
+            return;
+        }
+
         $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
         if ($this->input->get('academic_year_id')) {
             set_current_academic_year($year_id);
@@ -370,12 +492,19 @@ class Attendance extends MY_Controller {
         $date     = normalize_date_to_academic_year($this->input->get('date'), $year_id);
         $class_id = $this->input->get('class_id') ?: 1;
 
-        $current_year = get_academic_year_record($year_id);
-        $classes   = $this->Class_model->get_all($year_id);
-        $years     = $this->Academic_year_model->get_all();
-        $sections_overview = $this->Attendance_model->get_class_overview($date, $year_id, $class_id);
-
+        $classes        = $this->Class_model->get_all($year_id);
+        $years          = $this->Academic_year_model->get_all();
         $selected_class = $this->Class_model->get_by_id($class_id);
+        $is_higher_sec  = is_higher_secondary_class($selected_class ?: $class_id);
+
+        // Sections & default Section A fallback
+        $sections           = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
+        $default_section_id = $class_id ? $this->Section_model->get_default_section_id($class_id) : NULL;
+        $section_id         = $this->input->get('section_id') ? (int)$this->input->get('section_id') : $default_section_id;
+        $selected_section   = $section_id ? $this->Section_model->get_by_id($section_id) : NULL;
+
+        $sections_overview = $this->Attendance_model->get_class_overview($date, $year_id, $class_id, $section_id);
+        $current_year      = get_academic_year_record($year_id);
 
         $this->render('pages/attendance/class_attendance', array(
             'title'             => 'Class Attendance',
@@ -383,12 +512,175 @@ class Attendance extends MY_Controller {
             'breadcrumb'        => array('Attendance', 'Class Attendance'),
             'classes'           => $classes,
             'years'             => $years,
+            'sections'          => $sections,
             'current_year'      => $current_year,
             'sections_overview' => $sections_overview,
             'selected_class'    => $selected_class,
+            'selected_section'  => $selected_section,
             'class_id'          => $class_id,
+            'section_id'        => $section_id,
             'year_id'           => $year_id,
             'date'              => $date,
+            'is_higher_sec'     => $is_higher_sec,
+        ));
+    }
+
+    /* =========================================================================
+       6. View Attendance (Date Range Report)
+       ========================================================================= */
+    public function view_attendance()
+    {
+        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        if ($this->input->get('academic_year_id')) {
+            set_current_academic_year($year_id);
+            $this->academic_year_id = $year_id;
+        }
+
+        $current_year = get_academic_year_record($year_id);
+        $classes      = $this->Class_model->get_all($year_id);
+        $years        = $this->Academic_year_model->get_all();
+
+        // Default Class
+        $default_class_id = !empty($classes) ? $classes[0]->class_id : 1;
+        $class_id = (int)($this->input->get('class_id') ?: $default_class_id);
+
+        // Sections with default Section A fallback
+        $sections = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
+        $default_section_id = $class_id ? $this->Section_model->get_default_section_id($class_id) : NULL;
+        $section_id = $this->input->get('section_id') ? (int)$this->input->get('section_id') : $default_section_id;
+
+        // Default Dates (From: 1st of current month normalized; To: today normalized)
+        $today_norm = normalize_date_to_academic_year(NULL, $year_id);
+        $first_of_month = date('Y-m-01', strtotime($today_norm));
+
+        $raw_from = $this->input->get('from_date');
+        $raw_to   = $this->input->get('to_date');
+
+        $from_date = $raw_from ? normalize_date_to_academic_year($raw_from, $year_id) : $first_of_month;
+        $to_date   = $raw_to   ? normalize_date_to_academic_year($raw_to, $year_id)   : $today_norm;
+
+        // Validation for date range
+        $date_warning = NULL;
+        if (strtotime($from_date) > strtotime($to_date)) {
+            $date_warning = 'From Date cannot be later than To Date. Please select a valid date range.';
+            $temp = $from_date;
+            $from_date = $to_date;
+            $to_date = $temp;
+        }
+
+        // Fetch report data
+        $report_data = $this->Attendance_model->get_range_attendance_report($from_date, $to_date, $class_id, $section_id, $year_id);
+
+        $selected_class   = $this->Class_model->get_by_id($class_id);
+        $selected_section = $section_id ? $this->Section_model->get_by_id($section_id) : NULL;
+        $is_higher_sec    = is_higher_secondary_class($selected_class ?: $class_id);
+
+        $this->render('pages/attendance/view_attendance', array(
+            'title'            => 'View Attendance',
+            'page_key'         => 'attendance-class',
+            'breadcrumb'       => array('Attendance', 'Class Attendance', 'View Attendance'),
+            'years'            => $years,
+            'classes'          => $classes,
+            'sections'         => $sections,
+            'current_year'     => $current_year,
+            'selected_class'   => $selected_class,
+            'selected_section' => $selected_section,
+            'academic_year_id' => $year_id,
+            'class_id'         => $class_id,
+            'section_id'       => $section_id,
+            'from_date'        => $from_date,
+            'to_date'          => $to_date,
+            'date_warning'     => $date_warning,
+            'is_higher_sec'    => $is_higher_sec,
+            'summary'          => $report_data->summary,
+            'students'         => $report_data->students,
+            'working_info'     => $report_data->working_info,
+        ));
+    }
+
+    /* =========================================================================
+       7. Individual Student Attendance Details
+       ========================================================================= */
+    public function student_attendance($student_id = NULL)
+    {
+        if (!$student_id) {
+            $student_id = $this->input->get('student_id');
+        }
+        $student_id = (int)$student_id;
+
+        if (!$student_id) {
+            $this->session->set_flashdata('error', 'Please select a student to view attendance details.');
+            redirect('student-attendance/view');
+            return;
+        }
+
+        $this->load->model('Student_model');
+        $student = $this->Student_model->get_by_id($student_id);
+
+        if (!$student) {
+            $this->session->set_flashdata('error', 'Student record not found.');
+            redirect('student-attendance/view');
+            return;
+        }
+
+        // Academic Year resolution
+        $year_id = (int)($this->input->get('academic_year_id') ?: ($student->academic_year_id ?: $this->academic_year_id));
+        if ($this->input->get('academic_year_id')) {
+            set_current_academic_year($year_id);
+            $this->academic_year_id = $year_id;
+        }
+
+        $current_year = get_academic_year_record($year_id);
+        $years        = $this->Academic_year_model->get_all();
+
+        // Period filter mode: 'academic_year' (default) vs 'custom'
+        $period_mode = $this->input->get('period_mode') ?: 'academic_year';
+        $today_norm  = normalize_date_to_academic_year(NULL, $year_id);
+
+        if ($period_mode === 'custom' && ($this->input->get('from_date') || $this->input->get('to_date'))) {
+            $raw_from = $this->input->get('from_date');
+            $raw_to   = $this->input->get('to_date');
+            $from_date = $raw_from ? normalize_date_to_academic_year($raw_from, $year_id) : ($current_year ? $current_year->start_date : date('Y-01-01'));
+            $to_date   = $raw_to   ? normalize_date_to_academic_year($raw_to, $year_id)   : $today_norm;
+        } else {
+            // Default: Academic Year Attendance
+            $period_mode = 'academic_year';
+            $from_date = ($current_year && !empty($current_year->start_date)) ? $current_year->start_date : date('Y-01-01');
+            $to_date   = $today_norm;
+        }
+
+        // Validate Date Range
+        $date_warning = NULL;
+        if (strtotime($from_date) > strtotime($to_date)) {
+            $date_warning = 'From Date cannot be later than To Date. Please select a valid date range.';
+            $temp = $from_date;
+            $from_date = $to_date;
+            $to_date = $temp;
+        }
+
+        // Fetch detailed attendance
+        $attendance_data = $this->Attendance_model->get_individual_student_attendance($student_id, $from_date, $to_date, $year_id);
+        $is_higher_sec   = is_higher_secondary_class($student->class_id);
+
+        $this->render('pages/attendance/student_attendance', array(
+            'title'                 => 'Student Attendance Details',
+            'page_key'              => 'attendance-class',
+            'breadcrumb'            => array('Attendance', 'Class Attendance', 'Student Details'),
+            'student'               => $student,
+            'years'                 => $years,
+            'current_year'          => $current_year,
+            'academic_year_id'      => $year_id,
+            'period_mode'           => $period_mode,
+            'from_date'             => $from_date,
+            'to_date'               => $to_date,
+            'date_warning'          => $date_warning,
+            'is_higher_sec'         => $is_higher_sec,
+            'overall_summary'       => $attendance_data ? $attendance_data->overall_summary : NULL,
+            'subject_wise'          => $attendance_data ? $attendance_data->subject_wise : array(),
+            'has_subject_records'   => $attendance_data ? $attendance_data->has_subject_records : FALSE,
+            'daily_records'         => $attendance_data ? $attendance_data->daily_records : array(),
+            'period_records'        => $attendance_data ? $attendance_data->period_records : array(),
+            'working_info'          => $attendance_data ? $attendance_data->working_info : NULL,
         ));
     }
 
@@ -397,154 +689,20 @@ class Attendance extends MY_Controller {
        ========================================================================= */
     public function section_attendance()
     {
-        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
-        if ($this->input->get('academic_year_id')) {
-            set_current_academic_year($year_id);
-            $this->academic_year_id = $year_id;
-        }
-
-        $date       = normalize_date_to_academic_year($this->input->get('date'), $year_id);
-        $class_id   = $this->input->get('class_id') ?: 1;
-        $section_id = $this->input->get('section_id') ?: 1;
-
-        $current_year = get_academic_year_record($year_id);
-        $students = $this->Attendance_model->get_daily_sheet($date, $class_id, $section_id, $year_id);
-        $classes  = $this->Class_model->get_all($year_id);
-        $sections = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
-        $years    = $this->Academic_year_model->get_all();
-        $stats    = $this->Attendance_model->get_dashboard_stats($date, $class_id, $section_id, $year_id);
-
-        $this->render('pages/attendance/section_attendance', array(
-            'title'      => 'Section Attendance',
-            'page_key'   => 'attendance-section',
-            'breadcrumb' => array('Attendance', 'Section Attendance'),
-            'students'   => $students,
-            'classes'    => $classes,
-            'sections'   => $sections,
-            'years'      => $years,
-            'current_year'=> $current_year,
-            'stats'      => $stats,
-            'date'       => $date,
-            'class_id'   => $class_id,
-            'section_id' => $section_id,
-            'year_id'    => $year_id,
-        ));
+        $query = !empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '';
+        redirect('attendance/class_attendance' . $query);
     }
 
-    /* =========================================================================
-       7. Attendance History
-       ========================================================================= */
     public function history()
     {
-        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
-        if ($this->input->get('academic_year_id')) {
-            set_current_academic_year($year_id);
-            $this->academic_year_id = $year_id;
-        }
-
-        if ($this->input->method() === 'post') {
-            $this->require_permission('attendance.mark');
-            $action = $this->input->post('action');
-            if ($action === 'edit_record') {
-                $att_id  = (int)$this->input->post('attendance_id');
-                $status  = $this->input->post('attendance_status');
-                $remarks = $this->input->post('remarks');
-                $user_id = $this->session->userdata('user_id');
-
-                $this->db->where('attendance_id', $att_id)->update('tbl_attendance', array(
-                    'attendance_status' => $status,
-                    'remarks'           => $remarks,
-                    'marked_by'         => $user_id,
-                    'updated_at'        => date('Y-m-d H:i:s')
-                ));
-
-                $this->session->set_flashdata('success', 'Attendance record updated successfully.');
-                redirect('attendance/history?' . $_SERVER['QUERY_STRING']);
-                return;
-            }
-        }
-
-        $from_date = $this->input->get('from_date') ? normalize_date_to_academic_year($this->input->get('from_date'), $year_id) : normalize_date_to_academic_year(NULL, $year_id);
-        $to_date   = $this->input->get('to_date') ? normalize_date_to_academic_year($this->input->get('to_date'), $year_id) : normalize_date_to_academic_year(NULL, $year_id);
-
-        $filters = array(
-            'academic_year_id'  => $year_id,
-            'class_id'          => $this->input->get('class_id') ?: NULL,
-            'section_id'        => $this->input->get('section_id') ?: NULL,
-            'student_id'        => $this->input->get('student_id') ?: NULL,
-            'attendance_type'   => $this->input->get('attendance_type') ?: NULL,
-            'attendance_status' => $this->input->get('attendance_status') ?: NULL,
-            'from_date'         => $from_date,
-            'to_date'           => $to_date,
-            'search'            => $this->input->get('search') ?: NULL,
-        );
-
-        $limit  = 50;
-        $page   = (int)($this->input->get('page') ?: 1);
-        $offset = ($page - 1) * $limit;
-
-        $records      = $this->Attendance_model->get_history($filters, $limit, $offset);
-        $total_count  = $this->Attendance_model->count_history($filters);
-        $classes      = $this->Class_model->get_all($filters['academic_year_id']);
-        $sections     = $filters['class_id'] ? $this->Section_model->get_by_class($filters['class_id']) : $this->Section_model->get_all();
-        $years        = $this->Academic_year_model->get_all();
-        $current_year = get_academic_year_record($year_id);
-
-        $this->render('pages/attendance/history', array(
-            'title'        => 'Attendance History',
-            'page_key'     => 'attendance-history',
-            'breadcrumb'   => array('Attendance', 'Attendance History'),
-            'records'      => $records,
-            'total_count'  => $total_count,
-            'filters'      => $filters,
-            'classes'      => $classes,
-            'sections'     => $sections,
-            'years'        => $years,
-            'current_year' => $current_year,
-            'page'         => $page,
-            'limit'        => $limit,
-        ));
+        $query = !empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '';
+        redirect('attendance/class_attendance' . $query);
     }
 
-    /* =========================================================================
-       8. Absent / Late / Excused Tracking
-       ========================================================================= */
     public function tracking()
     {
-        $year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
-        if ($this->input->get('academic_year_id')) {
-            set_current_academic_year($year_id);
-            $this->academic_year_id = $year_id;
-        }
-
-        $from_date = $this->input->get('from_date') ? normalize_date_to_academic_year($this->input->get('from_date'), $year_id) : normalize_date_to_academic_year(NULL, $year_id);
-        $to_date   = $this->input->get('to_date') ? normalize_date_to_academic_year($this->input->get('to_date'), $year_id) : normalize_date_to_academic_year(NULL, $year_id);
-
-        $filters = array(
-            'academic_year_id' => $year_id,
-            'status_filter'    => $this->input->get('status') ?: 'All',
-            'class_id'         => $this->input->get('class_id') ?: NULL,
-            'section_id'       => $this->input->get('section_id') ?: NULL,
-            'student_id'       => $this->input->get('student_id') ?: NULL,
-            'from_date'        => $from_date,
-            'to_date'          => $to_date,
-        );
-
-        $records      = $this->Attendance_model->get_tracking_records($filters);
-        $classes      = $this->Class_model->get_all($filters['academic_year_id']);
-        $sections     = $filters['class_id'] ? $this->Section_model->get_by_class($filters['class_id']) : $this->Section_model->get_all();
-        $current_year = get_academic_year_record($year_id);
-
-        $this->render('pages/attendance/tracking', array(
-            'title'        => 'Absent / Late / Excused Tracking',
-            'page_key'     => 'attendance-tracking',
-            'breadcrumb'   => array('Attendance', 'Absent / Late Tracking'),
-            'records'      => $records,
-            'filters'      => $filters,
-            'classes'      => $classes,
-            'sections'     => $sections,
-            'current_year' => $current_year,
-        ));
+        $query = !empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '';
+        redirect('attendance/class_attendance' . $query);
     }
 
     /* =========================================================================
@@ -618,6 +776,11 @@ class Attendance extends MY_Controller {
         $month       = (int)($this->input->get('month') ?: date('n'));
         $year        = (int)($this->input->get('year') ?: date('Y'));
 
+        // If class is LKG-10 and period report is requested, revert to class_summary
+        if ($class_id && !is_higher_secondary_class($class_id) && $report_type === 'period') {
+            $report_type = 'class_summary';
+        }
+
         $filters = array(
             'academic_year_id' => $year_id,
             'class_id'         => $class_id,
@@ -657,19 +820,22 @@ class Attendance extends MY_Controller {
         $classes  = $this->Class_model->get_all($year_id);
         $sections = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
         $students = ($class_id && $section_id) ? $this->Student_model->get_by_section($section_id) : array();
+        $is_higher_sec = $class_id ? is_higher_secondary_class($class_id) : FALSE;
 
         $this->render('pages/attendance/reports', array(
-            'title'        => 'Attendance Reports',
-            'page_key'     => 'attendance-reports',
-            'breadcrumb'   => array('Attendance', 'Attendance Reports'),
-            'report_type'  => $report_type,
-            'reports'      => $data_results,
-            'classes'      => $classes,
-            'sections'     => $sections,
-            'students'     => $students,
-            'current_year' => $current_year,
-            'year_id'      => $year_id,
-            'filters'      => $filters,
+            'title'         => 'Attendance Reports',
+            'page_key'      => 'attendance-reports',
+            'breadcrumb'    => array('Attendance', 'Attendance Reports'),
+            'report_type'   => $report_type,
+            'reports'       => $data_results,
+            'classes'       => $classes,
+            'sections'      => $sections,
+            'students'      => $students,
+            'current_year'  => $current_year,
+            'year_id'       => $year_id,
+            'class_id'      => $class_id,
+            'is_higher_sec' => $is_higher_sec,
+            'filters'       => $filters,
         ));
     }
 
@@ -681,47 +847,67 @@ class Attendance extends MY_Controller {
         $output = fopen('php://output', 'w');
 
         if ($report_type === 'student' || $report_type === 'monthly') {
-            fputcsv($output, array('Admission No', 'Roll No', 'Student Name', 'Class', 'Section', 'Present Days', 'Absent Days', 'Late Days', 'Excused Days', 'Total Days', 'Attendance %'));
-            foreach ($data as $r) {
-                fputcsv($output, array(
-                    $r->admission_number,
-                    $r->roll_number,
-                    $r->first_name . ' ' . $r->last_name,
-                    $r->class_name,
-                    $r->section_name,
-                    $r->present_count ?: 0,
-                    $r->absent_count ?: 0,
-                    $r->late_count ?: 0,
-                    $r->excused_count ?: 0,
-                    $r->total_days ?: 0,
-                    $r->percentage . '%'
-                ));
+            $is_higher_sec = !empty($data) && isset($data[0]->class_name) && is_higher_secondary_class($data[0]->class_name);
+            if ($is_higher_sec) {
+                fputcsv($output, array('Admission No', 'Roll No', 'Student Name', 'Class', 'Section', 'Present', 'Half Day', 'Absent', 'Late Coming', 'Total Classes', 'Attendance %'));
+                foreach ($data as $r) {
+                    fputcsv($output, array(
+                        $r->admission_number,
+                        $r->roll_number,
+                        $r->first_name . ' ' . $r->last_name,
+                        $r->class_name,
+                        $r->section_name,
+                        $r->present_count ?: 0,
+                        $r->half_day_count ?: 0,
+                        $r->absent_count ?: 0,
+                        $r->late_count ?: 0,
+                        $r->total_days ?: 0,
+                        $r->percentage . '%'
+                    ));
+                }
+            } else {
+                fputcsv($output, array('Admission No', 'Roll No', 'Student Name', 'Class', 'Section', 'Present Days', 'Half Day', 'Absent Days', 'Total Days', 'Attendance %'));
+                foreach ($data as $r) {
+                    fputcsv($output, array(
+                        $r->admission_number,
+                        $r->roll_number,
+                        $r->first_name . ' ' . $r->last_name,
+                        $r->class_name,
+                        $r->section_name,
+                        $r->present_count ?: 0,
+                        $r->half_day_count ?: 0,
+                        $r->absent_count ?: 0,
+                        $r->total_days ?: 0,
+                        $r->percentage . '%'
+                    ));
+                }
             }
         } elseif ($report_type === 'period') {
-            fputcsv($output, array('Period #', 'Period Name', 'Time', 'Present Count', 'Absent Count', 'Late Count', 'Excused Count', 'Total', 'Attendance %'));
+            fputcsv($output, array('Period #', 'Period Name', 'Time', 'Present Count', 'Half Day', 'Absent Count', 'Late Coming', 'Total', 'Attendance %'));
             foreach ($data as $r) {
                 fputcsv($output, array(
                     $r->period_number,
                     $r->period_name,
                     $r->start_time . ' - ' . $r->end_time,
                     $r->present_count ?: 0,
+                    $r->half_day_count ?: 0,
                     $r->absent_count ?: 0,
                     $r->late_count ?: 0,
-                    $r->excused_count ?: 0,
                     $r->total_count ?: 0,
                     $r->percentage . '%'
                 ));
             }
         } else {
-            fputcsv($output, array('Class', 'Section', 'Present', 'Absent', 'Late', 'Excused', 'Attendance %'));
+            fputcsv($output, array('Class', 'Section', 'Present', 'Half Day', 'Absent', 'Late Coming', 'Attendance %'));
             foreach ($data as $r) {
+                $is_hs = isset($r->class_name) && is_higher_secondary_class($r->class_name);
                 fputcsv($output, array(
                     isset($r->class_name) ? $r->class_name : '',
                     isset($r->section_name) ? $r->section_name : '',
                     isset($r->present_count) ? $r->present_count : 0,
+                    isset($r->half_day_count) ? $r->half_day_count : 0,
                     isset($r->absent_count) ? $r->absent_count : 0,
-                    isset($r->late_count) ? $r->late_count : 0,
-                    isset($r->excused_count) ? $r->excused_count : 0,
+                    $is_hs ? (isset($r->late_count) ? $r->late_count : 0) : '-',
                     (isset($r->percentage) ? $r->percentage : 0) . '%'
                 ));
             }

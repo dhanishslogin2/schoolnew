@@ -130,10 +130,14 @@
                 <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Student</th>
                 <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Class & Section</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-secondary uppercase">Present</th>
+                <th class="text-right px-4 py-3 text-label-md font-semibold text-amber-600 uppercase">Half Day</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-error uppercase">Absent</th>
-                <th class="text-right px-4 py-3 text-label-md font-semibold text-amber-600 uppercase">Late</th>
-                <th class="text-right px-4 py-3 text-label-md font-semibold text-primary uppercase">Excused</th>
-                <th class="text-right px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Total Days</th>
+                <?php if ($is_higher_sec): ?>
+                  <th class="text-right px-4 py-3 text-label-md font-semibold text-indigo-600 uppercase">Late</th>
+                  <th class="text-right px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Total Classes</th>
+                <?php else: ?>
+                  <th class="text-right px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Total Days</th>
+                <?php endif; ?>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-on-surface uppercase">% Present</th>
               </tr>
             </thead>
@@ -145,16 +149,18 @@
                   <tr class="hover:bg-surface-container-low transition-colors">
                     <td class="px-3 py-3 text-center font-mono font-bold text-primary whitespace-nowrap"><?php echo html_escape($r->roll_number ?: '—'); ?></td>
                     <td class="px-4 py-3 whitespace-nowrap font-medium text-on-surface">
-                      <a href="<?php echo site_url('students/profile/' . $r->student_id); ?>" class="hover:text-primary hover:underline">
+                      <a href="<?php echo site_url('student-attendance/details?student_id=' . $r->student_id . '&academic_year_id=' . $year_id); ?>" class="hover:text-primary hover:underline">
                         <?php echo html_escape($r->first_name . ' ' . $r->last_name); ?>
                       </a>
                       <span class="text-[12px] text-on-surface-variant block font-normal"><?php echo html_escape($r->admission_number); ?></span>
                     </td>
                     <td class="px-4 py-3 text-body-md text-on-surface-variant whitespace-nowrap"><?php echo html_escape($r->class_name . ' ' . $r->section_name); ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-secondary"><?php echo $r->present_count ?: 0; ?></td>
+                    <td class="px-4 py-3 text-right font-semibold text-amber-600"><?php echo $r->half_day_count ?: 0; ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-error"><?php echo $r->absent_count ?: 0; ?></td>
-                    <td class="px-4 py-3 text-right font-semibold text-amber-600"><?php echo $r->late_count ?: 0; ?></td>
-                    <td class="px-4 py-3 text-right font-semibold text-primary"><?php echo $r->excused_count ?: 0; ?></td>
+                    <?php if ($is_higher_sec): ?>
+                      <td class="px-4 py-3 text-right font-semibold text-indigo-600"><?php echo $r->late_count ?: 0; ?></td>
+                    <?php endif; ?>
                     <td class="px-4 py-3 text-right font-semibold text-on-surface"><?php echo $r->total_days ?: 0; ?></td>
                     <td class="px-4 py-3 text-right font-bold <?php echo ($r->percentage >= 90) ? 'text-secondary' : (($r->percentage >= 75) ? 'text-amber-600' : 'text-error'); ?>">
                       <?php echo $r->percentage; ?>%
@@ -172,9 +178,9 @@
                 <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Period Name</th>
                 <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Timings</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-secondary uppercase">Present</th>
+                <th class="text-right px-4 py-3 text-label-md font-semibold text-amber-600 uppercase">Half Day</th>
+                <th class="text-right px-4 py-3 text-label-md font-semibold text-indigo-600 uppercase">Late</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-error uppercase">Absent</th>
-                <th class="text-right px-4 py-3 text-label-md font-semibold text-amber-600 uppercase">Late</th>
-                <th class="text-right px-4 py-3 text-label-md font-semibold text-primary uppercase">Excused</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-on-surface uppercase">Total Recorded</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-on-surface uppercase">% Rate</th>
               </tr>
@@ -189,9 +195,9 @@
                     <td class="px-4 py-3 font-semibold text-on-surface"><?php echo html_escape($r->period_name); ?></td>
                     <td class="px-4 py-3 text-body-md text-on-surface-variant font-mono text-[13px]"><?php echo date('h:i A', strtotime($r->start_time)) . ' - ' . date('h:i A', strtotime($r->end_time)); ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-secondary"><?php echo $r->present_count ?: 0; ?></td>
+                    <td class="px-4 py-3 text-right font-semibold text-amber-600"><?php echo $r->half_day_count ?: 0; ?></td>
+                    <td class="px-4 py-3 text-right font-semibold text-indigo-600"><?php echo $r->late_count ?: 0; ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-error"><?php echo $r->absent_count ?: 0; ?></td>
-                    <td class="px-4 py-3 text-right font-semibold text-amber-600"><?php echo $r->late_count ?: 0; ?></td>
-                    <td class="px-4 py-3 text-right font-semibold text-primary"><?php echo $r->excused_count ?: 0; ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-on-surface"><?php echo $r->total_count ?: 0; ?></td>
                     <td class="px-4 py-3 text-right font-bold <?php echo ($r->percentage >= 90) ? 'text-secondary' : 'text-amber-600'; ?>"><?php echo $r->percentage; ?>%</td>
                   </tr>
@@ -206,9 +212,9 @@
                 <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Class</th>
                 <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Section</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-secondary uppercase">Present</th>
+                <th class="text-right px-4 py-3 text-label-md font-semibold text-amber-600 uppercase">Half Day</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-error uppercase">Absent</th>
-                <th class="text-right px-4 py-3 text-label-md font-semibold text-amber-600 uppercase">Late</th>
-                <th class="text-right px-4 py-3 text-label-md font-semibold text-primary uppercase">Excused</th>
+                <th class="text-right px-4 py-3 text-label-md font-semibold text-indigo-600 uppercase">Late</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-on-surface uppercase">Total Marked</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-on-surface uppercase">Attendance %</th>
               </tr>
@@ -222,9 +228,9 @@
                     <td class="px-4 py-3 font-semibold text-on-surface whitespace-nowrap"><?php echo html_escape($r->class_name); ?></td>
                     <td class="px-4 py-3 text-body-md text-on-surface-variant whitespace-nowrap"><?php echo html_escape($r->section_name); ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-secondary"><?php echo $r->present_count ?: 0; ?></td>
+                    <td class="px-4 py-3 text-right font-semibold text-amber-600"><?php echo $r->half_day_count ?: 0; ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-error"><?php echo $r->absent_count ?: 0; ?></td>
-                    <td class="px-4 py-3 text-right font-semibold text-amber-600"><?php echo $r->late_count ?: 0; ?></td>
-                    <td class="px-4 py-3 text-right font-semibold text-primary"><?php echo $r->excused_count ?: 0; ?></td>
+                    <td class="px-4 py-3 text-right font-semibold text-indigo-600"><?php echo (isset($r->class_name) && is_higher_secondary_class($r->class_name)) ? ($r->late_count ?: 0) : '-'; ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-on-surface"><?php echo $r->total_count ?: 0; ?></td>
                     <td class="px-4 py-3 text-right font-bold <?php echo ($r->percentage >= 90) ? 'text-secondary' : (($r->percentage >= 75) ? 'text-amber-600' : 'text-error'); ?>">
                       <?php echo $r->percentage; ?>%

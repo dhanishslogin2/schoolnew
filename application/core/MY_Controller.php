@@ -288,20 +288,21 @@ class MY_Controller extends CI_Controller {
                 case 'dashboard':
                 case 'index':
                     return 'attendance-dashboard';
+                case 'mark_attendance':
+                case 'mark':
+                    return 'attendance-mark';
                 case 'daily':
-                    return 'attendance-daily';
+                case 'section_attendance':
+                case 'history':
+                case 'tracking':
+                case 'class_attendance':
+                case 'view_attendance':
+                case 'student_attendance':
+                    return 'attendance-class';
                 case 'periods':
                     return 'attendance-periods';
                 case 'period_wise':
                     return 'attendance-period-wise';
-                case 'class_attendance':
-                    return 'attendance-class';
-                case 'section_attendance':
-                    return 'attendance-section';
-                case 'history':
-                    return 'attendance-history';
-                case 'tracking':
-                    return 'attendance-tracking';
                 case 'calendar':
                     return 'attendance-calendar';
                 case 'reports':

@@ -7,8 +7,8 @@
         <p class="text-body-md font-body-md text-on-surface-variant mt-1">Interactive monthly calendar matrix displaying student and class attendance patterns.</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap shrink-0">
-        <a href="<?php echo site_url('attendance/daily'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm">
-          <span class="material-symbols-outlined text-[18px]">how_to_reg</span>Mark Today
+        <a href="<?php echo site_url('attendance/class_attendance'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm">
+          <span class="material-symbols-outlined text-[18px]">co_present</span>Class Attendance
         </a>
       </div>
     </div>
@@ -242,8 +242,8 @@
           </div>
 
           <div class="flex items-center justify-between pt-3 border-t border-outline-variant/50 shrink-0">
-            <a href="<?php echo site_url('attendance/daily?date=' . $selected_date); ?>" class="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm">
-              <span class="material-symbols-outlined text-[16px]">edit</span>Edit Daily Sheet
+            <a href="<?php echo site_url('attendance/class_attendance?date=' . $selected_date); ?>" class="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm">
+              <span class="material-symbols-outlined text-[16px]">visibility</span>View Class Attendance
             </a>
             <a href="<?php echo site_url('attendance/calendar?' . http_build_query(array_diff_key($_GET, array('date' => '')))); ?>" class="px-4 py-2 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-high text-label-md">
               Close

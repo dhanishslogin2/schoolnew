@@ -62,13 +62,16 @@ const PAGE_URLS = {
   "attendance": "attendance",
   "attendance-dashboard": "attendance",
   "attendance-overview": "attendance",
-  "attendance-daily": "attendance/daily",
+  "attendance-mark": "attendance/mark_attendance",
+  "attendance-daily": "attendance/mark_attendance",
   "attendance-periods": "attendance/periods",
   "attendance-period-wise": "attendance/period_wise",
   "attendance-class": "attendance/class_attendance",
-  "attendance-section": "attendance/section_attendance",
-  "attendance-history": "attendance/history",
-  "attendance-tracking": "attendance/tracking",
+  "attendance-view": "student-attendance/view",
+  "attendance-student": "student-attendance/details",
+  "attendance-section": "attendance/class_attendance",
+  "attendance-history": "attendance/class_attendance",
+  "attendance-tracking": "attendance/class_attendance",
   "attendance-calendar": "attendance/calendar",
   "attendance-reports": "attendance/reports",
   "attendance-notifications": "attendance/notifications",
@@ -321,7 +324,7 @@ const NAV = [
         ],
       },
       {
-        key: "student-documents", label: "Student Documents" 
+        key: "student-documents", label: "Student Documents"
       },
       {
         label: "Student Services",
@@ -393,18 +396,10 @@ const NAV = [
       {
         label: "Attendance",
         items: [
-          { key: "attendance-daily", label: "Daily Attendance" },
+          { key: "attendance-mark", label: "Mark Attendance" },
           { key: "attendance-class", label: "Class Attendance" },
-          { key: "attendance-section", label: "Section Attendance" },
-          { key: "attendance-period-wise", label: "Period-wise Attendance" },
-        ],
-      },
-      { key: "attendance-periods", label: "Period Setup" },
-      {
-        label: "Tracking & History",
-        items: [
-          { key: "attendance-history", label: "Attendance History" },
-          { key: "attendance-tracking", label: "Absent / Late Tracking" },
+          { key: "attendance-period-wise", label: "Period Attendance (+1 / +2)" },
+          { key: "attendance-periods", label: "Period Setup (+1 / +2)" },
           { key: "attendance-calendar", label: "Attendance Calendar" },
         ],
       },
@@ -803,10 +798,10 @@ const NAV = [
     groups: [
       { key: "user-dashboard", label: "Overview" },
       {
-       
-           key: "users", label: "Users" 
-         
-       
+
+        key: "users", label: "Users"
+
+
       },
       {
         label: "Roles",
@@ -872,7 +867,7 @@ const PAGE_TITLES = {
   "subjects": "Subject Management", "class-teachers": "Class Teachers", "subject-teachers": "Subject Teachers",
   "timetable": "Timetable", "academic-calendar": "Academic Calendar", "academic-reports": "Academic Reports",
   "attendance": "Attendance Dashboard", "attendance-dashboard": "Attendance Dashboard", "attendance-daily": "Daily Attendance", "attendance-periods": "Period Management",
-  "attendance-period-wise": "Period-wise Attendance", "attendance-class": "Class Attendance", "attendance-section": "Section Attendance",
+  "attendance-period-wise": "Period Attendance (+1 / +2)", "attendance-class": "Class Attendance", "attendance-view": "View Attendance", "attendance-student": "Student Attendance Details", "attendance-section": "Section Attendance",
   "attendance-history": "Attendance History", "attendance-tracking": "Absent / Late Tracking", "attendance-calendar": "Attendance Calendar",
   "attendance-reports": "Attendance Reports", "attendance-notifications": "Parent Notifications", "attendance-notification-history": "Notification History",
   "attendance-settings": "Attendance Settings",
@@ -949,7 +944,7 @@ function iconSpan(name, extra) {
 function detectCurrentPageKey() {
   const bodyKey = (document.body.dataset.page || "").trim();
   const currentPath = (window.location && window.location.pathname ? window.location.pathname.toLowerCase() : "");
-  
+
   // Normalize path by stripping base directory and index.php
   const cleanPath = currentPath
     .replace(/^.*\/index\.php\/?/, "")
@@ -1424,7 +1419,7 @@ function initShell() {
         type: "POST",
         dataType: "json",
         data: postData,
-        success: function(res) {
+        success: function (res) {
           if (res && res.csrf_hash) {
             window.CSRF_HASH = res.csrf_hash;
           }
@@ -1453,7 +1448,7 @@ function initShell() {
                 window.location.href = currentUrl.toString();
                 return;
               }
-            } catch(err) {}
+            } catch (err) { }
 
             // Keep user on the same page and reload to refresh in-place with new active year context
             window.location.reload();
@@ -1465,7 +1460,7 @@ function initShell() {
             yearSelect.classList.remove("opacity-50", "cursor-wait");
           }
         },
-        error: function(xhr) {
+        error: function (xhr) {
           let msg = "Failed to switch academic year.";
           try {
             const json = JSON.parse(xhr.responseText);
@@ -1473,7 +1468,7 @@ function initShell() {
               if (json.csrf_hash) window.CSRF_HASH = json.csrf_hash;
               if (json.message) msg = json.message;
             }
-          } catch(e) {
+          } catch (e) {
             if (xhr.status === 403) msg = "You do not have permission to change the academic year.";
             else if (xhr.status === 401) msg = "Session expired. Please log in again.";
             else if (xhr.status === 400 || xhr.status === 422) msg = "Invalid academic year selected.";
@@ -1525,7 +1520,7 @@ window.School = window.School || {};
 
 // 1. Centralized AJAX Helper
 School.ajax = {
-  request: function(options) {
+  request: function (options) {
     const config = Object.assign({
       url: '',
       method: 'POST',
@@ -1555,7 +1550,7 @@ School.ajax = {
       type: config.method,
       data: config.data,
       dataType: config.dataType,
-      beforeSend: function(xhr, settings) {
+      beforeSend: function (xhr, settings) {
         if (config.showLoading) {
           School.ui.showLoading();
         }
@@ -1563,7 +1558,7 @@ School.ajax = {
           config.beforeSend(xhr, settings);
         }
       },
-      success: function(response, status, xhr) {
+      success: function (response, status, xhr) {
         if (response && response.csrf_hash) {
           window.CSRF_HASH = response.csrf_hash;
         }
@@ -1571,7 +1566,7 @@ School.ajax = {
           config.success(response, status, xhr);
         }
       },
-      error: function(xhr, status, error) {
+      error: function (xhr, status, error) {
         let msg = 'An unexpected error occurred. Please try again.';
         if (xhr.status === 403) {
           msg = 'Access Denied: You do not have permission for this action.';
@@ -1586,7 +1581,7 @@ School.ajax = {
           const res = xhr.responseJSON || JSON.parse(xhr.responseText);
           if (res && res.csrf_hash) window.CSRF_HASH = res.csrf_hash;
           if (res && res.message) msg = res.message;
-        } catch(e) {}
+        } catch (e) { }
 
         if (typeof config.error === 'function') {
           config.error(xhr, status, error, msg);
@@ -1594,7 +1589,7 @@ School.ajax = {
           alert(msg);
         }
       },
-      complete: function(xhr, status) {
+      complete: function (xhr, status) {
         if (config.showLoading) {
           School.ui.hideLoading();
         }
@@ -1608,7 +1603,7 @@ School.ajax = {
 
 // 2. Centralized DataTables Helper
 School.DataTable = {
-  init: function(selector, options) {
+  init: function (selector, options) {
     if (typeof jQuery === 'undefined' || typeof jQuery.fn.DataTable === 'undefined') {
       return null;
     }
@@ -1630,7 +1625,7 @@ School.DataTable = {
     };
 
     const merged = jQuery.extend(true, {}, defaultOptions, options);
-    
+
     // Destroy previous instance if already initialized on this selector
     if (jQuery.fn.DataTable.isDataTable(selector)) {
       jQuery(selector).DataTable().destroy();
@@ -1643,7 +1638,7 @@ School.DataTable = {
 // 3. UI Helpers
 School.ui = {
   badge: badge,
-  showLoading: function() {
+  showLoading: function () {
     let loader = document.getElementById('school-global-loader');
     if (!loader) {
       loader = document.createElement('div');
@@ -1654,7 +1649,7 @@ School.ui = {
     }
     loader.classList.remove('hidden');
   },
-  hideLoading: function() {
+  hideLoading: function () {
     const loader = document.getElementById('school-global-loader');
     if (loader) {
       loader.classList.add('hidden');
@@ -1663,7 +1658,7 @@ School.ui = {
 };
 
 // 4. Duplicate Form Submission Prevention
-document.addEventListener("submit", function(e) {
+document.addEventListener("submit", function (e) {
   const form = e.target;
   if (form && form.tagName === 'FORM' && !form.dataset.submitting && !form.hasAttribute('data-no-lock')) {
     const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
@@ -1672,7 +1667,7 @@ document.addEventListener("submit", function(e) {
       submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
       submitBtn.setAttribute('disabled', 'disabled');
       // Auto re-enable after 8s fallback in case of validation interruption
-      setTimeout(function() {
+      setTimeout(function () {
         delete form.dataset.submitting;
         submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
         submitBtn.removeAttribute('disabled');

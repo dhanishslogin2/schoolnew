@@ -8,7 +8,7 @@ test.describe('Global Navigation & Academic Year Context', () => {
       { url: 'students/overview', expectedTitle: /student/i },
       { url: 'staff/overview', expectedTitle: /staff/i },
       { url: 'academics/classes', expectedTitle: /class/i },
-      { url: 'attendance/daily', expectedTitle: /attendance/i },
+      { url: 'attendance/class_attendance', expectedTitle: /attendance/i },
       { url: 'examinations/exams', expectedTitle: /exam/i },
       { url: 'timetable', expectedTitle: /timetable/i },
       { url: 'transport', expectedTitle: /transport/i },

@@ -11,6 +11,7 @@ class Attendance_model extends CI_Model {
         parent::__construct();
         $this->load->model('Attendance_setting_model');
         $this->load->model('Attendance_notification_model');
+        $this->load->model('Section_model');
     }
 
     /* =========================================================================
@@ -18,13 +19,37 @@ class Attendance_model extends CI_Model {
        ========================================================================= */
     public function get_dashboard_stats($date = NULL, $class_id = NULL, $section_id = NULL, $year_id = NULL)
     {
-        if (!$date) $date = date('Y-m-d');
+        if (!$date) $date = normalize_date_to_academic_year(NULL, $year_id);
+        $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
+
+        // Check if class has other configured sections in tbl_sections
+        $default_sec_id = $class_id ? $this->Section_model->get_default_section_id($class_id) : null;
+        $has_other = $class_id ? $this->Section_model->has_other_sections($class_id, $default_sec_id) : false;
 
         // Total active students matching filter
-        $this->db->where('status', 1);
-        if ($class_id) $this->db->where('class_id', $class_id);
-        if ($section_id) $this->db->where('section_id', $section_id);
-        if ($year_id) $this->db->where('academic_year_id', $year_id);
+        $this->db->where('status', 1)->where('is_deleted', 'n');
+        if ($class_id) $this->db->where('class_id', (int)$class_id);
+        if ($year_id) {
+            $this->db->group_start()
+                ->where('academic_year_id', (int)$year_id)
+                ->or_where('academic_year_id IS NULL', null, false)
+                ->group_end();
+        }
+        if ($section_id) {
+            if ((int)$section_id === (int)$default_sec_id || !$has_other) {
+                if (!$has_other && $class_id) {
+                    // All students in this class belong to default Section A
+                } else {
+                    $this->db->group_start()
+                        ->where('section_id', (int)$section_id)
+                        ->or_where('section_id IS NULL', null, false)
+                        ->or_where('section_id', 0)
+                        ->group_end();
+                }
+            } else {
+                $this->db->where('section_id', (int)$section_id);
+            }
+        }
         $total_students = $this->db->count_all_results('tbl_students');
 
         // Query daily attendance for this date
@@ -32,34 +57,51 @@ class Attendance_model extends CI_Model {
             ->select('attendance_status, COUNT(*) as count')
             ->from($this->table)
             ->where('attendance_date', $date)
-            ->where('attendance_type', 'Daily');
+            ->where('attendance_type', 'Daily')
+            ->where('is_deleted', 'n');
 
-        if ($class_id) $this->db->where('class_id', $class_id);
-        if ($section_id) $this->db->where('section_id', $section_id);
-        if ($year_id) $this->db->where('academic_year_id', $year_id);
+        if ($class_id) $this->db->where('class_id', (int)$class_id);
+        if ($year_id) {
+            $this->db->group_start()
+                ->where('academic_year_id', (int)$year_id)
+                ->or_where('academic_year_id IS NULL', null, false)
+                ->group_end();
+        }
+        if ($section_id) {
+            if (!$has_other && $class_id) {
+                // Class has only default Section A
+            } else {
+                $this->db->where('section_id', (int)$section_id);
+            }
+        }
 
         $counts = $this->db->group_by('attendance_status')->get()->result();
 
-        $present = 0;
-        $absent = 0;
-        $late = 0;
-        $excused = 0;
+        $present  = 0;
+        $half_day = 0;
+        $absent   = 0;
+        $late     = 0;
 
         foreach ($counts as $c) {
             if ($c->attendance_status === 'Present') $present = (int)$c->count;
+            elseif (in_array($c->attendance_status, array('Half Day', 'Late / Half Day', 'Half-day'))) $half_day += (int)$c->count;
             elseif ($c->attendance_status === 'Absent') $absent = (int)$c->count;
-            elseif ($c->attendance_status === 'Late') $late = (int)$c->count;
-            elseif (in_array($c->attendance_status, array('Excused', 'Leave'))) $excused += (int)$c->count;
+            elseif (in_array($c->attendance_status, array('Late', 'Late Coming'))) $late += (int)$c->count;
         }
 
-        $total_marked = $present + $absent + $late + $excused;
-        $not_marked = max(0, $total_students - $total_marked);
+        // If class is LKG-10, late count is not applicable
+        if ($class_id && !is_higher_secondary_class($class_id)) {
+            $late = 0;
+        }
 
-        $percentage = ($total_marked > 0) ? round(($present / $total_marked) * 100, 1) : 0;
-        $present_pct = ($total_marked > 0) ? round(($present / $total_marked) * 100, 1) : 0;
-        $absent_pct = ($total_marked > 0) ? round(($absent / $total_marked) * 100, 1) : 0;
-        $late_pct = ($total_marked > 0) ? round(($late / $total_marked) * 100, 1) : 0;
-        $excused_pct = ($total_marked > 0) ? round(($excused / $total_marked) * 100, 1) : 0;
+        $total_marked = $present + $half_day + $absent + $late;
+        $not_marked   = max(0, $total_students - $total_marked);
+
+        $percentage   = ($total_marked > 0) ? round(($present / $total_marked) * 100, 1) : 0;
+        $present_pct  = ($total_marked > 0) ? round(($present / $total_marked) * 100, 1) : 0;
+        $half_day_pct = ($total_marked > 0) ? round(($half_day / $total_marked) * 100, 1) : 0;
+        $absent_pct   = ($total_marked > 0) ? round(($absent / $total_marked) * 100, 1) : 0;
+        $late_pct     = ($total_marked > 0) ? round(($late / $total_marked) * 100, 1) : 0;
 
         return (object) array(
             'date'           => $date,
@@ -67,14 +109,16 @@ class Attendance_model extends CI_Model {
             'total_marked'   => $total_marked,
             'not_marked'     => $not_marked,
             'present'        => $present,
+            'half_day'       => $half_day,
             'absent'         => $absent,
             'late'           => $late,
-            'excused'        => $excused,
+            'excused'        => 0,
             'percentage'     => $percentage,
             'present_pct'    => $present_pct,
+            'half_day_pct'   => $half_day_pct,
             'absent_pct'     => $absent_pct,
             'late_pct'       => $late_pct,
-            'excused_pct'    => $excused_pct,
+            'excused_pct'    => 0,
         );
     }
 
@@ -83,33 +127,180 @@ class Attendance_model extends CI_Model {
         if (!$date) $date = normalize_date_to_academic_year(NULL, $year_id);
         $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
 
-        $this->db
-            ->select('c.class_id, c.class_name, sec.section_id, sec.section_name,
-                COUNT(DISTINCT st.student_id) as total_students,
-                SUM(CASE WHEN a.attendance_status = "Present" THEN 1 ELSE 0 END) as present_count,
-                SUM(CASE WHEN a.attendance_status = "Absent" THEN 1 ELSE 0 END) as absent_count,
-                SUM(CASE WHEN a.attendance_status = "Late" THEN 1 ELSE 0 END) as late_count,
-                SUM(CASE WHEN a.attendance_status IN ("Excused", "Leave") THEN 1 ELSE 0 END) as excused_count,
-                COUNT(a.attendance_id) as marked_count')
-            ->from('tbl_classes c')
-            ->join('tbl_sections sec', 'sec.class_id = c.class_id AND sec.status = 1', 'inner')
-            ->join('tbl_students st', 'st.class_id = c.class_id AND st.section_id = sec.section_id AND st.status = 1 AND (st.academic_year_id = ' . (int)$year_id . ' OR st.academic_year_id IS NULL)', 'left')
-            ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_date = ' . $this->db->escape($date) . ' AND a.attendance_type = "Daily" AND (a.academic_year_id = ' . (int)$year_id . ' OR a.academic_year_id IS NULL)', 'left')
-            ->where('c.status', 1)
-            ->group_by(array('c.class_id', 'sec.section_id'))
-            ->order_by('c.class_id', 'ASC')
-            ->order_by('sec.section_name', 'ASC');
+        // 1. If a specific class_id is requested
+        if ($class_id) {
+            $class_row = $this->db->where('class_id', (int)$class_id)->where('status', 1)->get('tbl_classes')->row();
+            if (!$class_row) {
+                return array();
+            }
 
-        if ($year_id) $this->db->where('c.academic_year_id', $year_id);
-        if ($class_id) $this->db->where('c.class_id', $class_id);
-        if ($section_id) $this->db->where('sec.section_id', $section_id);
+            // Check if this class has active configured sections in tbl_sections
+            $configured_sections = $this->db
+                ->where('class_id', (int)$class_id)
+                ->where('status', 1)
+                ->where('is_deleted', 'n')
+                ->order_by('section_name', 'ASC')
+                ->get('tbl_sections')
+                ->result();
 
-        $results = $this->db->get()->result();
+            $is_higher_sec = is_higher_secondary_class($class_id);
 
-        foreach ($results as $row) {
-            $marked = (int)$row->marked_count;
-            $row->is_marked = ($marked > 0);
-            $row->percentage = ($marked > 0) ? round(($row->present_count / $marked) * 100, 1) : 0;
+            if (!empty($configured_sections)) {
+                // Class has configured section(s) in DB - load them normally
+                if ($is_higher_sec) {
+                    $select_fields = "c.class_id, c.class_name, sec.section_id, sec.section_name,
+                        COUNT(DISTINCT st.student_id) as total_students,
+                        SUM(CASE WHEN a.attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
+                        SUM(CASE WHEN a.attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
+                        SUM(CASE WHEN a.attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+                        SUM(CASE WHEN a.attendance_status = 'Late Coming' THEN 1 ELSE 0 END) as late_count,
+                        0 as excused_count,
+                        COUNT(a.attendance_id) as marked_count";
+                    $att_type_cond = "(a.attendance_type = 'Daily' OR a.attendance_type = 'Period-wise')";
+                } else {
+                    $select_fields = "c.class_id, c.class_name, sec.section_id, sec.section_name,
+                        COUNT(DISTINCT st.student_id) as total_students,
+                        SUM(CASE WHEN a.attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
+                        SUM(CASE WHEN a.attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
+                        SUM(CASE WHEN a.attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+                        0 as late_count,
+                        0 as excused_count,
+                        COUNT(a.attendance_id) as marked_count";
+                    $att_type_cond = "a.attendance_type = 'Daily'";
+                }
+
+                $this->db
+                    ->select($select_fields, FALSE)
+                    ->from('tbl_classes c')
+                    ->join('tbl_sections sec', "sec.class_id = c.class_id AND sec.status = 1 AND sec.is_deleted = 'n'", 'inner')
+                    ->join('tbl_students st', "st.class_id = c.class_id AND (st.section_id = sec.section_id OR (sec.section_name = 'A' AND (st.section_id IS NULL OR st.section_id = 0))) AND st.status = 1 AND st.is_deleted = 'n' AND (st.academic_year_id = " . (int)$year_id . " OR st.academic_year_id IS NULL)", 'left')
+                    ->join($this->table . ' a', "a.student_id = st.student_id AND a.attendance_date = " . $this->db->escape($date) . " AND {$att_type_cond} AND a.is_deleted = 'n' AND (a.academic_year_id = " . (int)$year_id . " OR a.academic_year_id IS NULL)", 'left')
+                    ->where('c.class_id', (int)$class_id)
+                    ->where('c.status', 1)
+                    ->group_by(array('c.class_id', 'sec.section_id', 'c.class_name', 'sec.section_name'))
+                    ->order_by('sec.section_name', 'ASC');
+
+                if ($section_id) {
+                    $this->db->where('sec.section_id', (int)$section_id);
+                }
+
+                $results = $this->db->get()->result();
+
+                foreach ($results as $row) {
+                    $marked = (int)$row->marked_count;
+                    $row->is_marked = ($marked > 0);
+                    $row->percentage = ($marked > 0) ? round(($row->present_count / $marked) * 100, 1) : 0;
+                    $row->is_higher_sec = $is_higher_sec;
+                    if (!$is_higher_sec) {
+                        $row->late_count = 0;
+                    }
+                }
+
+                return $results;
+            } else {
+                // Class has NO configured sections -> Fallback automatically to Section A
+                $default_sec_id = $this->Section_model->get_default_section_id($class_id);
+
+                // Count active students belonging to this class
+                $total_students = (int)$this->db
+                    ->where('class_id', (int)$class_id)
+                    ->where('status', 1)
+                    ->where('is_deleted', 'n')
+                    ->group_start()
+                        ->where('academic_year_id', (int)$year_id)
+                        ->or_where('academic_year_id IS NULL', null, false)
+                    ->group_end()
+                    ->count_all_results('tbl_students');
+
+                // Query attendance counts for this class
+                if ($is_higher_sec) {
+                    $att_select = "
+                        SUM(CASE WHEN attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
+                        SUM(CASE WHEN attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
+                        SUM(CASE WHEN attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+                        SUM(CASE WHEN attendance_status = 'Late Coming' THEN 1 ELSE 0 END) as late_count,
+                        0 as excused_count,
+                        COUNT(attendance_id) as marked_count
+                    ";
+                } else {
+                    $att_select = "
+                        SUM(CASE WHEN attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
+                        SUM(CASE WHEN attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
+                        SUM(CASE WHEN attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+                        0 as late_count,
+                        0 as excused_count,
+                        COUNT(attendance_id) as marked_count
+                    ";
+                }
+
+                $this->db
+                    ->select($att_select, FALSE)
+                    ->from($this->table)
+                    ->where('class_id', (int)$class_id)
+                    ->where('attendance_date', $date)
+                    ->where('is_deleted', 'n');
+
+                if ($is_higher_sec) {
+                    $this->db->where_in('attendance_type', array('Daily', 'Period-wise'));
+                } else {
+                    $this->db->where('attendance_type', 'Daily');
+                }
+
+                $att_counts = $this->db
+                    ->group_start()
+                        ->where('academic_year_id', (int)$year_id)
+                        ->or_where('academic_year_id IS NULL', null, false)
+                    ->group_end()
+                    ->get()
+                    ->row();
+
+                $present_c  = $att_counts ? (int)$att_counts->present_count : 0;
+                $half_day_c = $att_counts ? (int)$att_counts->half_day_count : 0;
+                $absent_c   = $att_counts ? (int)$att_counts->absent_count : 0;
+                $late_c     = $att_counts ? (int)$att_counts->late_count : 0;
+                $marked_c   = $att_counts ? (int)$att_counts->marked_count : 0;
+
+                if (!$is_higher_sec) {
+                    $late_c = 0;
+                }
+
+                $sec_overview = (object) array(
+                    'class_id'       => (int)$class_id,
+                    'class_name'     => $class_row ? $class_row->class_name : 'Class ' . $class_id,
+                    'section_id'     => $default_sec_id ?: 0,
+                    'section_name'   => 'A',
+                    'total_students' => $total_students,
+                    'present_count'  => $present_c,
+                    'half_day_count' => $half_day_c,
+                    'absent_count'   => $absent_c,
+                    'late_count'     => $late_c,
+                    'excused_count'  => 0,
+                    'marked_count'   => $marked_c,
+                    'is_marked'      => ($marked_c > 0),
+                    'percentage'     => ($marked_c > 0) ? round(($present_c / $marked_c) * 100, 1) : 0,
+                    'is_higher_sec'  => $is_higher_sec,
+                );
+
+                return array($sec_overview);
+            }
+        }
+
+        // 2. Overview across all classes (for Dashboard etc.)
+        $classes_query = $this->db->where('status', 1);
+        if ($year_id) {
+            $classes_query->group_start()
+                ->where('academic_year_id', (int)$year_id)
+                ->or_where('academic_year_id IS NULL', null, false)
+                ->group_end();
+        }
+        $all_classes = $classes_query->order_by('class_id', 'ASC')->get('tbl_classes')->result();
+
+        $results = array();
+        foreach ($all_classes as $cls) {
+            $cls_overview = $this->get_class_overview($date, $year_id, $cls->class_id, $section_id);
+            foreach ($cls_overview as $item) {
+                $results[] = $item;
+            }
         }
 
         return $results;
@@ -146,18 +337,41 @@ class Attendance_model extends CI_Model {
     public function get_daily_sheet($date, $class_id = NULL, $section_id = NULL, $year_id = NULL)
     {
         $this->db
-            ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.middle_name, st.last_name, st.photo, st.guardian_name, st.guardian_phone, st.guardian_email, c.class_name, sec.section_name, a.attendance_id, a.attendance_status, a.remarks, a.attendance_type, a.updated_at')
+            ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.middle_name, st.last_name, st.photo, st.guardian_name, st.guardian_phone, st.guardian_email, c.class_name, COALESCE(sec.section_name, "A") as section_name, a.attendance_id, a.attendance_status, a.remarks, a.attendance_type, a.updated_at')
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
             ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
-            ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_date = ' . $this->db->escape($date) . ' AND a.attendance_type = "Daily"', 'left')
+            ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_date = ' . $this->db->escape($date) . ' AND a.attendance_type = "Daily" AND a.is_deleted = "n"', 'left')
             ->where('st.status', 1)
+            ->where('st.is_deleted', 'n')
             ->order_by('CAST(st.roll_number AS UNSIGNED)', 'ASC')
             ->order_by('st.first_name', 'ASC');
 
-        if ($class_id) $this->db->where('st.class_id', $class_id);
-        if ($section_id) $this->db->where('st.section_id', $section_id);
-        if ($year_id) $this->db->where('st.academic_year_id', $year_id);
+        if ($class_id) $this->db->where('st.class_id', (int)$class_id);
+        if ($year_id) {
+            $this->db->group_start()
+                ->where('st.academic_year_id', (int)$year_id)
+                ->or_where('st.academic_year_id IS NULL', null, false)
+                ->group_end();
+        }
+
+        if ($section_id) {
+            $default_sec_id = $this->Section_model->get_default_section_id($class_id);
+            $has_other = $class_id ? $this->Section_model->has_other_sections($class_id, $default_sec_id) : false;
+            if ((int)$section_id === (int)$default_sec_id || !$has_other) {
+                if (!$has_other && $class_id) {
+                    // All students in this class belong to default Section A
+                } else {
+                    $this->db->group_start()
+                        ->where('st.section_id', (int)$section_id)
+                        ->or_where('st.section_id IS NULL', null, false)
+                        ->or_where('st.section_id', 0)
+                        ->group_end();
+                }
+            } else {
+                $this->db->where('st.section_id', (int)$section_id);
+            }
+        }
 
         return $this->db->get()->result();
     }
@@ -166,11 +380,21 @@ class Attendance_model extends CI_Model {
     {
         $this->db
             ->where('attendance_date', $date)
-            ->where('class_id', $class_id)
-            ->where('section_id', $section_id)
-            ->where('attendance_type', 'Daily');
+            ->where('class_id', (int)$class_id)
+            ->where('attendance_type', 'Daily')
+            ->where('is_deleted', 'n');
+
+        $default_sec_id = $this->Section_model->get_default_section_id($class_id);
+        $has_other = $class_id ? $this->Section_model->has_other_sections($class_id, $default_sec_id) : false;
+        if ($has_other && $section_id) {
+            $this->db->where('section_id', (int)$section_id);
+        }
+
         if ($year_id) {
-            $this->db->where('academic_year_id', $year_id);
+            $this->db->group_start()
+                ->where('academic_year_id', (int)$year_id)
+                ->or_where('academic_year_id IS NULL', null, false)
+                ->group_end();
         }
         return ($this->db->count_all_results($this->table) > 0);
     }
@@ -181,8 +405,18 @@ class Attendance_model extends CI_Model {
         $saved_count = 0;
 
         foreach ($attendance_records as $student_id => $rec) {
-            $status = is_array($rec) ? (isset($rec['status']) ? $rec['status'] : 'Present') : $rec;
-            $remarks = is_array($rec) ? (isset($rec['remarks']) ? $rec['remarks'] : '') : '';
+            $raw_status = is_array($rec) ? (isset($rec['status']) ? $rec['status'] : 'Present') : $rec;
+            $remarks    = is_array($rec) ? (isset($rec['remarks']) ? $rec['remarks'] : '') : '';
+
+            // Strictly enforce allowed statuses for LKG-10: Present, Half Day, Absent
+            if (in_array($raw_status, array('Half Day', 'Late / Half Day', 'Half-day'))) {
+                $status = 'Half Day';
+            } elseif ($raw_status === 'Absent') {
+                $status = 'Absent';
+            } else {
+                // Reject Late, Late Coming, Leave, Excused
+                $status = 'Present';
+            }
 
             // Check existing daily attendance for this student and date
             $existing = $this->db
@@ -224,8 +458,8 @@ class Attendance_model extends CI_Model {
 
             $saved_count++;
 
-            // Handle parent notification generation foundation for Absent / Late / Excused
-            if ($att_id && in_array($status, array('Absent', 'Late', 'Excused'))) {
+            // Handle parent notification generation foundation for Absent
+            if ($att_id && $status === 'Absent') {
                 $student = $this->db->where('student_id', $student_id)->get('tbl_students')->row();
                 if ($student) {
                     $this->Attendance_notification_model->create_for_attendance($student, $att_id, $date, $status, $settings);
@@ -239,68 +473,135 @@ class Attendance_model extends CI_Model {
     /* =========================================================================
        3. Period-wise Attendance Sheet & Marking
        ========================================================================= */
-    public function get_period_sheet($date, $period_id, $class_id = NULL, $section_id = NULL, $year_id = NULL)
+    public function get_period_sheet($date, $period_id, $class_id = NULL, $section_id = NULL, $year_id = NULL, $subject_id = NULL)
     {
+        $subject_join = '';
+        if ($subject_id) {
+            $subject_join = ' AND (a.subject_id = ' . (int)$subject_id . ' OR a.subject_id IS NULL)';
+        }
+
         $this->db
-            ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, st.photo, c.class_name, sec.section_name, p.period_name, p.period_number, p.start_time, p.end_time, a.attendance_id, a.attendance_status, a.remarks, a.updated_at')
+            ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, st.photo, c.class_name, COALESCE(sec.section_name, \'A\') as section_name, p.period_name, p.period_number, p.start_time, p.end_time, a.attendance_id, a.attendance_status, a.remarks, a.updated_at')
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
             ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
             ->join('tbl_periods p', 'p.period_id = ' . $this->db->escape($period_id), 'left')
-            ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_date = ' . $this->db->escape($date) . ' AND a.attendance_type = "Period-wise" AND a.period_id = ' . $this->db->escape($period_id), 'left')
+            ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_date = ' . $this->db->escape($date) . ' AND a.attendance_type = \'Period-wise\' AND a.period_id = ' . $this->db->escape($period_id) . $subject_join . ' AND a.is_deleted = \'n\'', 'left')
             ->where('st.status', 1)
+            ->where('st.is_deleted', 'n')
             ->order_by('CAST(st.roll_number AS UNSIGNED)', 'ASC')
             ->order_by('st.first_name', 'ASC');
 
-        if ($class_id) $this->db->where('st.class_id', $class_id);
-        if ($section_id) $this->db->where('st.section_id', $section_id);
-        if ($year_id) $this->db->where('st.academic_year_id', $year_id);
+        if ($class_id) $this->db->where('st.class_id', (int)$class_id);
+        if ($year_id) {
+            $this->db->group_start()
+                ->where('st.academic_year_id', (int)$year_id)
+                ->or_where('st.academic_year_id IS NULL', null, false)
+                ->group_end();
+        }
+
+        if ($section_id) {
+            $default_sec_id = $this->Section_model->get_default_section_id($class_id);
+            $has_other = $class_id ? $this->Section_model->has_other_sections($class_id, $default_sec_id) : false;
+            if ((int)$section_id === (int)$default_sec_id || !$has_other) {
+                if (!$has_other && $class_id) {
+                    // All students in this class belong to default Section A
+                } else {
+                    $this->db->group_start()
+                        ->where('st.section_id', (int)$section_id)
+                        ->or_where('st.section_id IS NULL', null, false)
+                        ->or_where('st.section_id', 0)
+                        ->group_end();
+                }
+            } else {
+                $this->db->where('st.section_id', (int)$section_id);
+            }
+        }
 
         return $this->db->get()->result();
     }
 
-    public function check_period_marked($date, $period_id, $class_id, $section_id, $year_id = NULL)
+    public function check_period_marked($date, $period_id, $class_id, $section_id, $year_id = NULL, $subject_id = NULL)
     {
         $this->db
             ->where('attendance_date', $date)
             ->where('period_id', $period_id)
-            ->where('class_id', $class_id)
-            ->where('section_id', $section_id)
-            ->where('attendance_type', 'Period-wise');
+            ->where('class_id', (int)$class_id)
+            ->where('attendance_type', 'Period-wise')
+            ->where('is_deleted', 'n');
+
+        if ($subject_id) {
+            $this->db->where('subject_id', (int)$subject_id);
+        }
+
+        $default_sec_id = $this->Section_model->get_default_section_id($class_id);
+        $has_other = $class_id ? $this->Section_model->has_other_sections($class_id, $default_sec_id) : false;
+        if ($has_other && $section_id) {
+            $this->db->where('section_id', (int)$section_id);
+        }
+
         if ($year_id) {
-            $this->db->where('academic_year_id', $year_id);
+            $this->db->group_start()
+                ->where('academic_year_id', (int)$year_id)
+                ->or_where('academic_year_id IS NULL', null, false)
+                ->group_end();
         }
         return ($this->db->count_all_results($this->table) > 0);
     }
 
-    public function save_period_attendance($attendance_records, $date, $period_id, $academic_year_id, $class_id, $section_id, $user_id = NULL)
+    public function save_period_attendance($attendance_records, $date, $period_id, $academic_year_id, $class_id, $section_id, $user_id = NULL, $subject_id = NULL)
     {
+        // Enforce that period-wise attendance can ONLY be saved for +1 and +2
+        if (!is_higher_secondary_class($class_id)) {
+            return 0;
+        }
+
         $settings = $this->Attendance_setting_model->get_settings();
         $saved_count = 0;
 
         foreach ($attendance_records as $student_id => $rec) {
-            $status = is_array($rec) ? (isset($rec['status']) ? $rec['status'] : 'Present') : $rec;
-            $remarks = is_array($rec) ? (isset($rec['remarks']) ? $rec['remarks'] : '') : '';
+            $raw_status = is_array($rec) ? (isset($rec['status']) ? $rec['status'] : 'Present') : $rec;
+            $remarks    = is_array($rec) ? (isset($rec['remarks']) ? $rec['remarks'] : '') : '';
 
-            $existing = $this->db
+            // Strictly enforce allowed statuses for +1/+2: Present, Half Day, Absent, Late Coming
+            if (in_array($raw_status, array('Half Day', 'Late / Half Day', 'Half-day'))) {
+                $status = 'Half Day';
+            } elseif (in_array($raw_status, array('Late', 'Late Coming'))) {
+                $status = 'Late Coming';
+            } elseif ($raw_status === 'Absent') {
+                $status = 'Absent';
+            } else {
+                // Reject Leave and Excused
+                $status = 'Present';
+            }
+
+            $existing_q = $this->db
                 ->where('student_id', $student_id)
                 ->where('attendance_date', $date)
                 ->where('attendance_type', 'Period-wise')
-                ->where('period_id', $period_id)
-                ->get($this->table)
-                ->row();
+                ->where('period_id', $period_id);
+
+            if ($subject_id) {
+                $existing_q->where('subject_id', (int)$subject_id);
+            }
+
+            $existing = $existing_q->get($this->table)->row();
 
             $att_id = NULL;
 
             if ($existing) {
+                $update_data = array(
+                    'attendance_status' => $status,
+                    'remarks'           => $remarks,
+                    'marked_by'         => $user_id,
+                    'updated_at'        => date('Y-m-d H:i:s')
+                );
+                if ($subject_id) {
+                    $update_data['subject_id'] = (int)$subject_id;
+                }
                 $this->db
                     ->where('attendance_id', $existing->attendance_id)
-                    ->update($this->table, array(
-                        'attendance_status' => $status,
-                        'remarks'           => $remarks,
-                        'marked_by'         => $user_id,
-                        'updated_at'        => date('Y-m-d H:i:s')
-                    ));
+                    ->update($this->table, $update_data);
                 $att_id = $existing->attendance_id;
             } else {
                 $this->db->insert($this->table, array(
@@ -311,6 +612,7 @@ class Attendance_model extends CI_Model {
                     'attendance_date'   => $date,
                     'attendance_type'   => 'Period-wise',
                     'period_id'         => $period_id,
+                    'subject_id'        => $subject_id ? (int)$subject_id : NULL,
                     'attendance_status' => $status,
                     'remarks'           => $remarks,
                     'marked_by'         => $user_id,
@@ -514,12 +816,13 @@ class Attendance_model extends CI_Model {
         $academic_year_id = $academic_year_id ? (int)$academic_year_id : get_current_academic_year_id();
 
         $this->db
-            ->select('c.class_name, sec.section_name,
-                SUM(CASE WHEN a.attendance_status = "Present" THEN 1 ELSE 0 END) as present_count,
-                SUM(CASE WHEN a.attendance_status = "Absent" THEN 1 ELSE 0 END) as absent_count,
-                SUM(CASE WHEN a.attendance_status = "Late" THEN 1 ELSE 0 END) as late_count,
-                SUM(CASE WHEN a.attendance_status IN ("Excused", "Leave") THEN 1 ELSE 0 END) as excused_count,
-                COUNT(a.attendance_id) as total_count')
+            ->select("c.class_name, sec.section_name,
+                SUM(CASE WHEN a.attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
+                SUM(CASE WHEN a.attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
+                SUM(CASE WHEN a.attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+                SUM(CASE WHEN a.attendance_status = 'Late Coming' THEN 1 ELSE 0 END) as late_count,
+                0 as excused_count,
+                COUNT(a.attendance_id) as total_count", FALSE)
             ->from('tbl_sections sec')
             ->join('tbl_classes c', 'c.class_id = sec.class_id', 'inner')
             ->join('tbl_attendance a', 'a.section_id = sec.section_id AND a.attendance_type = "Daily" AND a.academic_year_id = ' . (int)$academic_year_id, 'left')
@@ -534,7 +837,7 @@ class Attendance_model extends CI_Model {
         $results = $this->db->get()->result();
 
         foreach ($results as $row) {
-            $effective_total = $row->present_count + $row->absent_count + $row->late_count + $row->excused_count;
+            $effective_total = $row->present_count + $row->half_day_count + $row->absent_count + $row->late_count;
             $row->percentage = $effective_total > 0 ? round(($row->present_count / $effective_total) * 100, 1) : 0;
         }
 
@@ -546,12 +849,13 @@ class Attendance_model extends CI_Model {
         $year_id = !empty($filters['academic_year_id']) ? (int)$filters['academic_year_id'] : get_current_academic_year_id();
 
         $this->db
-            ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, c.class_name, sec.section_name,
-                SUM(CASE WHEN a.attendance_status = "Present" THEN 1 ELSE 0 END) as present_count,
-                SUM(CASE WHEN a.attendance_status = "Absent" THEN 1 ELSE 0 END) as absent_count,
-                SUM(CASE WHEN a.attendance_status = "Late" THEN 1 ELSE 0 END) as late_count,
-                SUM(CASE WHEN a.attendance_status IN ("Excused", "Leave") THEN 1 ELSE 0 END) as excused_count,
-                COUNT(a.attendance_id) as total_days')
+            ->select("st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, c.class_name, sec.section_name,
+                SUM(CASE WHEN a.attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
+                SUM(CASE WHEN a.attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
+                SUM(CASE WHEN a.attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+                SUM(CASE WHEN a.attendance_status = 'Late Coming' THEN 1 ELSE 0 END) as late_count,
+                0 as excused_count,
+                COUNT(a.attendance_id) as total_days", FALSE)
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
             ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
@@ -588,12 +892,13 @@ class Attendance_model extends CI_Model {
         $end_date   = date('Y-m-t', strtotime($start_date));
 
         $this->db
-            ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, c.class_name, sec.section_name,
-                SUM(CASE WHEN a.attendance_status = "Present" THEN 1 ELSE 0 END) as present_count,
-                SUM(CASE WHEN a.attendance_status = "Absent" THEN 1 ELSE 0 END) as absent_count,
-                SUM(CASE WHEN a.attendance_status = "Late" THEN 1 ELSE 0 END) as late_count,
-                SUM(CASE WHEN a.attendance_status IN ("Excused", "Leave") THEN 1 ELSE 0 END) as excused_count,
-                COUNT(a.attendance_id) as total_days')
+            ->select("st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, c.class_name, sec.section_name,
+                SUM(CASE WHEN a.attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
+                SUM(CASE WHEN a.attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
+                SUM(CASE WHEN a.attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+                SUM(CASE WHEN a.attendance_status = 'Late Coming' THEN 1 ELSE 0 END) as late_count,
+                0 as excused_count,
+                COUNT(a.attendance_id) as total_days", FALSE)
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
             ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
@@ -623,12 +928,13 @@ class Attendance_model extends CI_Model {
         $year_id = !empty($filters['academic_year_id']) ? (int)$filters['academic_year_id'] : get_current_academic_year_id();
 
         $this->db
-            ->select('p.period_id, p.period_number, p.period_name, p.start_time, p.end_time,
-                SUM(CASE WHEN a.attendance_status = "Present" THEN 1 ELSE 0 END) as present_count,
-                SUM(CASE WHEN a.attendance_status = "Absent" THEN 1 ELSE 0 END) as absent_count,
-                SUM(CASE WHEN a.attendance_status = "Late" THEN 1 ELSE 0 END) as late_count,
-                SUM(CASE WHEN a.attendance_status IN ("Excused", "Leave") THEN 1 ELSE 0 END) as excused_count,
-                COUNT(a.attendance_id) as total_count')
+            ->select("p.period_id, p.period_number, p.period_name, p.start_time, p.end_time,
+                SUM(CASE WHEN a.attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
+                SUM(CASE WHEN a.attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
+                SUM(CASE WHEN a.attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+                SUM(CASE WHEN a.attendance_status = 'Late Coming' THEN 1 ELSE 0 END) as late_count,
+                0 as excused_count,
+                COUNT(a.attendance_id) as total_count", FALSE)
             ->from('tbl_periods p')
             ->join($this->table . ' a', 'a.period_id = p.period_id AND a.attendance_type = "Period-wise" AND a.academic_year_id = ' . (int)$year_id, 'left')
             ->where('p.status', 1)
@@ -684,12 +990,13 @@ class Attendance_model extends CI_Model {
 
         // 2. Month-wise Breakdown
         $months = $this->db
-            ->select('DATE_FORMAT(attendance_date, "%Y-%m") as ym, DATE_FORMAT(attendance_date, "%M %Y") as month_name,
-                SUM(CASE WHEN attendance_status = "Present" THEN 1 ELSE 0 END) as present_count,
-                SUM(CASE WHEN attendance_status = "Absent" THEN 1 ELSE 0 END) as absent_count,
-                SUM(CASE WHEN attendance_status = "Late" THEN 1 ELSE 0 END) as late_count,
-                SUM(CASE WHEN attendance_status IN ("Excused", "Leave") THEN 1 ELSE 0 END) as excused_count,
-                COUNT(attendance_id) as total_days')
+            ->select("DATE_FORMAT(attendance_date, '%Y-%m') as ym, DATE_FORMAT(attendance_date, '%M %Y') as month_name,
+                SUM(CASE WHEN attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
+                SUM(CASE WHEN attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
+                SUM(CASE WHEN attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+                SUM(CASE WHEN attendance_status = 'Late Coming' THEN 1 ELSE 0 END) as late_count,
+                0 as excused_count,
+                COUNT(attendance_id) as total_days", FALSE)
             ->from($this->table)
             ->where('student_id', $student_id)
             ->where('attendance_type', 'Daily')
@@ -711,7 +1018,6 @@ class Attendance_model extends CI_Model {
             ->limit(30)
             ->get($this->table)
             ->result();
-
         return (object) array(
             'total_days'     => $total,
             'present'        => $present,
@@ -723,4 +1029,460 @@ class Attendance_model extends CI_Model {
             'recent_records' => $recent_records
         );
     }
+
+    /* =========================================================================
+       8. View Attendance Report & Working Days Calculation
+       ========================================================================= */
+
+    /**
+     * Calculate school working days in a date range excluding weekends and calendar holidays/term breaks
+     */
+    public function get_school_working_days($from_date, $to_date, $academic_year_id = NULL)
+    {
+        $from_ts = strtotime($from_date);
+        $to_ts   = strtotime($to_date);
+
+        if (!$from_ts || !$to_ts || $from_ts > $to_ts) {
+            return (object) array(
+                'count'         => 0,
+                'working_dates' => array(),
+                'holidays'      => array(),
+            );
+        }
+
+        // 1. Get configured school working days from Timetable_setting_model
+        $working_days_config = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday');
+        if (class_exists('Timetable_setting_model') || file_exists(APPPATH . 'models/Timetable_setting_model.php')) {
+            $this->load->model('Timetable_setting_model');
+            $cfg = $this->Timetable_setting_model->get_working_days_array();
+            if (!empty($cfg)) {
+                $working_days_config = $cfg;
+            }
+        }
+
+        // 2. Fetch holidays and term breaks from tbl_academic_calendar
+        $this->db->select('title, event_type, start_date, end_date')
+                 ->from('tbl_academic_calendar')
+                 ->where('status', 1)
+                 ->where_in('event_type', array('Holiday', 'Term Break'))
+                 ->where('start_date <=', $to_date)
+                 ->where('end_date >=', $from_date);
+
+        if ($academic_year_id) {
+            $this->db->group_start()
+                     ->where('academic_year_id', $academic_year_id)
+                     ->or_where('academic_year_id IS NULL', NULL, FALSE)
+                     ->group_end();
+        }
+
+        $holiday_records = $this->db->get()->result();
+        $holiday_map = array();
+
+        foreach ($holiday_records as $hr) {
+            $h_start = max($from_ts, strtotime($hr->start_date));
+            $h_end   = min($to_ts, strtotime($hr->end_date));
+            for ($cur = $h_start; $cur <= $h_end; $cur += 86400) {
+                $d_str = date('Y-m-d', $cur);
+                $holiday_map[$d_str] = $hr->title . ' (' . $hr->event_type . ')';
+            }
+        }
+
+        // 3. Iterate through each day in range
+        $working_dates = array();
+        for ($cur = $from_ts; $cur <= $to_ts; $cur += 86400) {
+            $d_str = date('Y-m-d', $cur);
+            $day_name = date('l', $cur);
+
+            // Skip non-working day of week (e.g. Sunday)
+            if (!in_array($day_name, $working_days_config)) {
+                continue;
+            }
+
+            // Skip official holiday or term break
+            if (isset($holiday_map[$d_str])) {
+                continue;
+            }
+
+            $working_dates[] = $d_str;
+        }
+
+        return (object) array(
+            'count'         => count($working_dates),
+            'working_dates' => $working_dates,
+            'holidays'      => $holiday_map,
+        );
+    }
+
+    /**
+     * Get aggregated attendance report for students in selected class and date range
+     */
+    public function get_range_attendance_report($from_date, $to_date, $class_id, $section_id = NULL, $academic_year_id = NULL)
+    {
+        $academic_year_id = $academic_year_id ? (int)$academic_year_id : get_current_academic_year_id();
+
+        // 1. Calculate school working days
+        $working_info       = $this->get_school_working_days($from_date, $to_date, $academic_year_id);
+        $total_working_days = $working_info->count;
+        $working_dates      = $working_info->working_dates;
+
+        // 2. Resolve default Section A fallback
+        $this->load->model('Section_model');
+        $has_other_sections = $this->Section_model->has_other_sections($class_id, $section_id);
+
+        // 3. Query active enrolled students
+        $this->db->select('s.student_id, s.admission_number, s.roll_number, s.first_name, s.last_name, s.gender, c.class_name, COALESCE(sec.section_name, "A") as section_name')
+                 ->from('tbl_students s')
+                 ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
+                 ->join('tbl_sections sec', 'sec.section_id = s.section_id', 'left')
+                 ->where('s.class_id', $class_id)
+                 ->where('s.status', 'Active');
+
+        if ($academic_year_id) {
+            $this->db->where('s.academic_year_id', $academic_year_id);
+        }
+
+        if ($has_other_sections && $section_id) {
+            $this->db->where('s.section_id', $section_id);
+        }
+
+        $this->db->order_by('CAST(s.roll_number AS UNSIGNED)', 'ASC')
+                 ->order_by('s.first_name', 'ASC');
+
+        $students = $this->db->get()->result();
+
+        $empty_summary = (object) array(
+            'total_students'     => count($students),
+            'total_working_days' => $total_working_days,
+            'total_present'      => 0,
+            'total_leave'        => 0,
+            'total_half_day'     => 0,
+            'total_late'         => 0,
+            'total_absent'       => 0,
+            'total_excused'      => 0,
+        );
+
+        if (empty($students)) {
+            return (object) array(
+                'summary'      => $empty_summary,
+                'students'     => array(),
+                'working_info' => $working_info,
+            );
+        }
+
+        // 4. Query student attendance records on working days within date range
+        $student_ids = array();
+        foreach ($students as $st) {
+            $student_ids[] = $st->student_id;
+        }
+
+        $is_higher_sec = is_higher_secondary_class($class_id);
+
+        $counts_map = array();
+        if (!empty($working_dates) && !empty($student_ids)) {
+            $att_type = $is_higher_sec ? 'Period-wise' : 'Daily';
+            $this->db->select('student_id, attendance_status, COUNT(*) as count')
+                     ->from($this->table)
+                     ->where_in('student_id', $student_ids)
+                     ->where('attendance_type', $att_type)
+                     ->where_in('attendance_date', $working_dates);
+
+            if ($academic_year_id) {
+                $this->db->where('academic_year_id', $academic_year_id);
+            }
+
+            $rows = $this->db->group_by(array('student_id', 'attendance_status'))
+                             ->get()
+                             ->result();
+
+            foreach ($rows as $r) {
+                $sid = $r->student_id;
+                $st  = $r->attendance_status;
+                if (!isset($counts_map[$sid])) {
+                    $counts_map[$sid] = array();
+                }
+                $counts_map[$sid][$st] = (int)$r->count;
+            }
+        }
+
+        // 5. Aggregate per student and overall summary
+        $total_present   = 0;
+        $total_half_day  = 0;
+        $total_late      = 0;
+        $total_absent    = 0;
+        $total_conducted = 0;
+
+        foreach ($students as $st) {
+            $sid = $st->student_id;
+            $m   = isset($counts_map[$sid]) ? $counts_map[$sid] : array();
+
+            $present  = isset($m['Present']) ? $m['Present'] : 0;
+            $half_day = (isset($m['Half Day']) ? $m['Half Day'] : 0) + (isset($m['Late / Half Day']) ? $m['Late / Half Day'] : 0) + (isset($m['Half-day']) ? $m['Half-day'] : 0);
+            $late     = (isset($m['Late']) ? $m['Late'] : 0) + (isset($m['Late Coming']) ? $m['Late Coming'] : 0);
+            $absent   = isset($m['Absent']) ? $m['Absent'] : 0;
+
+            if ($is_higher_sec) {
+                // +1 / +2: Total periods conducted for this student
+                $student_classes = $present + $half_day + $late + $absent;
+                $st->total_classes  = $student_classes;
+                $st->present_count  = $present;
+                $st->half_day_count = $half_day;
+                $st->late_count     = $late;
+                $st->absent_count   = $absent;
+                $st->leave_count    = 0;
+                $st->excused_count  = 0;
+                // % = Present Periods ÷ Total Classes × 100
+                $st->attendance_pct = ($student_classes > 0) ? round(($present / $student_classes) * 100, 1) : 0.0;
+                $total_conducted += $student_classes;
+            } else {
+                // LKG - 10: Working-day based
+                $st->working_days   = $total_working_days;
+                $st->present_count  = $present;
+                $st->half_day_count = $half_day;
+                $st->late_count     = 0; // Late coming removed for LKG-10
+                $st->absent_count   = $absent;
+                $st->leave_count    = 0;
+                $st->excused_count  = 0;
+                // % = Present Days ÷ Total Working Days × 100
+                $st->attendance_pct = ($total_working_days > 0) ? round(($present / $total_working_days) * 100, 1) : 0.0;
+            }
+
+            $total_present  += $present;
+            $total_half_day += $half_day;
+            $total_late     += ($is_higher_sec ? $late : 0);
+            $total_absent   += $absent;
+        }
+
+        $summary = (object) array(
+            'is_higher_sec'      => $is_higher_sec,
+            'total_students'     => count($students),
+            'total_working_days' => $total_working_days,
+            'total_classes'      => $total_conducted,
+            'total_present'      => $total_present,
+            'total_half_day'     => $total_half_day,
+            'total_late'         => $total_late,
+            'total_absent'       => $total_absent,
+            'total_leave'        => 0,
+            'total_excused'      => 0,
+        );
+
+        return (object) array(
+            'is_higher_sec' => $is_higher_sec,
+            'summary'       => $summary,
+            'students'      => $students,
+            'working_info'  => $working_info,
+        );
+    }
+
+    /**
+     * Get complete individual student attendance details: overall summary + subject-wise breakdown
+     */
+    public function get_individual_student_attendance($student_id, $from_date, $to_date, $academic_year_id = NULL)
+    {
+        $student_id = (int)$student_id;
+        $academic_year_id = $academic_year_id ? (int)$academic_year_id : get_current_academic_year_id();
+
+        // 1. Calculate school working days (excluding non-working days and academic calendar holidays)
+        $working_info       = $this->get_school_working_days($from_date, $to_date, $academic_year_id);
+        $total_working_days = $working_info->count;
+        $working_dates      = $working_info->working_dates;
+
+        // 2. Fetch student details
+        $this->load->model('Student_model');
+        $student = $this->Student_model->get_by_id($student_id);
+
+        if (!$student) {
+            return NULL;
+        }
+
+        $is_higher_sec = is_higher_secondary_class($student->class_id);
+
+        if ($is_higher_sec) {
+            // Higher Secondary (+1 / +2): Period-wise Attendance & Subject Breakdown
+            $period_records = array();
+            $present  = 0;
+            $half_day = 0;
+            $late     = 0;
+            $absent   = 0;
+
+            if (!empty($working_dates)) {
+                $this->db->select('a.*, p.period_name, p.period_number, DAYNAME(a.attendance_date) as day_name')
+                         ->from($this->table . ' a')
+                         ->join('tbl_periods p', 'p.period_id = a.period_id', 'left')
+                         ->where('a.student_id', $student_id)
+                         ->where('a.attendance_type', 'Period-wise')
+                         ->where_in('a.attendance_date', $working_dates);
+
+                if ($academic_year_id) {
+                    $this->db->where('a.academic_year_id', $academic_year_id);
+                }
+
+                $this->db->order_by('a.attendance_date', 'DESC')
+                         ->order_by('p.period_number', 'ASC');
+                $period_records = $this->db->get()->result();
+
+                foreach ($period_records as $pr) {
+                    $st = $pr->attendance_status;
+                    if ($st === 'Present') $present++;
+                    elseif (in_array($st, array('Half Day', 'Late / Half Day', 'Half-day'))) $half_day++;
+                    elseif (in_array($st, array('Late', 'Late Coming'))) $late++;
+                    elseif ($st === 'Absent') $absent++;
+                }
+            }
+
+            $total_classes = count($period_records);
+            // % = Present Periods ÷ Total Classes × 100
+            $overall_pct = ($total_classes > 0) ? round(($present / $total_classes) * 100, 2) : 0.0;
+
+            $overall_summary = (object) array(
+                'total_classes'      => $total_classes,
+                'total_working_days' => $total_working_days,
+                'present'            => $present,
+                'half_day'           => $half_day,
+                'late'               => $late,
+                'absent'             => $absent,
+                'leave'              => 0,
+                'excused'            => 0,
+                'attendance_pct'     => $overall_pct,
+            );
+
+            // Subject-wise mapping
+            $this->db->select('subject_id, subject_name, subject_code, subject_type')
+                     ->from('tbl_subjects')
+                     ->where('class_id', $student->class_id)
+                     ->where('status', 1)
+                     ->where('is_deleted', 'n')
+                     ->order_by('subject_name', 'ASC');
+            $subjects = $this->db->get()->result();
+
+            // Build Timetable lookup: (day, period_id) -> subject_id
+            $this->db->select('day, period_id, subject_id')
+                     ->from('tbl_timetable')
+                     ->where('class_id', $student->class_id)
+                     ->where('status', 1)
+                     ->where('is_deleted', 'n');
+            if ($academic_year_id) {
+                $this->db->where('academic_year_id', $academic_year_id);
+            }
+            $tt_rows = $this->db->get()->result();
+            $timetable_map = array();
+            foreach ($tt_rows as $tt) {
+                $timetable_map[$tt->day . '_' . $tt->period_id] = (int)$tt->subject_id;
+            }
+
+            $subject_stats = array();
+            foreach ($subjects as $sub) {
+                $subject_stats[$sub->subject_id] = (object) array(
+                    'subject_id'     => $sub->subject_id,
+                    'subject_name'   => $sub->subject_name,
+                    'subject_code'   => $sub->subject_code,
+                    'subject_type'   => $sub->subject_type,
+                    'total_classes'  => 0,
+                    'present'        => 0,
+                    'half_day'       => 0,
+                    'late'           => 0,
+                    'absent'         => 0,
+                    'leave'          => 0,
+                    'excused'        => 0,
+                    'attendance_pct' => 0.0,
+                );
+            }
+
+            $mapped_period_records = 0;
+            foreach ($period_records as $pa) {
+                $key = $pa->day_name . '_' . $pa->period_id;
+                $sub_id = isset($timetable_map[$key]) ? $timetable_map[$key] : NULL;
+
+                if (!$sub_id && !empty($pa->remarks)) {
+                    foreach ($subjects as $sub) {
+                        if (stripos($pa->remarks, $sub->subject_name) !== false) {
+                            $sub_id = $sub->subject_id;
+                            break;
+                        }
+                    }
+                }
+
+                if ($sub_id && isset($subject_stats[$sub_id])) {
+                    $mapped_period_records++;
+                    $st = $pa->attendance_status;
+                    $subject_stats[$sub_id]->total_classes++;
+
+                    if ($st === 'Present') $subject_stats[$sub_id]->present++;
+                    elseif (in_array($st, array('Half Day', 'Late / Half Day', 'Half-day'))) $subject_stats[$sub_id]->half_day++;
+                    elseif (in_array($st, array('Late', 'Late Coming'))) $subject_stats[$sub_id]->late++;
+                    elseif ($st === 'Absent') $subject_stats[$sub_id]->absent++;
+                }
+            }
+
+            foreach ($subject_stats as $sub_id => $stObj) {
+                $tc = $stObj->total_classes;
+                $stObj->attendance_pct = ($tc > 0) ? round(($stObj->present / $tc) * 100, 2) : 0.0;
+            }
+
+            return (object) array(
+                'is_higher_sec'         => TRUE,
+                'student'               => $student,
+                'overall_summary'       => $overall_summary,
+                'subject_wise'          => array_values($subject_stats),
+                'has_subject_records'   => ($mapped_period_records > 0),
+                'daily_records'         => array(),
+                'period_records'        => $period_records,
+                'working_info'          => $working_info,
+            );
+        } else {
+            // LKG - 10: Daily Attendance Only
+            $present  = 0;
+            $half_day = 0;
+            $absent   = 0;
+
+            $daily_records = array();
+            if (!empty($working_dates)) {
+                $this->db->select('attendance_date, attendance_status, remarks, created_at')
+                         ->from($this->table)
+                         ->where('student_id', $student_id)
+                         ->where('attendance_type', 'Daily')
+                         ->where_in('attendance_date', $working_dates);
+
+                if ($academic_year_id) {
+                    $this->db->where('academic_year_id', $academic_year_id);
+                }
+
+                $this->db->order_by('attendance_date', 'DESC');
+                $daily_records = $this->db->get()->result();
+
+                foreach ($daily_records as $dr) {
+                    $st = $dr->attendance_status;
+                    if ($st === 'Present') $present++;
+                    elseif (in_array($st, array('Half Day', 'Late / Half Day', 'Half-day'))) $half_day++;
+                    elseif ($st === 'Absent') $absent++;
+                }
+            }
+
+            // Overall Attendance % = Present Days ÷ Total Working Days × 100
+            $overall_pct = ($total_working_days > 0) ? round(($present / $total_working_days) * 100, 2) : 0.0;
+
+            $overall_summary = (object) array(
+                'total_working_days' => $total_working_days,
+                'total_classes'      => 0,
+                'present'            => $present,
+                'half_day'           => $half_day,
+                'late'               => 0,
+                'absent'             => $absent,
+                'leave'              => 0,
+                'excused'            => 0,
+                'attendance_pct'     => $overall_pct,
+            );
+
+            return (object) array(
+                'is_higher_sec'         => FALSE,
+                'student'               => $student,
+                'overall_summary'       => $overall_summary,
+                'subject_wise'          => array(),
+                'has_subject_records'   => FALSE,
+                'daily_records'         => $daily_records,
+                'period_records'        => array(),
+                'working_info'          => $working_info,
+            );
+        }
+    }
 }
+
