@@ -140,9 +140,9 @@
           </div>
 
           <div>
-            <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Target Section (Optional)</label>
-            <select name="section_id" class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
-              <option value="">All Sections in Class</option>
+            <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Target Division (Optional)</label>
+            <select name="division_id" class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+              <option value="">All Divisions in Class</option>
               <?php foreach ($sections as $sec): ?>
                 <option value="<?php echo $sec->section_id; ?>"><?php echo html_escape($sec->class_name . ' ' . $sec->section_name); ?></option>
               <?php endforeach; ?>

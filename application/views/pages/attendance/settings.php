@@ -30,7 +30,7 @@
     <?php echo form_open('attendance/settings'); ?>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         
-        <!-- SECTION 1: Status & Period Options -->
+        <!-- DIVISION 1: Status & Period Options -->
         <div class="p-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 space-y-5">
           <div class="flex items-center gap-2.5 pb-3 border-b border-outline-variant/50">
             <span class="material-symbols-outlined text-primary text-[24px]">checklist</span>
@@ -99,7 +99,7 @@
           </div>
         </div>
 
-        <!-- SECTION 2: Notification Triggers & Timings -->
+        <!-- DIVISION 2: Notification Triggers & Timings -->
         <div class="p-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 space-y-5">
           <div class="flex items-center gap-2.5 pb-3 border-b border-outline-variant/50">
             <span class="material-symbols-outlined text-primary text-[24px]">notifications_active</span>
@@ -145,7 +145,7 @@
         </div>
       </div>
 
-      <!-- SECTION 3: Notification Templates & Dynamic Placeholders -->
+      <!-- DIVISION 3: Notification Templates & Dynamic Placeholders -->
       <div class="p-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 space-y-5 mb-6">
         <div class="flex items-center justify-between pb-3 border-b border-outline-variant/50">
           <div class="flex items-center gap-2.5">

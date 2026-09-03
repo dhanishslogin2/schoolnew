@@ -48,7 +48,7 @@
         <table class="w-full data-table zebra border-collapse text-body-md">
           <thead>
             <tr class="border-b border-outline-variant/60 bg-surface-container-low/50">
-              <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Class & Section</th>
+              <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Class & Division</th>
               <th class="text-center px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Current Status</th>
               <th class="text-center px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Published Timestamp</th>
               <th class="text-center px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Published By</th>
@@ -64,7 +64,7 @@
             ?>
             <?php foreach ($classes as $c): ?>
               <?php
-                // Default Section 1
+                // Default Division 1
                 $key = $c->class_id . '_1';
                 $rec = $pub_map[$key] ?? null;
                 $status = $rec ? $rec->status : 'Draft';
@@ -74,7 +74,7 @@
               ?>
               <tr class="hover:bg-surface-container-low transition-colors">
                 <td class="px-4 py-3 font-bold text-on-surface whitespace-nowrap">
-                  <?php echo html_escape($c->class_name); ?> — Section A
+                  <?php echo html_escape($c->class_name); ?> — Division A
                 </td>
                 <td class="px-4 py-3 text-center whitespace-nowrap">
                   <span class="px-3 py-1 rounded-full text-[12px] <?php echo $badgeClass; ?>">
@@ -92,7 +92,7 @@
                     <!-- Draft -->
                     <?php echo form_open('timetable/publish_lock?academic_year_id=' . $selected_year, array('class' => 'inline')); ?>
                       <input type="hidden" name="class_id" value="<?php echo $c->class_id; ?>"/>
-                      <input type="hidden" name="section_id" value="1"/>
+                      <input type="hidden" name="division_id" value="1"/>
                       <input type="hidden" name="status" value="Draft"/>
                       <button type="submit" class="px-2.5 py-1 rounded-lg border border-outline-variant text-[11px] font-semibold <?php echo ($status === 'Draft') ? 'bg-primary text-on-primary' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high'; ?> cursor-pointer">
                         Draft
@@ -102,7 +102,7 @@
                     <!-- Published -->
                     <?php echo form_open('timetable/publish_lock?academic_year_id=' . $selected_year, array('class' => 'inline')); ?>
                       <input type="hidden" name="class_id" value="<?php echo $c->class_id; ?>"/>
-                      <input type="hidden" name="section_id" value="1"/>
+                      <input type="hidden" name="division_id" value="1"/>
                       <input type="hidden" name="status" value="Published"/>
                       <button type="submit" class="px-2.5 py-1 rounded-lg border border-outline-variant text-[11px] font-semibold <?php echo ($status === 'Published') ? 'bg-secondary text-on-secondary' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high'; ?> cursor-pointer">
                         Publish
@@ -112,7 +112,7 @@
                     <!-- Locked -->
                     <?php echo form_open('timetable/publish_lock?academic_year_id=' . $selected_year, array('class' => 'inline')); ?>
                       <input type="hidden" name="class_id" value="<?php echo $c->class_id; ?>"/>
-                      <input type="hidden" name="section_id" value="1"/>
+                      <input type="hidden" name="division_id" value="1"/>
                       <input type="hidden" name="status" value="Locked"/>
                       <button type="submit" class="px-2.5 py-1 rounded-lg border border-outline-variant text-[11px] font-semibold <?php echo ($status === 'Locked') ? 'bg-amber-600 text-white' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high'; ?> cursor-pointer">
                         Lock

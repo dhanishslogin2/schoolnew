@@ -190,10 +190,10 @@
           <p class="text-body-md text-on-surface mb-4">Assign section and roll number to finalize admission for <strong id="admit_student_name"></strong>.</p>
           <div class="space-y-4 mb-4">
             <div>
-              <label class="block text-label-md mb-1">Assign Section *</label>
-              <select name="section_id" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
+              <label class="block text-label-md mb-1">Assign Division *</label>
+              <select name="division_id" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
                 <?php foreach ($sections as $sec): ?>
-                  <option value="<?php echo $sec->section_id; ?>"><?php echo html_escape($sec->class_name . ' - Section ' . $sec->section_name); ?></option>
+                  <option value="<?php echo $sec->section_id; ?>"><?php echo html_escape($sec->class_name . ' - Division ' . $sec->section_name); ?></option>
                 <?php endforeach; ?>
               </select>
             </div>

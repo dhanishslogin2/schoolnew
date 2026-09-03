@@ -124,10 +124,10 @@ class Id_card_model extends CI_Model {
     public function get_student_card_data($student_id)
     {
         $student = $this->db
-            ->select('st.*, c.class_name, c.class_code, sec.section_name, y.year_name, y.start_date, y.end_date')
+            ->select('st.*, c.class_name, c.class_code, div.division_name as division_name, div.division_name as section_name, y.year_name, y.start_date, y.end_date')
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = st.academic_year_id', 'left')
             ->where('st.student_id', (int)$student_id)
             ->where('st.is_deleted', 'n')
@@ -165,15 +165,15 @@ class Id_card_model extends CI_Model {
         $sanitized_ids = array_map('intval', $student_ids);
 
         return $this->db
-            ->select('st.*, c.class_name, c.class_code, sec.section_name, y.year_name, y.start_date, y.end_date')
+            ->select('st.*, c.class_name, c.class_code, div.division_name as division_name, div.division_name as section_name, y.year_name, y.start_date, y.end_date')
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = st.academic_year_id', 'left')
             ->where_in('st.student_id', $sanitized_ids)
             ->where('st.is_deleted', 'n')
             ->order_by('c.class_id', 'ASC')
-            ->order_by('sec.section_id', 'ASC')
+            ->order_by('div.division_id', 'ASC')
             ->order_by('st.roll_number', 'ASC')
             ->order_by('st.first_name', 'ASC')
             ->get()
@@ -213,7 +213,7 @@ class Id_card_model extends CI_Model {
             $update_data = [
                 'card_version'    => $new_version,
                 'class_id'        => $student->class_id,
-                'section_id'      => $student->section_id,
+                'division_id'      => $student->section_id,
                 'status'          => ($action === 'Regenerate') ? 'Re-generated' : $action,
                 'generated_by'    => $user_id,
                 'generated_at'    => $now,
@@ -228,7 +228,7 @@ class Id_card_model extends CI_Model {
                 'student_id'       => (int)$student_id,
                 'academic_year_id' => (int)$academic_year_id,
                 'class_id'         => $student->class_id,
-                'section_id'       => $student->section_id,
+                'division_id'       => $student->section_id,
                 'card_version'     => 1,
                 'status'           => $action,
                 'generated_by'     => $user_id,
@@ -271,11 +271,11 @@ class Id_card_model extends CI_Model {
         $dir = (strtoupper($order_dir) === 'ASC') ? 'ASC' : 'DESC';
 
         $this->db->select('h.*, st.admission_number, st.first_name, st.last_name, st.photo, st.gender, st.roll_number,
-                          c.class_name, sec.section_name, y.year_name, u.full_name as generated_by_name');
+                          c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name, u.full_name as generated_by_name');
         $this->db->from($this->history_table . ' h');
         $this->db->join('tbl_students st', 'st.student_id = h.student_id', 'left');
         $this->db->join('tbl_classes c', 'c.class_id = st.class_id', 'left');
-        $this->db->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left');
+        $this->db->join('tbl_divisions div', 'div.division_id = st.division_id', 'left');
         $this->db->join('tbl_academic_years y', 'y.academic_year_id = h.academic_year_id', 'left');
         $this->db->join('tbl_users u', 'u.user_id = h.generated_by', 'left');
 
@@ -316,8 +316,8 @@ class Id_card_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('st.class_id', (int)$filters['class_id']);
         }
-        if (!empty($filters['section_id'])) {
-            $this->db->where('st.section_id', (int)$filters['section_id']);
+        if (!empty($filters['division_id'])) {
+            $this->db->where('st.division_id', (int)$filters['division_id']);
         }
         if (!empty($filters['status']) && $filters['status'] !== 'All') {
             $this->db->where('h.status', $filters['status']);

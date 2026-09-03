@@ -62,9 +62,9 @@
         </div>
 
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Section</label>
-          <select name="section_id" onchange="this.form.submit()" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
-            <option value="">All Sections</option>
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Division</label>
+          <select name="division_id" onchange="this.form.submit()" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+            <option value="">All Divisions</option>
             <?php foreach ($sections as $sec): ?>
               <option value="<?php echo $sec->section_id; ?>" <?php echo ($section_id == $sec->section_id) ? 'selected' : ''; ?>>
                 <?php echo html_escape($sec->class_name . ' ' . $sec->section_name); ?>
@@ -273,7 +273,7 @@
         <table class="w-full data-table zebra border-collapse">
           <thead>
             <tr class="border-b border-outline-variant/60 bg-surface-container-low/50">
-              <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase tracking-wider">Class & Section</th>
+              <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase tracking-wider">Class & Division</th>
               <th class="text-right px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase tracking-wider">Total</th>
               <th class="text-right px-4 py-3 text-label-md font-semibold text-secondary uppercase tracking-wider">Present</th>
               <th class="text-right px-4 py-3 text-label-md font-semibold text-amber-600 uppercase tracking-wider">Half Day</th>

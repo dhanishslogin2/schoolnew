@@ -8,6 +8,7 @@ class Academics extends MY_Controller {
         parent::__construct();
         $this->load->model('Academic_year_model');
         $this->load->model('Class_model');
+        $this->load->model('Division_model');
         $this->load->model('Section_model');
         $this->load->model('Subject_model');
         $this->load->model('Staff_model');
@@ -35,14 +36,15 @@ class Academics extends MY_Controller {
         $year_id     = $active_year ? (int)$active_year->academic_year_id : NULL;
 
         $total_classes  = $this->db->where('status', 1)->count_all_results('tbl_classes');
-        $total_sections = $this->db->where('status', 1)->count_all_results('tbl_sections');
+        $total_divisions = $this->db->where('status', 1)->count_all_results('tbl_divisions');
+        $total_sections = $total_divisions;
         $total_subjects = $this->db->where('status', 1)->count_all_results('tbl_subjects');
-        $assigned_teachers = $this->db->where('class_teacher_id IS NOT NULL', NULL, FALSE)->where('status', 1)->count_all_results('tbl_sections');
+        $assigned_teachers = $this->db->where('class_teacher_id IS NOT NULL', NULL, FALSE)->where('status', 1)->count_all_results('tbl_divisions');
 
         // Classes summary with sections and students
         $classes_summary = $this->db->query("
             SELECT c.class_id, c.class_name, 
-                   (SELECT COUNT(*) FROM tbl_sections sec WHERE sec.class_id = c.class_id AND sec.status = 1) as section_count,
+                   (SELECT COUNT(*) FROM tbl_divisions div WHERE div.class_id = c.class_id AND sec.status = 1) as division_count, (SELECT COUNT(*) FROM tbl_divisions div WHERE div.class_id = c.class_id AND div.status = 1) as section_count,
                    (SELECT COUNT(*) FROM tbl_students st WHERE st.class_id = c.class_id AND st.status = 1) as student_count
             FROM tbl_classes c
             WHERE c.status = 1
@@ -294,9 +296,9 @@ class Academics extends MY_Controller {
     }
 
     /* =========================================================================
-       3. Sections / Divisions Management
+       3. Divisions Management
        ========================================================================= */
-    public function sections()
+    public function divisions()
     {
         $this->require_permission('academics.view');
         if ($this->input->method() === 'post') {
@@ -304,85 +306,98 @@ class Academics extends MY_Controller {
             if ($action === 'add') {
                 $this->require_permission('academics.create');
                 $this->form_validation->set_rules('class_id', 'Class', 'required');
-                $this->form_validation->set_rules('section_name', 'Section Name', 'required|trim');
+                $name_field = $this->input->post('division_name') !== NULL ? 'division_name' : 'section_name';
+                $this->form_validation->set_rules($name_field, 'Division Name', 'required|trim');
 
                 if ($this->form_validation->run() === TRUE) {
                     $class_id = $this->input->post('class_id');
-                    $section_name = trim($this->input->post('section_name'));
+                    $division_name = trim($this->input->post($name_field));
 
-                    if ($this->Section_model->check_duplicate($class_id, $section_name)) {
-                        $this->session->set_flashdata('error', 'Section "' . $section_name . '" already exists in the selected class.');
+                    if ($this->Division_model->check_duplicate($class_id, $division_name)) {
+                        $this->session->set_flashdata('error', 'Division "' . $division_name . '" already exists in the selected class.');
                     } else {
-                        $this->Section_model->insert(array(
-                            'class_id'     => $class_id,
-                            'section_name' => $section_name,
-                            'room_no'      => $this->input->post('room_no'),
-                            'capacity'     => $this->input->post('capacity') ? intval($this->input->post('capacity')) : 40,
-                            'description'  => $this->input->post('description'),
-                            'status'       => 1,
-                            'created_at'   => date('Y-m-d H:i:s')
+                        $this->Division_model->insert(array(
+                            'class_id'      => $class_id,
+                            'division_name' => $division_name,
+                            'room_no'       => $this->input->post('room_no'),
+                            'capacity'      => $this->input->post('capacity') ? intval($this->input->post('capacity')) : 40,
+                            'description'   => $this->input->post('description'),
+                            'status'        => 1,
+                            'created_at'    => date('Y-m-d H:i:s')
                         ));
-                        $this->session->set_flashdata('success', 'Section created successfully!');
+                        $this->session->set_flashdata('success', 'Division created successfully!');
                     }
                 } else {
                     $this->session->set_flashdata('error', validation_errors());
                 }
             } elseif ($action === 'edit') {
                 $this->require_permission('academics.edit');
-                $id = $this->input->post('section_id');
+                $id = $this->input->post('division_id') ?: $this->input->post('section_id');
                 $class_id = $this->input->post('class_id');
-                $section_name = trim($this->input->post('section_name'));
+                $name_field = $this->input->post('division_name') !== NULL ? 'division_name' : 'section_name';
+                $division_name = trim($this->input->post($name_field));
 
-                if ($this->Section_model->check_duplicate($class_id, $section_name, $id)) {
-                    $this->session->set_flashdata('error', 'Section "' . $section_name . '" already exists in this class.');
+                if ($this->Division_model->check_duplicate($class_id, $division_name, $id)) {
+                    $this->session->set_flashdata('error', 'Division "' . $division_name . '" already exists in this class.');
                 } else {
-                    $this->Section_model->update($id, array(
-                        'class_id'     => $class_id,
-                        'section_name' => $section_name,
-                        'room_no'      => $this->input->post('room_no'),
-                        'capacity'     => $this->input->post('capacity') ? intval($this->input->post('capacity')) : 40,
-                        'description'  => $this->input->post('description'),
-                        'updated_at'   => date('Y-m-d H:i:s')
+                    $this->Division_model->update($id, array(
+                        'class_id'      => $class_id,
+                        'division_name' => $division_name,
+                        'room_no'       => $this->input->post('room_no'),
+                        'capacity'      => $this->input->post('capacity') ? intval($this->input->post('capacity')) : 40,
+                        'description'   => $this->input->post('description'),
+                        'updated_at'    => date('Y-m-d H:i:s')
                     ));
-                    $this->session->set_flashdata('success', 'Section updated successfully!');
+                    $this->session->set_flashdata('success', 'Division updated successfully!');
                 }
             }
-            redirect('academics/sections');
+            redirect('academics/divisions');
         }
 
-        $class_id = $this->input->get('class_id');
-        $sections = $this->Section_model->get_all($class_id);
-        $classes  = $this->Class_model->get_all();
+        $class_id  = $this->input->get('class_id');
+        $divisions = $this->Division_model->get_all($class_id);
+        $classes   = $this->Class_model->get_all();
 
-        $this->render('pages/academics/sections', array(
-            'title'      => 'Sections / Divisions',
-            'page_key'   => 'sections',
-            'breadcrumb' => array('Academic Management', 'Sections / Divisions'),
-            'sections'   => $sections,
+        $this->render('pages/academics/divisions', array(
+            'title'      => 'Divisions',
+            'page_key'   => 'academics-divisions',
+            'breadcrumb' => array('Academic Management', 'Divisions'),
+            'divisions'  => $divisions,
+            'sections'   => $divisions,
             'classes'    => $classes,
         ));
     }
 
-    public function delete_section($id = NULL)
+    public function sections()
+    {
+        $this->divisions();
+    }
+
+    public function delete_division($id = NULL)
     {
         $this->require_permission('academics.delete');
         if (!empty($id)) {
-            $this->Section_model->soft_delete($id);
-            $this->session->set_flashdata('success', 'Section deactivated.');
+            $this->Division_model->soft_delete($id);
+            $this->session->set_flashdata('success', 'Division deactivated.');
         }
-        redirect('academics/sections');
+        redirect('academics/divisions');
+    }
+
+    public function delete_section($id = NULL)
+    {
+        $this->delete_division($id);
     }
 
     /**
-     * AJAX endpoint: calculate next section letter for a class (starts from 'B')
+     * AJAX endpoint: calculate next division letter for a class (starts from 'B')
      */
-    public function get_next_section_ajax()
+    public function get_next_division_ajax()
     {
         $this->require_permission('academics.view');
         $class_id = (int)$this->input->get_post('class_id');
         $next_name = 'B';
         if ($class_id > 0) {
-            $next_name = $this->Section_model->get_next_section_name($class_id);
+            $next_name = $this->Division_model->get_next_division_name($class_id);
         }
 
         return $this->output
@@ -390,10 +405,16 @@ class Academics extends MY_Controller {
             ->set_output(json_encode([
                 'status'          => true,
                 'class_id'        => $class_id,
+                'next_division'   => $next_name,
                 'next_section'    => $next_name,
                 'csrf_token_name' => $this->security->get_csrf_token_name(),
                 'csrf_hash'       => $this->security->get_csrf_hash()
             ]));
+    }
+
+    public function get_next_section_ajax()
+    {
+        return $this->get_next_division_ajax();
     }
 
     /* =========================================================================
@@ -929,15 +950,20 @@ class Academics extends MY_Controller {
     /* =========================================================================
        9. Dynamic AJAX Dropdowns & Helpers
        ========================================================================= */
-    public function ajax_get_sections($class_id = NULL)
+    public function ajax_get_divisions($class_id = NULL)
     {
         header('Content-Type: application/json');
         if (empty($class_id)) {
             echo json_encode(array());
             return;
         }
-        $sections = $this->Section_model->get_all($class_id);
-        echo json_encode($sections);
+        $divisions = $this->Division_model->get_all($class_id);
+        echo json_encode($divisions);
+    }
+
+    public function ajax_get_sections($class_id = NULL)
+    {
+        $this->ajax_get_divisions($class_id);
     }
 
     public function ajax_get_subjects($class_id = NULL)

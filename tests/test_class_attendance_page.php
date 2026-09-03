@@ -34,9 +34,12 @@ function &get_instance() {
 
 require_once APPPATH . 'helpers/app_helper.php';
 require_once BASEPATH . 'core/Model.php';
-require_once APPPATH . 'models/Attendance_model.php';
+require_once APPPATH . 'models/Division_model.php';
 require_once APPPATH . 'models/Section_model.php';
+require_once APPPATH . 'models/Attendance_model.php';
 
+$mock_ci->load->model('Division_model');
+$mock_ci->load->model('Section_model');
 $att_model = new Attendance_model();
 $att_model->db = $db_conn;
 

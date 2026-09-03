@@ -13,6 +13,7 @@ class Homework extends MY_Controller {
         $this->load->model('Homework_setting_model');
         $this->load->model('Academic_year_model');
         $this->load->model('Class_model');
+        $this->load->model('Division_model');
         $this->load->model('Section_model');
         $this->load->model('Subject_model');
         $this->load->model('Staff_model');
@@ -51,7 +52,7 @@ class Homework extends MY_Controller {
         $filters = [
             'academic_year_id'   => $year_id,
             'class_id'           => $this->input->get('class_id') ?: NULL,
-            'section_id'         => $this->input->get('section_id') ?: NULL,
+            'division_id'         => $this->input->get('division_id') ?: NULL,
             'subject_id'         => $this->input->get('subject_id') ?: NULL,
             'teacher_id'         => $this->input->get('teacher_id') ?: NULL,
             'assignment_type_id' => $this->input->get('assignment_type_id') ?: NULL,
@@ -63,7 +64,7 @@ class Homework extends MY_Controller {
         $data['title'] = 'Assignments Directory';
         $data['academic_years'] = $this->Academic_year_model->get_all();
         $data['classes'] = $this->Class_model->get_all($year_id);
-        $data['sections'] = $filters['class_id'] ? $this->Section_model->get_by_class($filters['class_id']) : [];
+        $data['divisions'] = $filters['class_id'] ? $this->Division_model->get_by_class($filters['class_id']) : [];
         $data['subjects'] = $this->Subject_model->get_all(TRUE);
         $data['teachers'] = $this->Staff_model->get_teaching_staff();
         $data['types'] = $this->Homework_type_model->get_all(TRUE);
@@ -81,7 +82,7 @@ class Homework extends MY_Controller {
 
         if ($this->input->post()) {
             $class_id = (int)$this->input->post('class_id');
-            $section_id = (int)$this->input->post('section_id');
+            $section_id = (int)$this->input->post('division_id');
             $subject_id = (int)$this->input->post('subject_id');
             $teacher_id = (int)$this->input->post('teacher_id');
             $status = $this->input->post('submit_action') === 'publish' ? 'Published' : 'Draft';
@@ -134,7 +135,7 @@ class Homework extends MY_Controller {
             $asgnData = [
                 'academic_year_id'      => $year_id,
                 'class_id'              => $class_id,
-                'section_id'            => $section_id,
+                'division_id'            => $section_id,
                 'subject_id'            => $subject_id,
                 'teacher_id'            => $teacher_id,
                 'assignment_type_id'    => (int)$this->input->post('assignment_type_id'),
@@ -200,7 +201,7 @@ class Homework extends MY_Controller {
 
             $updateData = [
                 'class_id'              => (int)$this->input->post('class_id'),
-                'section_id'            => (int)$this->input->post('section_id'),
+                'division_id'            => (int)$this->input->post('division_id'),
                 'subject_id'            => (int)$this->input->post('subject_id'),
                 'teacher_id'            => (int)$this->input->post('teacher_id'),
                 'assignment_type_id'    => (int)$this->input->post('assignment_type_id'),
@@ -230,7 +231,7 @@ class Homework extends MY_Controller {
         $data['title'] = 'Edit Assignment';
         $data['assignment'] = $assignment;
         $data['classes'] = $this->Class_model->get_all(TRUE);
-        $data['sections'] = $this->Section_model->get_by_class($assignment->class_id);
+        $data['divisions'] = $this->Division_model->get_by_class($assignment->class_id);
         $data['subjects'] = $this->Subject_model->get_all(TRUE);
         $data['teachers'] = $this->Staff_model->get_teaching_staff();
         $data['types'] = $this->Homework_type_model->get_all(TRUE);
@@ -256,7 +257,7 @@ class Homework extends MY_Controller {
         // Roster of enrolled students in this class/section
         $students = $this->db
             ->where('class_id', $assignment->class_id)
-            ->where('section_id', $assignment->section_id)
+            ->where('division_id', $assignment->section_id)
             ->where('status', 1)
             ->order_by('roll_number', 'ASC')
             ->order_by('first_name', 'ASC')
@@ -333,18 +334,18 @@ class Homework extends MY_Controller {
         $this->require_permission('homework.view');
         $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $class_id = $this->input->get('class_id');
-        $section_id = $this->input->get('section_id');
+        $section_id = $this->input->get('division_id');
 
         $filters = ['academic_year_id' => $year_id];
         if ($class_id) $filters['class_id'] = $class_id;
-        if ($section_id) $filters['section_id'] = $section_id;
+        if ($section_id) $filters['division_id'] = $section_id;
 
         $data['title'] = 'Class-wise Assignments';
         $data['academic_years'] = $this->Academic_year_model->get_all();
         $data['selected_year'] = $year_id;
         $data['classes'] = $this->Class_model->get_all($year_id);
         $data['selected_class'] = $class_id;
-        $data['sections'] = $class_id ? $this->Section_model->get_by_class($class_id) : [];
+        $data['divisions'] = $class_id ? $this->Division_model->get_by_class($class_id) : [];
         $data['selected_section'] = $section_id;
         $data['assignments'] = $this->Homework_model->get_all($filters);
 
@@ -374,14 +375,14 @@ class Homework extends MY_Controller {
             'academic_year_id' => $year_id,
             'assignment_id'    => $this->input->get('assignment_id') ?: NULL,
             'class_id'         => $this->input->get('class_id') ?: NULL,
-            'section_id'       => $this->input->get('section_id') ?: NULL,
+            'division_id'       => $this->input->get('division_id') ?: NULL,
             'status'           => $this->input->get('status') ?: NULL,
             'search'           => $this->input->get('search') ?: NULL
         ];
 
         $data['title'] = 'Submission Tracking';
         $data['classes'] = $this->Class_model->get_all($year_id);
-        $data['sections'] = $filters['class_id'] ? $this->Section_model->get_by_class($filters['class_id']) : [];
+        $data['divisions'] = $filters['class_id'] ? $this->Division_model->get_by_class($filters['class_id']) : [];
         $data['assignments'] = $this->Homework_model->get_all(['academic_year_id' => $year_id, 'status' => 'Published']);
         $data['filters'] = $filters;
         $data['submissions'] = $this->Homework_submission_model->get_submissions($filters);

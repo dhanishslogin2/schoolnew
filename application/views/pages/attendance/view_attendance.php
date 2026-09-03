@@ -78,14 +78,14 @@
 
         <!-- Session / Section -->
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Session / Section *</label>
-          <select name="section_id" id="filter_section" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Session / Division *</label>
+          <select name="division_id" id="filter_division" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <?php if (empty($sections)): ?>
-              <option value="12" selected>Section A (Default)</option>
+              <option value="12" selected>Division A (Default)</option>
             <?php else: ?>
               <?php foreach ($sections as $s): ?>
-                <option value="<?php echo $s->section_id; ?>" <?php echo ((int)$section_id === (int)$s->section_id) ? 'selected' : ''; ?>>
-                  Section <?php echo htmlspecialchars($s->section_name); ?>
+                <option value="<?php echo ($s->division_id ?? $s->section_id); ?>" <?php echo ((int)$section_id === (int)($s->division_id ?? $s->section_id)) ? 'selected' : ''; ?>>
+                  Division <?php echo htmlspecialchars($s->division_name ?? $s->section_name); ?>
                 </option>
               <?php endforeach; ?>
             <?php endif; ?>
@@ -264,7 +264,7 @@
         </h3>
         <p class="text-body-md text-on-surface-variant mt-0.5">
           Showing enrolled students for <strong class="text-on-surface"><?php echo htmlspecialchars($selected_class ? $selected_class->class_name : 'Class'); ?></strong> — 
-          <strong class="text-on-surface">Section <?php echo htmlspecialchars($selected_section ? $selected_section->section_name : 'A'); ?></strong>
+          <strong class="text-on-surface">Division <?php echo htmlspecialchars(($selected_division ?? $selected_section) ? (($selected_division ?? $selected_section)->division_name ?? ($selected_division ?? $selected_section)->section_name) : 'A'); ?></strong>
         </p>
       </div>
       <div class="text-label-md font-semibold text-on-surface-variant bg-surface-container-high px-3 py-1.5 rounded-lg self-start sm:self-auto">
@@ -277,7 +277,7 @@
         <span class="material-symbols-outlined text-[48px] text-outline mb-3 block">person_off</span>
         <h4 class="text-title-md font-bold text-on-surface">No Students Found</h4>
         <p class="text-body-md text-on-surface-variant mt-1 max-w-md mx-auto">
-          There are no active enrolled students found for <?php echo htmlspecialchars($selected_class ? $selected_class->class_name : 'the selected class'); ?> in Section <?php echo htmlspecialchars($selected_section ? $selected_section->section_name : 'A'); ?> for this academic year.
+          There are no active enrolled students found for <?php echo htmlspecialchars($selected_class ? $selected_class->class_name : 'the selected class'); ?> in Division <?php echo htmlspecialchars(($selected_division ?? $selected_section) ? (($selected_division ?? $selected_section)->division_name ?? ($selected_division ?? $selected_section)->section_name) : 'A'); ?> for this academic year.
         </p>
       </div>
     <?php else: ?>

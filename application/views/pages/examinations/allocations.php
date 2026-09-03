@@ -55,9 +55,9 @@
         </div>
 
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Select Section *</label>
-          <select name="section_id" onchange="this.form.submit()" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
-            <option value="">-- Choose Section --</option>
+          <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Select Division *</label>
+          <select name="division_id" onchange="this.form.submit()" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+            <option value="">-- Choose Division --</option>
             <?php foreach ($sections as $s): ?>
               <?php if (!$selected_class || $s->class_id == $selected_class): ?>
                 <option value="<?php echo $s->section_id; ?>" <?php echo ($selected_section == $s->section_id) ? 'selected' : ''; ?>>
@@ -75,7 +75,7 @@
       <?php echo form_open('examinations/allocations'); ?>
         <input type="hidden" name="exam_id" value="<?php echo $selected_exam; ?>"/>
         <input type="hidden" name="class_id" value="<?php echo $selected_class; ?>"/>
-        <input type="hidden" name="section_id" value="<?php echo $selected_section; ?>"/>
+        <input type="hidden" name="division_id" value="<?php echo $selected_section; ?>"/>
         <input type="hidden" name="academic_year_id" value="1"/>
 
         <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 overflow-hidden mb-6">
@@ -161,7 +161,7 @@
     <?php else: ?>
       <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-12 text-center text-on-surface-variant">
         <span class="material-symbols-outlined text-[48px] text-primary mb-3">tune</span>
-        <h3 class="font-headline-md text-title-lg font-bold text-on-surface">Select Exam, Class & Section</h3>
+        <h3 class="font-headline-md text-title-lg font-bold text-on-surface">Select Exam, Class & Division</h3>
         <p class="text-body-md mt-1 max-w-md mx-auto">Please choose an exam, class, and section from the filters above to load the subject allocation matrix.</p>
       </div>
     <?php endif; ?>

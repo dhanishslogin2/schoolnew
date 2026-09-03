@@ -38,7 +38,7 @@
   <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
     <div class="flex items-center gap-2 pb-2 border-b border-slate-100">
       <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center">1</span>
-      <h3 class="font-bold text-sm text-slate-900">Target Academic Class & Section</h3>
+      <h3 class="font-bold text-sm text-slate-900">Target Academic Class & Division</h3>
       <span class="text-xs text-slate-400 font-medium ml-auto">Required for all bulk enrollments</span>
     </div>
 
@@ -87,7 +87,7 @@
               </option>
             <?php endforeach; ?>
           <?php else: ?>
-            <option value="12" selected>Section A (Default)</option>
+            <option value="12" selected>Division A (Default)</option>
           <?php endif; ?>
         </select>
       </div>
@@ -338,7 +338,7 @@
         <span class="font-bold text-slate-800" id="success-modal-year">-</span>
       </div>
       <div class="flex justify-between">
-        <span class="text-slate-500">Class & Section:</span>
+        <span class="text-slate-500">Class & Division:</span>
         <span class="font-bold text-slate-800" id="success-modal-class-sec">-</span>
       </div>
     </div>
@@ -429,37 +429,40 @@
             $('#bulk-class-id').val(res.classes[0].class_id);
             onBulkClassChanged(res.classes[0].class_id);
           } else {
-            $('#bulk-section-id').html('<option value="12" selected>Section A (Default)</option>');
+            $('#bulk-section-id').html('<option value="12" selected>Division A (Default)</option>');
           }
         }
       }
     });
   }
 
-  // Class Cascade (Adheres strictly to Section A default rule)
+  // Class Cascade (Adheres strictly to Division A default rule)
   function onBulkClassChanged(classId) {
     if (!classId) {
-      $('#bulk-section-id').html('<option value="12" selected>Section A (Default)</option>');
+      $('#bulk-section-id').html('<option value="12" selected>Division A (Default)</option>');
       return;
     }
     $.ajax({
-      url: '<?php echo site_url('students/get_sections_ajax'); ?>',
+      url: '<?php echo site_url('students/get_divisions_ajax'); ?>',
       type: 'GET',
       data: { class_id: classId },
       dataType: 'json',
       success: function(res) {
         let secHtml = '';
-        if (res && res.sections && res.sections.length > 0) {
-          res.sections.forEach((sec, idx) => {
-            secHtml += `<option value="${sec.section_id}" ${idx === 0 ? 'selected' : ''}>Section ${escapeHtml(sec.section_name)}</option>`;
+        if (res && ((res.divisions && res.divisions.length > 0) || (res.sections && res.sections.length > 0))) {
+          const list = res.divisions || res.sections;
+          list.forEach((sec, idx) => {
+            const divId = sec.division_id || sec.section_id;
+            const divName = sec.division_name || sec.section_name;
+            secHtml += `<option value="${divId}" ${idx === 0 ? 'selected' : ''}>Division ${escapeHtml(divName)}</option>`;
           });
         } else {
-          secHtml = '<option value="12" selected>Section A (Default)</option>';
+          secHtml = '<option value="12" selected>Division A (Default)</option>';
         }
         $('#bulk-section-id').html(secHtml);
       },
       error: function() {
-        $('#bulk-section-id').html('<option value="12" selected>Section A (Default)</option>');
+        $('#bulk-section-id').html('<option value="12" selected>Division A (Default)</option>');
       }
     });
   }
@@ -498,6 +501,7 @@
     const formData = new FormData();
     formData.append('academic_year_id', yearId);
     formData.append('class_id', classId);
+    formData.append('division_id', secId);
     formData.append('section_id', secId);
     formData.append('import_file', currentFile);
     if (window.CSRF_TOKEN_NAME && window.CSRF_HASH) {
@@ -610,6 +614,7 @@
     const postData = {
       academic_year_id: yearId,
       class_id: classId,
+      division_id: secId,
       section_id: secId
     };
     if (window.CSRF_TOKEN_NAME && window.CSRF_HASH) {
@@ -853,6 +858,7 @@
     const postData = {
       academic_year_id: yearId,
       class_id: classId,
+      division_id: secId,
       section_id: secId,
       entries: entries
     };

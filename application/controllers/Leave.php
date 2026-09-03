@@ -12,6 +12,7 @@ class Leave extends MY_Controller {
         $this->load->model('Leave_setting_model');
         $this->load->model('Academic_year_model');
         $this->load->model('Class_model');
+        $this->load->model('Division_model');
         $this->load->model('Section_model');
         $this->load->model('Student_model');
         $this->load->model('Staff_model');
@@ -45,7 +46,7 @@ class Leave extends MY_Controller {
             'academic_year_id' => $year_id,
             'applicant_type'   => 'Student',
             'class_id'         => $this->input->get('class_id') ?: NULL,
-            'section_id'       => $this->input->get('section_id') ?: NULL,
+            'division_id'       => $this->input->get('division_id') ?: NULL,
             'leave_type_id'    => $this->input->get('leave_type_id') ?: NULL,
             'status'           => $this->input->get('status') ?: NULL,
             'search'           => $this->input->get('search') ?: NULL,
@@ -183,7 +184,7 @@ class Leave extends MY_Controller {
                 'staff_id'         => ($applicant_type === 'Staff') ? $entity_id : NULL,
                 'academic_year_id' => $this->academic_year_id,
                 'class_id'         => $class_id,
-                'section_id'       => $section_id,
+                'division_id'       => $section_id,
                 'leave_type_id'    => $leave_type_id,
                 'from_date'        => $from_date,
                 'to_date'          => $to_date,

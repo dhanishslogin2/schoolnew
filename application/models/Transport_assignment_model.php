@@ -9,11 +9,11 @@ class Transport_assignment_model extends CI_Model {
     public function get_all($filters = array(), $limit = 100, $offset = 0)
     {
         $this->db
-            ->select('ta.*, st.first_name, st.last_name, st.admission_number, st.admission_number as admission_no, st.guardian_name, st.guardian_phone as emergency_phone, c.class_name, sec.section_name, r.route_name, r.route_code, v.vehicle_number, v.registration_number, pstop.stop_name as pickup_stop_name, pstop.pickup_time, dstop.stop_name as drop_stop_name, dstop.drop_time, d.driver_name, d.phone as driver_phone')
+            ->select('ta.*, st.first_name, st.last_name, st.admission_number, st.admission_number as admission_no, st.guardian_name, st.guardian_phone as emergency_phone, c.class_name, div.division_name as division_name, div.division_name as section_name, r.route_name, r.route_code, v.vehicle_number, v.registration_number, pstop.stop_name as pickup_stop_name, pstop.pickup_time, dstop.stop_name as drop_stop_name, dstop.drop_time, d.driver_name, d.phone as driver_phone')
             ->from('tbl_student_transport_assignments ta')
             ->join('tbl_students st', 'st.student_id = ta.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = ta.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = ta.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = ta.division_id', 'left')
             ->join('tbl_transport_routes r', 'r.route_id = ta.route_id', 'left')
             ->join('tbl_vehicles v', 'v.vehicle_id = ta.vehicle_id', 'left')
             ->join('tbl_transport_drivers d', 'd.driver_id = v.assigned_driver_id', 'left')
@@ -23,7 +23,7 @@ class Transport_assignment_model extends CI_Model {
 
         if (!empty($filters['academic_year_id'])) $this->db->where('ta.academic_year_id', $filters['academic_year_id']);
         if (!empty($filters['class_id'])) $this->db->where('ta.class_id', $filters['class_id']);
-        if (!empty($filters['section_id'])) $this->db->where('ta.section_id', $filters['section_id']);
+        if (!empty($filters['division_id'])) $this->db->where('ta.division_id', $filters['division_id']);
         if (!empty($filters['route_id'])) $this->db->where('ta.route_id', $filters['route_id']);
         if (!empty($filters['vehicle_id'])) $this->db->where('ta.vehicle_id', $filters['vehicle_id']);
         if (!empty($filters['stop_id'])) {
@@ -51,11 +51,11 @@ class Transport_assignment_model extends CI_Model {
     public function get_by_id($id)
     {
         return $this->db
-            ->select('ta.*, st.first_name, st.last_name, st.admission_number, st.admission_number as admission_no, st.guardian_name, st.guardian_phone as emergency_phone, c.class_name, sec.section_name, r.route_name, r.route_code, v.vehicle_number, v.registration_number, pstop.stop_name as pickup_stop_name, pstop.pickup_time, dstop.stop_name as drop_stop_name, dstop.drop_time, d.driver_name, d.phone as driver_phone')
+            ->select('ta.*, st.first_name, st.last_name, st.admission_number, st.admission_number as admission_no, st.guardian_name, st.guardian_phone as emergency_phone, c.class_name, div.division_name as division_name, div.division_name as section_name, r.route_name, r.route_code, v.vehicle_number, v.registration_number, pstop.stop_name as pickup_stop_name, pstop.pickup_time, dstop.stop_name as drop_stop_name, dstop.drop_time, d.driver_name, d.phone as driver_phone')
             ->from('tbl_student_transport_assignments ta')
             ->join('tbl_students st', 'st.student_id = ta.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = ta.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = ta.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = ta.division_id', 'left')
             ->join('tbl_transport_routes r', 'r.route_id = ta.route_id', 'left')
             ->join('tbl_vehicles v', 'v.vehicle_id = ta.vehicle_id', 'left')
             ->join('tbl_transport_drivers d', 'd.driver_id = v.assigned_driver_id', 'left')

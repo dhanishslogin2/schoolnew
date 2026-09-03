@@ -9,16 +9,16 @@ class Subject_teacher_model extends CI_Model {
     public function get_all($filters = array())
     {
         $this->db
-            ->select('st.*, y.year_name, c.class_name, sec.section_name, sub.subject_name, sub.subject_code, s.full_name as teacher_name, s.employee_code')
+            ->select('st.*, y.year_name, c.class_name, div.division_name as division_name, div.division_name as section_name, sub.subject_name, sub.subject_code, s.full_name as teacher_name, s.employee_code')
             ->from('tbl_subject_teachers st')
             ->join('tbl_academic_years y', 'y.academic_year_id = st.academic_year_id', 'left')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = st.subject_id', 'left')
             ->join('tbl_staff s', 's.staff_id = st.staff_id', 'left')
             ->where('st.status', 1)
             ->order_by('st.class_id', 'ASC')
-            ->order_by('st.section_id', 'ASC');
+            ->order_by('st.division_id', 'ASC');
 
         if (!empty($filters['academic_year_id'])) {
             $this->db->where('st.academic_year_id', $filters['academic_year_id']);
@@ -26,8 +26,8 @@ class Subject_teacher_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('st.class_id', $filters['class_id']);
         }
-        if (!empty($filters['section_id'])) {
-            $this->db->where('st.section_id', $filters['section_id']);
+        if (!empty($filters['division_id'])) {
+            $this->db->where('st.division_id', $filters['division_id']);
         }
         if (!empty($filters['subject_id'])) {
             $this->db->where('st.subject_id', $filters['subject_id']);
@@ -48,7 +48,7 @@ class Subject_teacher_model extends CI_Model {
         $existing = $this->db
             ->where('academic_year_id', $academic_year_id)
             ->where('class_id', $class_id)
-            ->where('section_id', $section_id)
+            ->where('division_id', $section_id)
             ->where('subject_id', $subject_id)
             ->get($this->table)
             ->row();
@@ -64,7 +64,7 @@ class Subject_teacher_model extends CI_Model {
             $this->db->insert($this->table, array(
                 'academic_year_id' => $academic_year_id,
                 'class_id'         => $class_id,
-                'section_id'       => $section_id,
+                'division_id'       => $section_id,
                 'subject_id'       => $subject_id,
                 'staff_id'         => $staff_id,
                 'status'           => 1,
@@ -82,7 +82,7 @@ class Subject_teacher_model extends CI_Model {
             ->join('tbl_staff s', 's.staff_id = st.staff_id', 'inner')
             ->where('st.academic_year_id', $academic_year_id)
             ->where('st.class_id', $class_id)
-            ->where('st.section_id', $section_id)
+            ->where('st.division_id', $section_id)
             ->where('st.subject_id', $subject_id)
             ->where('st.status', 1)
             ->where('s.status', 1)

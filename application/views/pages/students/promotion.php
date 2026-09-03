@@ -45,13 +45,13 @@
   <?php endif; ?>
 
   <!-- =========================================================================
-       STEP 1: SOURCE CLASS & SECTION SELECTION
+       STEP 1: SOURCE CLASS & DIVISION SELECTION
        ========================================================================= -->
   <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
     <div class="flex items-center justify-between pb-2 border-b border-slate-100">
       <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
         <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs">1</span>
-        <span>Step 1: Select Source Class & Section</span>
+        <span>Step 1: Select Source Class & Division</span>
       </h3>
       <span class="text-xs text-slate-500 font-medium">Filter current students to promote</span>
     </div>
@@ -89,9 +89,9 @@
 
       <!-- Source Section (Class-Dependent) -->
       <div>
-        <label for="src_section" class="block text-xs font-bold text-slate-700 mb-1.5">Source Section / Division</label>
-        <select id="src_section" onchange="onSourceSectionChanged(this.value)" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 cursor-pointer">
-          <option value="">All Sections</option>
+        <label for="src_section" class="block text-xs font-bold text-slate-700 mb-1.5">Source Division</label>
+        <select id="src_division" onchange="onSourceDivisionChanged(this.value)" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 cursor-pointer">
+          <option value="">All Divisions</option>
           <?php foreach ($source_sections as $sec): ?>
             <option value="<?php echo $sec->section_id; ?>" <?php echo ($from_sec !== NULL && $from_sec == $sec->section_id) ? 'selected' : ''; ?>>
               <?php echo html_escape($sec->section_name); ?>
@@ -109,10 +109,10 @@
   <?php echo form_open('students/promotion', array('id' => 'promotion-form')); ?>
     <input type="hidden" name="from_academic_year_id" value="<?php echo (int)$from_year; ?>"/>
     <input type="hidden" name="from_class_id" value="<?php echo (int)$from_class; ?>"/>
-    <input type="hidden" name="from_section_id" value="<?php echo ($from_sec !== NULL) ? (int)$from_sec : ''; ?>"/>
+    <input type="hidden" name="from_division_id" value="<?php echo ($from_sec !== NULL) ? (int)$from_sec : ''; ?>"/>
 
     <!-- =========================================================================
-         STEP 2: TARGET CLASS, SECTION & ACTION
+         STEP 2: TARGET CLASS, DIVISION & ACTION
          ========================================================================= -->
     <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4 mb-6">
       <div class="flex items-center justify-between pb-2 border-b border-slate-100">
@@ -154,16 +154,16 @@
           </select>
         </div>
 
-        <!-- Target Section (Dynamically Loaded via AJAX based on Target Class) -->
+        <!-- Target Division (Dynamically Loaded via AJAX based on Target Class) -->
         <div>
           <label for="to_section_id" class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-            <span>Target Section *</span>
+            <span>Target Division *</span>
             <span id="target-section-spinner" class="text-[10px] text-emerald-700 hidden flex items-center gap-1 font-normal">
               <span class="material-symbols-outlined text-[13px] animate-spin">progress_activity</span> Loading...
             </span>
           </label>
-          <select id="to_section_id" name="to_section_id" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 cursor-pointer">
-            <option value="" disabled selected>Select Section</option>
+          <select id="to_division_id" name="to_division_id" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 cursor-pointer">
+            <option value="" disabled selected>Select Division</option>
             <!-- Populated dynamically via AJAX -->
           </select>
         </div>
@@ -219,7 +219,7 @@
               </th>
               <th class="p-3">Admission No</th>
               <th class="p-3">Student Name</th>
-              <th class="p-3">Current Class & Section</th>
+              <th class="p-3">Current Class & Division</th>
               <th class="p-3">Roll No</th>
               <th class="p-3">Gender</th>
               <th class="p-3 pr-4">Parent / Guardian</th>
@@ -230,8 +230,8 @@
               <tr>
                 <td colspan="7" class="py-12 text-center text-slate-400 space-y-2">
                   <span class="material-symbols-outlined text-[42px] text-slate-300">group_off</span>
-                  <div class="font-bold text-slate-700 text-sm">No active students found in selected source class & section.</div>
-                  <p class="text-xs text-slate-500">Try choosing a different class, section, or academic session.</p>
+                  <div class="font-bold text-slate-700 text-sm">No active students found in selected source class & division.</div>
+                  <p class="text-xs text-slate-500">Try choosing a different class, division, or academic session.</p>
                 </td>
               </tr>
             <?php else: ?>
@@ -251,7 +251,7 @@
                       <span class="material-symbols-outlined text-[13px] text-slate-400">open_in_new</span>
                     </a>
                   </td>
-                  <td class="p-3 align-middle font-medium text-slate-700"><?php echo html_escape($st->class_name . (!empty($st->section_name) ? ' - ' . $st->section_name : '')); ?></td>
+                  <td class="p-3 align-middle font-medium text-slate-700"><?php echo html_escape($st->class_name . (!empty(($st->division_name ?? $st->section_name)) ? ' - ' . ($st->division_name ?? $st->section_name) : '')); ?></td>
                   <td class="p-3 align-middle font-mono text-slate-600"><?php echo html_escape($st->roll_number ?: '—'); ?></td>
                   <td class="p-3 align-middle text-slate-600"><?php echo html_escape($st->gender ?: '—'); ?></td>
                   <td class="p-3 pr-4 align-middle text-slate-600">
@@ -269,7 +269,7 @@
       <?php if (!empty($students)): ?>
         <div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-4">
           <div class="text-xs text-slate-500">
-            Clicking promote will transition all checked students to the target session & section, and log promotion history.
+            Clicking promote will transition all checked students to the target session & division, and log promotion history.
           </div>
           <button type="submit" id="btn-submit-promotion" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-800 text-white text-xs font-bold hover:bg-emerald-900 transition-colors shadow-2xs cursor-pointer">
             <span class="material-symbols-outlined text-[18px]">verified</span>
@@ -318,11 +318,11 @@
                   <div class="text-[11px] font-mono text-emerald-800"><?php echo html_escape($ph->admission_number); ?></div>
                 </td>
                 <td class="p-3 align-middle text-slate-700">
-                  <span class="font-bold"><?php echo html_escape($ph->from_class . (!empty($ph->from_section) ? ' - ' . $ph->from_section : '')); ?></span>
+                  <span class="font-bold"><?php echo html_escape($ph->from_class . (!empty($ph->from_division) ? ' - ' . $ph->from_division : '')); ?></span>
                   <span class="text-[11px] text-slate-500 block">[<?php echo html_escape($ph->from_year); ?>]</span>
                 </td>
                 <td class="p-3 align-middle text-slate-900">
-                  <span class="font-bold text-emerald-900"><?php echo html_escape($ph->to_class . (!empty($ph->to_section) ? ' - ' . $ph->to_section : '')); ?></span>
+                  <span class="font-bold text-emerald-900"><?php echo html_escape($ph->to_class . (!empty(($ph->to_division ?? $ph->to_section)) ? ' - ' . ($ph->to_division ?? $ph->to_section) : '')); ?></span>
                   <span class="text-[11px] text-slate-500 block">[<?php echo html_escape($ph->to_year); ?>]</span>
                 </td>
                 <td class="p-3 align-middle">
@@ -346,10 +346,10 @@
 <!-- Client JavaScript Logic -->
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    // Dynamically initialize Target Section dropdown for initially selected Target Class
+    // Dynamically initialize Target Division dropdown for initially selected Target Class
     const initialTargetClassId = $('#to_class_id').val();
     if (initialTargetClassId) {
-      loadTargetSections(initialTargetClassId);
+      loadTargetDivisions(initialTargetClassId);
     }
   });
 
@@ -361,14 +361,14 @@
   // Source Class Changed -> Reset section to "" so it never retains stale section!
   function onSourceClassChanged(classId) {
     const yr = $('#src_year').val();
-    window.location.href = '<?php echo site_url('students/promotion'); ?>?from_year=' + encodeURIComponent(yr) + '&from_class=' + encodeURIComponent(classId) + '&from_section=';
+    window.location.href = '<?php echo site_url('students/promotion'); ?>?from_year=' + encodeURIComponent(yr) + '&from_class=' + encodeURIComponent(classId) + '&from_division=';
   }
 
-  // Source Section Changed
-  function onSourceSectionChanged(secId) {
+  // Source Division Changed
+  function onSourceDivisionChanged(secId) {
     const yr  = $('#src_year').val();
     const cls = $('#src_class').val();
-    window.location.href = '<?php echo site_url('students/promotion'); ?>?from_year=' + encodeURIComponent(yr) + '&from_class=' + encodeURIComponent(cls) + '&from_section=' + encodeURIComponent(secId);
+    window.location.href = '<?php echo site_url('students/promotion'); ?>?from_year=' + encodeURIComponent(yr) + '&from_class=' + encodeURIComponent(cls) + '&from_division=' + encodeURIComponent(secId);
   }
 
   // Target Academic Year Changed -> Fetch Target Classes
@@ -396,7 +396,7 @@
           });
           $('#to_class_id').html(classHtml).prop('disabled', false);
           // Load sections for first class
-          loadTargetSections(res.classes[0].class_id);
+          loadTargetDivisions(res.classes[0].class_id);
         } else {
           $('#to_class_id').html('<option value="">No classes found for this year</option>').prop('disabled', true);
         }
@@ -409,10 +409,10 @@
 
   // Target Class Changed -> Dynamically Fetch and Populate Sections
   function onTargetClassChanged(classId) {
-    loadTargetSections(classId);
+    loadTargetDivisions(classId);
   }
 
-  function loadTargetSections(classId) {
+  function loadTargetDivisions(classId) {
     if (!classId) {
       $('#to_section_id').html('<option value="12" selected>A</option>').prop('disabled', false);
       return;
@@ -421,7 +421,7 @@
     $('#target-section-spinner').removeClass('hidden');
 
     $.ajax({
-      url: '<?php echo site_url('students/get_sections_ajax'); ?>',
+      url: '<?php echo site_url('students/get_divisions_ajax'); ?>',
       type: 'POST',
       data: {
         class_id: classId,
@@ -433,23 +433,23 @@
         if (res && res.csrf_hash) window.CSRF_HASH = res.csrf_hash;
 
         let secHtml = '';
-        if (res && res.sections && res.sections.length > 0) {
-          if (res.sections.length > 1) {
-            secHtml += '<option value="" disabled selected>Select Section</option>';
+        if (res && (res.divisions || res.sections) && (res.divisions || res.sections).length > 0) {
+          if ((res.divisions || res.sections).length > 1) {
+            secHtml += '<option value="" disabled selected>Select Division</option>';
           }
-          res.sections.forEach(function (sec, idx) {
-            const isAutoSelected = (res.sections.length === 1 || idx === 0) ? 'selected' : '';
-            secHtml += '<option value="' + sec.section_id + '" ' + isAutoSelected + '>' + $('<div>').text(sec.section_name).html() + '</option>';
+          (res.divisions || res.sections).forEach(function (sec, idx) {
+            const isAutoSelected = ((res.divisions || res.sections).length === 1 || idx === 0) ? 'selected' : '';
+            secHtml += '<option value="' + (sec.division_id || sec.section_id) + '" ' + isAutoSelected + '>' + $('<div>').text((sec.division_name || sec.section_name)).html() + '</option>';
           });
           $('#to_section_id').html(secHtml).prop('disabled', false);
         } else {
-          // Fallback to default Section 'A'
+          // Fallback to default Division 'A'
           $('#to_section_id').html('<option value="12" selected>A</option>').prop('disabled', false);
         }
       },
       error: function () {
         $('#target-section-spinner').addClass('hidden');
-        // On error, supply default Section 'A'
+        // On error, supply default Division 'A'
         $('#to_section_id').html('<option value="12" selected>A</option>').prop('disabled', false);
       }
     });

@@ -57,18 +57,22 @@ function &get_instance() {
 
 require_once APPPATH . 'helpers/app_helper.php';
 require_once BASEPATH . 'core/Model.php';
-require_once APPPATH . 'models/Attendance_model.php';
+require_once APPPATH . 'models/Division_model.php';
 require_once APPPATH . 'models/Section_model.php';
+require_once APPPATH . 'models/Attendance_model.php';
 require_once APPPATH . 'models/Class_model.php';
 require_once APPPATH . 'models/Period_model.php';
 require_once APPPATH . 'models/Subject_model.php';
 
+$mock_ci->load->model('Division_model');
+$mock_ci->load->model('Section_model');
+$mock_ci->load->model('Class_model');
+$mock_ci->load->model('Period_model');
+$mock_ci->load->model('Subject_model');
+
 $att_model = new Attendance_model();
-$att_model->db = $db_conn;
-$class_model = new Class_model();
-$class_model->db = $db_conn;
-$sec_model = new Section_model();
-$sec_model->db = $db_conn;
+$class_model = $mock_ci->Class_model;
+$sec_model = $mock_ci->Section_model;
 
 $tests_run = 0;
 $tests_passed = 0;

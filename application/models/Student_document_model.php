@@ -8,11 +8,11 @@ class Student_document_model extends CI_Model {
 
     public function get_all($filters = array())
     {
-        $this->db->select('sd.*, st.first_name, st.last_name, st.admission_number, c.class_name, sec.section_name, dc.category_name, dc.code as category_code, u.username as verifier_name')
+        $this->db->select('sd.*, st.first_name, st.last_name, st.admission_number, c.class_name, div.division_name as division_name, div.division_name as section_name, dc.category_name, dc.code as category_code, u.username as verifier_name')
             ->from('tbl_student_documents sd')
             ->join('tbl_students st', 'st.student_id = sd.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_document_categories dc', 'dc.category_id = sd.category_id', 'left')
             ->join('tbl_users u', 'u.user_id = sd.verified_by', 'left')
             ->where('sd.status', 1);
@@ -62,11 +62,11 @@ class Student_document_model extends CI_Model {
 
     public function get_by_id($id)
     {
-        return $this->db->select('sd.*, st.first_name, st.last_name, st.admission_number, c.class_name, sec.section_name, dc.category_name')
+        return $this->db->select('sd.*, st.first_name, st.last_name, st.admission_number, c.class_name, div.division_name as division_name, div.division_name as section_name, dc.category_name')
             ->from('tbl_student_documents sd')
             ->join('tbl_students st', 'st.student_id = sd.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_document_categories dc', 'dc.category_id = sd.category_id', 'left')
             ->where('sd.document_id', $id)
             ->get()

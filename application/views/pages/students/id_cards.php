@@ -122,10 +122,10 @@
                   $initials = '';
                   foreach ($nameParts as $np) { if (!empty($np)) $initials .= strtoupper($np[0]); }
                   $initials = substr($initials, 0, 2) ?: 'ST';
-                  $classDisplay = trim(($st->class_name ?? '') . ($st->section_name ? ' - ' . $st->section_name : ''));
+                  $classDisplay = trim(($st->class_name ?? '') . (($st->division_name ?? $st->section_name) ? ' - ' . ($st->division_name ?? $st->section_name) : ''));
                   $isSelected = ($selected_student && $selected_student->student_id == $st->student_id) || (!$selected_student && $idx === 0);
                 ?>
-                <div onclick="selectStudentCard(<?php echo $st->student_id; ?>, this)" class="student-select-card p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-3.5 <?php echo $isSelected ? 'border-emerald-600 bg-emerald-50/40 ring-1 ring-emerald-600 shadow-2xs' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'; ?>" data-student-id="<?php echo $st->student_id; ?>" data-name="<?php echo strtolower(html_escape($fullName)); ?>" data-adm="<?php echo strtolower(html_escape($st->admission_number)); ?>" data-roll="<?php echo strtolower(html_escape($st->roll_number ?? '')); ?>" data-class="<?php echo $st->class_id; ?>" data-section="<?php echo $st->section_id; ?>">
+                <div onclick="selectStudentCard(<?php echo $st->student_id; ?>, this)" class="student-select-card p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-3.5 <?php echo $isSelected ? 'border-emerald-600 bg-emerald-50/40 ring-1 ring-emerald-600 shadow-2xs' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'; ?>" data-student-id="<?php echo $st->student_id; ?>" data-name="<?php echo strtolower(html_escape($fullName)); ?>" data-adm="<?php echo strtolower(html_escape($st->admission_number)); ?>" data-roll="<?php echo strtolower(html_escape($st->roll_number ?? '')); ?>" data-class="<?php echo $st->class_id; ?>" data-division="<?php echo $st->division_id ?? $st->section_id; ?>" data-section="<?php echo $st->division_id ?? $st->section_id; ?>">
                   
                   <!-- Custom Radio Dot Indicator -->
                   <div class="radio-indicator w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 <?php echo $isSelected ? 'border-emerald-600 bg-white' : 'border-slate-300 bg-white'; ?>">
@@ -190,7 +190,7 @@
             <?php foreach ($students as $st): ?>
               <?php
                 $fullName = trim($st->first_name . ' ' . ($st->middle_name ? $st->middle_name . ' ' : '') . $st->last_name);
-                $classDisplay = trim(($st->class_name ?? '') . ($st->section_name ? ' - ' . $st->section_name : ''));
+                $classDisplay = trim(($st->class_name ?? '') . (($st->division_name ?? $st->section_name) ? ' - ' . ($st->division_name ?? $st->section_name) : ''));
               ?>
               <div class="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors flex items-center gap-3 text-xs">
                 <input type="checkbox" value="<?php echo $st->student_id; ?>" class="bulk-cb w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-600" onchange="updateBulkCount()"/>
@@ -368,10 +368,10 @@
                         <td id="dom-student-father" class="font-bold text-slate-800 py-0.5 truncate pl-1">test</td>
                       </tr>
                       <tr>
-                        <td class="font-bold text-teal-700 py-0.5 uppercase">Class & Sec</td>
+                        <td class="font-bold text-teal-700 py-0.5 uppercase">Class & Div</td>
                         <td class="text-center text-slate-400 font-bold">:</td>
                         <td class="font-bold text-slate-800 py-0.5 truncate pl-1">
-                          <span id="dom-student-class">Grade 10</span> - <span id="dom-student-section">A</span>
+                          <span id="dom-student-class">Grade 10</span> - <span id="dom-student-division" class="dom-student-division">A</span>
                         </td>
                       </tr>
                       <tr id="row-roll-no">
@@ -858,7 +858,7 @@
     $('#dom-student-adm').text(st.admission_number || 'EDU2026015');
     $('#dom-student-father').text(st.guardian_name || 'test');
     $('#dom-student-class').text(st.class_name || 'Grade 10');
-    $('#dom-student-section').text(st.section_name || 'A');
+    $('#dom-student-division, #dom-student-section').text(st.division_name || st.section_name || 'A');
     
     if (st.roll_number) {
       $('#dom-student-roll').text(st.roll_number);

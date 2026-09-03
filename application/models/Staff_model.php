@@ -218,7 +218,7 @@ class Staff_model extends CI_Model {
                       (SELECT GROUP_CONCAT(DISTINCT sub.subject_name SEPARATOR ", ") FROM tbl_subjects sub WHERE sub.teacher_id = s.staff_id AND sub.status = 1) as subjects_handled,
                       (SELECT GROUP_CONCAT(DISTINCT sub.subject_name SEPARATOR ", ") FROM tbl_subjects sub WHERE sub.teacher_id = s.staff_id AND sub.status = 1) as subject_specialization,
                       (SELECT GROUP_CONCAT(DISTINCT c.class_name SEPARATOR ", ") FROM tbl_subjects sub JOIN tbl_classes c ON c.class_id = sub.class_id WHERE sub.teacher_id = s.staff_id AND sub.status = 1) as classes_handled,
-                      (SELECT GROUP_CONCAT(DISTINCT CONCAT(c.class_name, " ", sec.section_name) SEPARATOR ", ") FROM tbl_sections sec JOIN tbl_classes c ON c.class_id = sec.class_id WHERE sec.class_teacher_id = s.staff_id AND sec.status = 1) as sections_handled')
+                      (SELECT GROUP_CONCAT(DISTINCT CONCAT(c.class_name, " ", div.division_name as division_name, div.division_name as section_name) SEPARATOR ", ") FROM tbl_sections sec JOIN tbl_classes c ON c.class_id = div.class_id WHERE sec.class_teacher_id = s.staff_id AND div.status = 1) as sections_handled')
             ->from('tbl_staff s')
             ->join('tbl_departments d', 'd.department_id = s.department_id', 'left')
             ->join('tbl_designations dg', 'dg.designation_id = s.designation_id', 'left')
@@ -327,11 +327,11 @@ class Staff_model extends CI_Model {
         // 2. Workload (Only for teachers)
         if ($staff->staff_type === 'teacher') {
             $staff->workload = $this->db
-                ->select('w.*, sub.subject_name, c.class_name, sec.section_name, y.year_name')
+                ->select('w.*, sub.subject_name, c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
                 ->from('tbl_teacher_workload w')
                 ->join('tbl_subjects sub', 'sub.subject_id = w.subject_id', 'left')
                 ->join('tbl_classes c', 'c.class_id = w.class_id', 'left')
-                ->join('tbl_sections sec', 'sec.section_id = w.section_id', 'left')
+                ->join('tbl_divisions div', 'div.division_id = w.section_id', 'left')
                 ->join('tbl_academic_years y', 'y.academic_year_id = w.academic_year_id', 'left')
                 ->where('w.staff_id', $id)
                 ->where('w.status', 1)
@@ -470,12 +470,12 @@ class Staff_model extends CI_Model {
     public function get_workloads($filters = array())
     {
         $this->db
-            ->select('w.*, s.full_name, s.employee_code, sub.subject_name, c.class_name, sec.section_name, y.year_name')
+            ->select('w.*, s.full_name, s.employee_code, sub.subject_name, c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
             ->from('tbl_teacher_workload w')
             ->join('tbl_staff s', 's.staff_id = w.staff_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = w.subject_id', 'left')
             ->join('tbl_classes c', 'c.class_id = w.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = w.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = w.section_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = w.academic_year_id', 'left')
             ->where('w.status', 1)
             ->where('s.staff_type', 'teacher')

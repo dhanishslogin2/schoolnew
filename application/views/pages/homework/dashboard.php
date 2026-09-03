@@ -81,7 +81,7 @@
       </div>
     </div>
 
-    <!-- 2 Column Section: Recent Assignments + Upcoming Deadlines -->
+    <!-- 2 Column Division: Recent Assignments + Upcoming Deadlines -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
       
       <!-- Recent Assignments (2 Cols) -->

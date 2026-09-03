@@ -47,7 +47,7 @@
                   <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-primary text-[20px]">school</span>
                     <div>
-                      <a href="<?php echo site_url('academics/sections?class_id=' . $cls->class_id); ?>" class="hover:underline text-on-surface font-semibold"><?php echo html_escape($cls->class_name); ?></a>
+                      <a href="<?php echo site_url('academics/divisions?class_id=' . $cls->class_id); ?>" class="hover:underline text-on-surface font-semibold"><?php echo html_escape($cls->class_name); ?></a>
                       <?php if (!empty($cls->description)): ?>
                         <div class="text-[12px] text-on-surface-variant font-normal"><?php echo html_escape($cls->description); ?></div>
                       <?php endif; ?>
@@ -62,7 +62,7 @@
                 </td>
                 <td class="px-4 py-3 text-right whitespace-nowrap">
                   <div class="flex items-center justify-end gap-1.5">
-                    <a href="<?php echo site_url('academics/sections?class_id=' . $cls->class_id); ?>" class="px-3 py-1 rounded bg-surface-container-high text-on-surface text-label-md hover:bg-surface-container-highest transition-colors inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">view_list</span>Sections</a>
+                    <a href="<?php echo site_url('academics/divisions?class_id=' . $cls->class_id); ?>" class="px-3 py-1 rounded bg-surface-container-high text-on-surface text-label-md hover:bg-surface-container-highest transition-colors inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">view_list</span>Sections</a>
                     <button onclick="openEditClassModal(<?php echo $cls->class_id; ?>, '<?php echo html_escape(addslashes($cls->class_name)); ?>', '<?php echo html_escape(addslashes($cls->class_code)); ?>', <?php echo $cls->capacity; ?>, '<?php echo html_escape(addslashes($cls->description ?: '')); ?>', <?php echo $cls->academic_year_id ?: 1; ?>)" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer" title="Edit"><span class="material-symbols-outlined text-[18px]">edit</span></button>
                     <a href="<?php echo site_url('academics/delete_class/' . $cls->class_id); ?>" onclick="return confirm('Deactivate class?')" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-error-container/20 hover:text-error transition-colors" title="Deactivate"><span class="material-symbols-outlined text-[18px]">delete</span></a>
                   </div>

@@ -9,10 +9,10 @@ class Notice_model extends CI_Model {
     public function get_all($filters = array(), $limit = NULL, $offset = 0)
     {
         $this->db
-            ->select('n.*, n.posted_by AS posted_by_name, n.publish_date AS date, c.class_name, sec.section_name')
+            ->select('n.*, n.posted_by AS posted_by_name, n.publish_date AS date, c.class_name, div.division_name as division_name, div.division_name as section_name')
             ->from('tbl_notices n')
             ->join('tbl_classes c', 'c.class_id = n.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = n.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = n.division_id', 'left')
             ->order_by('n.publish_date', 'DESC')
             ->order_by('n.notice_id', 'DESC');
 
@@ -58,10 +58,10 @@ class Notice_model extends CI_Model {
     public function get_by_id($id)
     {
         return $this->db
-            ->select('n.*, n.posted_by AS posted_by_name, n.publish_date AS date, c.class_name, sec.section_name')
+            ->select('n.*, n.posted_by AS posted_by_name, n.publish_date AS date, c.class_name, div.division_name as division_name, div.division_name as section_name')
             ->from('tbl_notices n')
             ->join('tbl_classes c', 'c.class_id = n.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = n.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = n.division_id', 'left')
             ->where('n.' . $this->primaryKey, $id)
             ->get()
             ->row();

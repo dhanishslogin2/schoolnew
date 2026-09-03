@@ -78,7 +78,7 @@
               <div><div class="text-on-surface-variant text-[12px]">Date of Birth</div><div class="font-medium text-on-surface"><?php echo date('d M Y', strtotime($student->date_of_birth)); ?></div></div>
               <div><div class="text-on-surface-variant text-[12px]">Blood Group</div><div class="font-medium text-on-surface"><?php echo html_escape($student->blood_group ?: '—'); ?></div></div>
               <div><div class="text-on-surface-variant text-[12px]">Nationality</div><div class="font-medium text-on-surface"><?php echo html_escape($student->nationality ?: 'Indian'); ?></div></div>
-              <div><div class="text-on-surface-variant text-[12px]">Class & Section</div><div class="font-medium text-on-surface"><?php echo html_escape($classDisplay ?: '—'); ?></div></div>
+              <div><div class="text-on-surface-variant text-[12px]">Class & Division</div><div class="font-medium text-on-surface"><?php echo html_escape($classDisplay ?: '—'); ?></div></div>
               <div><div class="text-on-surface-variant text-[12px]">Academic Session</div><div class="font-medium text-on-surface"><?php echo html_escape($student->year_name ?: '2026-2027'); ?></div></div>
               <div><div class="text-on-surface-variant text-[12px]">Admission Date</div><div class="font-medium text-on-surface"><?php echo date('d M Y', strtotime($student->created_at)); ?></div></div>
             </div>
@@ -233,7 +233,7 @@
           <div class="text-title-md font-semibold text-on-surface"><?php echo html_escape($student->class_name ?: '—'); ?></div>
         </div>
         <div class="p-4 rounded-lg bg-surface-container-low border border-outline-variant/40">
-          <div class="text-[12px] text-on-surface-variant">Section</div>
+          <div class="text-[12px] text-on-surface-variant">Division</div>
           <div class="text-title-md font-semibold text-on-surface">Section <?php echo html_escape($student->section_name ?: '—'); ?></div>
         </div>
         <div class="p-4 rounded-lg bg-surface-container-low border border-outline-variant/40">

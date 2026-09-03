@@ -12,7 +12,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
         <h2 class="font-headline-md text-headline-md text-on-surface">Attendance Reports</h2>
-        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Generate comprehensive analytical reports by class, section, student, month, or timetable periods.</p>
+        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Generate comprehensive analytical reports by class, division, student, month, or timetable periods.</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap shrink-0">
         <!-- Print Button -->
@@ -35,7 +35,7 @@
           'class_summary' => 'Class Overview',
           'daily'         => 'Daily Report',
           'student'       => 'Student Report',
-          'section'       => 'Section Report',
+          'section'       => 'Division Report',
           'monthly'       => 'Monthly Report',
           'period'        => 'Period-wise Report',
         );
@@ -66,14 +66,14 @@
           </select>
         </div>
 
-        <!-- Section Filter -->
+        <!-- Division Filter -->
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Section</label>
-          <select name="section_id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
-            <option value="">All Sections</option>
+          <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Division</label>
+          <select name="division_id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+            <option value="">All Divisions</option>
             <?php foreach ($sections as $sec): ?>
-              <option value="<?php echo $sec->section_id; ?>" <?php echo ($filters['section_id'] == $sec->section_id) ? 'selected' : ''; ?>>
-                <?php echo html_escape($sec->class_name . ' ' . $sec->section_name); ?>
+              <option value="<?php echo ($sec->division_id ?? $sec->section_id); ?>" <?php echo ($filters['section_id'] == ($sec->division_id ?? $sec->section_id)) ? 'selected' : ''; ?>>
+                <?php echo html_escape($sec->class_name . ' ' . ($sec->division_name ?? $sec->section_name)); ?>
               </option>
             <?php endforeach; ?>
           </select>
@@ -128,7 +128,7 @@
               <tr class="border-b border-outline-variant/60 bg-surface-container-low/50">
                 <th class="text-center px-3 py-3 text-label-md font-semibold text-on-surface-variant uppercase w-16">Roll #</th>
                 <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Student</th>
-                <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Class & Section</th>
+                <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Class & Division</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-secondary uppercase">Present</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-amber-600 uppercase">Half Day</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-error uppercase">Absent</th>
@@ -154,7 +154,7 @@
                       </a>
                       <span class="text-[12px] text-on-surface-variant block font-normal"><?php echo html_escape($r->admission_number); ?></span>
                     </td>
-                    <td class="px-4 py-3 text-body-md text-on-surface-variant whitespace-nowrap"><?php echo html_escape($r->class_name . ' ' . $r->section_name); ?></td>
+                    <td class="px-4 py-3 text-body-md text-on-surface-variant whitespace-nowrap"><?php echo html_escape($r->class_name . ' ' . ($r->division_name ?? $r->section_name)); ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-secondary"><?php echo $r->present_count ?: 0; ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-amber-600"><?php echo $r->half_day_count ?: 0; ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-error"><?php echo $r->absent_count ?: 0; ?></td>
@@ -206,11 +206,11 @@
             </tbody>
 
           <?php else: ?>
-            <!-- Class / Section Summary Report Layout -->
+            <!-- Class / Division Summary Report Layout -->
             <thead>
               <tr class="border-b border-outline-variant/60 bg-surface-container-low/50">
                 <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Class</th>
-                <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Section</th>
+                <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Division</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-secondary uppercase">Present</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-amber-600 uppercase">Half Day</th>
                 <th class="text-right px-4 py-3 text-label-md font-semibold text-error uppercase">Absent</th>
@@ -226,7 +226,7 @@
                 <?php foreach ($reports as $r): ?>
                   <tr class="hover:bg-surface-container-low transition-colors">
                     <td class="px-4 py-3 font-semibold text-on-surface whitespace-nowrap"><?php echo html_escape($r->class_name); ?></td>
-                    <td class="px-4 py-3 text-body-md text-on-surface-variant whitespace-nowrap"><?php echo html_escape($r->section_name); ?></td>
+                    <td class="px-4 py-3 text-body-md text-on-surface-variant whitespace-nowrap"><?php echo html_escape(($r->division_name ?? $r->section_name)); ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-secondary"><?php echo $r->present_count ?: 0; ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-amber-600"><?php echo $r->half_day_count ?: 0; ?></td>
                     <td class="px-4 py-3 text-right font-semibold text-error"><?php echo $r->absent_count ?: 0; ?></td>

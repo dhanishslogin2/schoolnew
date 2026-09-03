@@ -1,0 +1,305 @@
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+class Division_model extends CI_Model {
+
+    protected $table = 'tbl_divisions';
+    protected $primaryKey = 'division_id';
+
+    /**
+     * Get all divisions for a class or across all classes.
+     * If a specific class_id is passed and has no division records, automatically provides default Division 'A'.
+     *
+     * @param int|null $class_id
+     * @return array
+     */
+    public function get_all($class_id = NULL)
+    {
+        $this->db
+            ->select('div.*, c.class_name, s.full_name as class_teacher_name, (SELECT COUNT(student_id) FROM tbl_students WHERE division_id = div.division_id AND status = 1 AND is_deleted = \'n\') as student_count')
+            ->from('tbl_divisions div')
+            ->join('tbl_classes c', 'c.class_id = div.class_id', 'left')
+            ->join('tbl_staff s', 's.staff_id = div.class_teacher_id', 'left')
+            ->where('div.status', 1)
+            ->where('div.is_deleted', 'n')
+            ->order_by('div.class_id', 'ASC')
+            ->order_by('div.division_name', 'ASC');
+
+        if ($class_id) {
+            $this->db->where('div.class_id', (int)$class_id);
+        }
+
+        $results = $this->db->get()->result();
+
+        // If a specific class was requested and no divisions exist in DB, provide default Division 'A'
+        if ($class_id && empty($results)) {
+            $class_row = $this->db->select('class_name')->where('class_id', (int)$class_id)->get('tbl_classes')->row();
+            $default_div_id = $this->get_default_division_id($class_id);
+            $student_count = $this->db
+                ->where('class_id', (int)$class_id)
+                ->where('status', 1)
+                ->where('is_deleted', 'n')
+                ->count_all_results('tbl_students');
+            $results = [
+                (object)[
+                    'division_id'        => $default_div_id,
+                    'class_id'           => (int)$class_id,
+                    'division_name'      => 'A',
+                    'class_name'         => $class_row ? $class_row->class_name : 'Class',
+                    'class_teacher_id'   => null,
+                    'class_teacher_name' => null,
+                    'room_no'            => '',
+                    'capacity'           => 40,
+                    'student_count'      => $student_count,
+                    'description'        => 'Default Division',
+                    'status'             => 1,
+                    'is_default'         => true,
+                    // Backward-compat aliases on object:
+                    'section_id'         => $default_div_id,
+                    'section_name'       => 'A',
+                ]
+            ];
+        } else {
+            // Provide backward-compatible section_id & section_name properties on records
+            foreach ($results as &$r) {
+                if (!isset($r->section_id) && isset($r->division_id)) {
+                    $r->section_id = $r->division_id;
+                }
+                if (!isset($r->section_name) && isset($r->division_name)) {
+                    $r->section_name = $r->division_name;
+                }
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Centralized method: Get all divisions belonging to a specific class.
+     * Ensures Division 'A' is always present either from DB or as default fallback.
+     *
+     * @param int $class_id
+     * @return array
+     */
+    public function get_divisions_for_class($class_id)
+    {
+        return $this->get_all($class_id);
+    }
+
+    /**
+     * Alias for get_all($class_id)
+     */
+    public function get_by_class($class_id)
+    {
+        return $this->get_all($class_id);
+    }
+
+    /**
+     * Alias for get_all($class_id)
+     */
+    public function get_divisions_by_class($class_id)
+    {
+        return $this->get_all($class_id);
+    }
+
+    /**
+     * Dropdown list of divisions.
+     *
+     * @param int|null $class_id
+     * @return array
+     */
+    public function get_dropdown($class_id = NULL)
+    {
+        return $this->get_all($class_id);
+    }
+
+    /**
+     * Get single division by ID.
+     *
+     * @param int $id
+     * @return object|null
+     */
+    public function get_by_id($id)
+    {
+        $row = $this->db
+            ->select('div.*, c.class_name, s.full_name as class_teacher_name')
+            ->from('tbl_divisions div')
+            ->join('tbl_classes c', 'c.class_id = div.class_id', 'left')
+            ->join('tbl_staff s', 's.staff_id = div.class_teacher_id', 'left')
+            ->where('div.division_id', $id)
+            ->get()
+            ->row();
+
+        if ($row) {
+            $row->section_id   = $row->division_id;
+            $row->section_name = $row->division_name;
+        }
+
+        return $row;
+    }
+
+    /**
+     * Calculate the next alphabetical division name starting from 'B'.
+     * Since 'A' is the reserved system default:
+     * - No divisions in DB (or only A) -> returns 'B'
+     * - B exists in DB -> returns 'C'
+     * - B, C exist in DB -> returns 'D'
+     * - B, C, D exist in DB -> returns 'E', etc.
+     *
+     * @param int $class_id
+     * @return string
+     */
+    public function get_next_division_name($class_id)
+    {
+        $existing = $this->db
+            ->select('division_name')
+            ->where('class_id', (int)$class_id)
+            ->where('status', 1)
+            ->where('is_deleted', 'n')
+            ->get($this->table)
+            ->result();
+
+        $existing_names = array();
+        foreach ($existing as $row) {
+            $existing_names[] = strtoupper(trim($row->division_name));
+        }
+
+        // 'A' is always considered existing/reserved as default
+        $existing_names[] = 'A';
+
+        // Sequence of letters starting from 'B'
+        $letters = range('B', 'Z');
+        foreach ($letters as $letter) {
+            if (!in_array($letter, $existing_names)) {
+                return $letter;
+            }
+        }
+
+        // If Z is reached, fallback to AA, AB etc.
+        return 'B';
+    }
+
+    /**
+     * Get a valid database division_id for Division 'A'.
+     * Uses direct query to avoid polluting CodeIgniter Active Record state.
+     *
+     * @param int|null $class_id
+     * @return int
+     */
+    public function get_default_division_id($class_id = NULL)
+    {
+        static $cached_default_ids = array();
+        $cache_key = $class_id ? (int)$class_id : 'global';
+        if (isset($cached_default_ids[$cache_key])) {
+            return $cached_default_ids[$cache_key];
+        }
+
+        if ($class_id) {
+            $row = $this->db->query("SELECT division_id FROM tbl_divisions WHERE class_id = ? AND division_name = 'A' AND status = 1 AND is_deleted = 'n' LIMIT 1", [(int)$class_id])->row();
+            if ($row) {
+                $cached_default_ids[$cache_key] = (int)$row->division_id;
+                return $cached_default_ids[$cache_key];
+            }
+        }
+
+        $row_a = $this->db->query("SELECT division_id FROM tbl_divisions WHERE division_name = 'A' AND status = 1 AND is_deleted = 'n' LIMIT 1")->row();
+        if ($row_a) {
+            $cached_default_ids[$cache_key] = (int)$row_a->division_id;
+            return $cached_default_ids[$cache_key];
+        }
+
+        $any_div = $this->db->query("SELECT division_id FROM tbl_divisions WHERE status = 1 AND is_deleted = 'n' LIMIT 1")->row();
+        $cached_default_ids[$cache_key] = $any_div ? (int)$any_div->division_id : 12;
+        return $cached_default_ids[$cache_key];
+    }
+
+    /**
+     * Check if a class has other configured divisions besides default Division A.
+     * Uses direct query to avoid polluting CodeIgniter Active Record state.
+     *
+     * @param int $class_id
+     * @param int|null $default_div_id
+     * @return bool
+     */
+    public function has_other_divisions($class_id, $default_div_id = NULL)
+    {
+        if (!$class_id) return false;
+        if ($default_div_id === NULL) {
+            $default_div_id = $this->get_default_division_id($class_id);
+        }
+        $row = $this->db->query(
+            "SELECT COUNT(*) as c FROM tbl_divisions WHERE class_id = ? AND division_id != ? AND status = 1 AND is_deleted = 'n'",
+            [(int)$class_id, (int)$default_div_id]
+        )->row();
+        return ($row && (int)$row->c > 0);
+    }
+
+    public function insert($data)
+    {
+        // Remap section_* to division_* if present
+        if (isset($data['section_name']) && !isset($data['division_name'])) {
+            $data['division_name'] = $data['section_name'];
+            unset($data['section_name']);
+        }
+        if (isset($data['section_id']) && !isset($data['division_id'])) {
+            $data['division_id'] = $data['section_id'];
+            unset($data['section_id']);
+        }
+        $this->db->insert($this->table, $data);
+        return $this->db->insert_id();
+    }
+
+    public function update($id, $data)
+    {
+        if (isset($data['section_name']) && !isset($data['division_name'])) {
+            $data['division_name'] = $data['section_name'];
+            unset($data['section_name']);
+        }
+        if (isset($data['section_id']) && !isset($data['division_id'])) {
+            $data['division_id'] = $data['section_id'];
+            unset($data['section_id']);
+        }
+        return $this->db
+            ->where($this->primaryKey, $id)
+            ->update($this->table, $data);
+    }
+
+    /**
+     * Check for duplicate division name in the same class.
+     *
+     * @param int $class_id
+     * @param string $division_name
+     * @param int|null $exclude_id
+     * @return bool
+     */
+    public function check_duplicate($class_id, $division_name, $exclude_id = NULL)
+    {
+        $this->db
+            ->where('class_id', (int)$class_id)
+            ->where('LOWER(TRIM(division_name))', strtolower(trim($division_name)))
+            ->where('status', 1)
+            ->where('is_deleted', 'n');
+
+        if ($exclude_id) {
+            $this->db->where($this->primaryKey . ' !=', (int)$exclude_id);
+        }
+
+        return $this->db->count_all_results($this->table) > 0;
+    }
+
+    public function soft_delete($id)
+    {
+        return $this->db
+            ->where($this->primaryKey, $id)
+            ->update($this->table, ['status' => 0, 'is_deleted' => 'y']);
+    }
+
+    // =========================================================================
+    // Backward-Compatibility Aliases
+    // =========================================================================
+    public function get_sections_for_class($class_id) { return $this->get_divisions_for_class($class_id); }
+    public function get_sections_by_class($class_id) { return $this->get_divisions_by_class($class_id); }
+    public function get_next_section_name($class_id) { return $this->get_next_division_name($class_id); }
+    public function get_default_section_id($class_id = NULL) { return $this->get_default_division_id($class_id); }
+    public function has_other_sections($class_id, $default_id = NULL) { return $this->has_other_divisions($class_id, $default_id); }
+}

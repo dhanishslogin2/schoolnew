@@ -9,11 +9,11 @@ class Homework_model extends CI_Model {
     public function get_all($filters = array(), $limit = NULL, $offset = 0)
     {
         $this->db
-            ->select('a.*, t.type_name, c.class_name, sec.section_name, sub.subject_name, sub.subject_code, s.full_name as teacher_name, y.year_name')
+            ->select('a.*, t.type_name, c.class_name, div.division_name as division_name, div.division_name as section_name, sub.subject_name, sub.subject_code, s.full_name as teacher_name, y.year_name')
             ->from('tbl_assignments a')
             ->join('tbl_assignment_types t', 't.type_id = a.assignment_type_id', 'left')
             ->join('tbl_classes c', 'c.class_id = a.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = a.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = a.division_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = a.subject_id', 'left')
             ->join('tbl_staff s', 's.staff_id = a.teacher_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = a.academic_year_id', 'left')
@@ -23,7 +23,7 @@ class Homework_model extends CI_Model {
 
         if (!empty($filters['academic_year_id'])) $this->db->where('a.academic_year_id', $filters['academic_year_id']);
         if (!empty($filters['class_id'])) $this->db->where('a.class_id', $filters['class_id']);
-        if (!empty($filters['section_id'])) $this->db->where('a.section_id', $filters['section_id']);
+        if (!empty($filters['division_id'])) $this->db->where('a.division_id', $filters['division_id']);
         if (!empty($filters['subject_id'])) $this->db->where('a.subject_id', $filters['subject_id']);
         if (!empty($filters['teacher_id'])) $this->db->where('a.teacher_id', $filters['teacher_id']);
         if (!empty($filters['assignment_type_id'])) $this->db->where('a.assignment_type_id', $filters['assignment_type_id']);
@@ -59,11 +59,11 @@ class Homework_model extends CI_Model {
     public function get_by_id($id)
     {
         $asgn = $this->db
-            ->select('a.*, t.type_name, c.class_name, sec.section_name, sub.subject_name, sub.subject_code, s.full_name as teacher_name, s.employee_code, y.year_name')
+            ->select('a.*, t.type_name, c.class_name, div.division_name as division_name, div.division_name as section_name, sub.subject_name, sub.subject_code, s.full_name as teacher_name, s.employee_code, y.year_name')
             ->from('tbl_assignments a')
             ->join('tbl_assignment_types t', 't.type_id = a.assignment_type_id', 'left')
             ->join('tbl_classes c', 'c.class_id = a.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = a.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = a.division_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = a.subject_id', 'left')
             ->join('tbl_staff s', 's.staff_id = a.teacher_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = a.academic_year_id', 'left')
@@ -81,7 +81,7 @@ class Homework_model extends CI_Model {
     {
         $total_students = (int)$this->db
             ->where('class_id', $class_id)
-            ->where('section_id', $section_id)
+            ->where('division_id', $section_id)
             ->where('status', 1)
             ->count_all_results('tbl_students');
 
@@ -137,7 +137,7 @@ class Homework_model extends CI_Model {
         $total_expected = 0;
         $active_asgns = $this->db->select('assignment_id, class_id, section_id')->where('academic_year_id', $year_id)->where('status', 'Published')->get('tbl_assignments')->result();
         foreach ($active_asgns as $as) {
-            $total_expected += (int)$this->db->where('class_id', $as->class_id)->where('section_id', $as->section_id)->where('status', 1)->where('academic_year_id', $year_id)->count_all_results('tbl_students');
+            $total_expected += (int)$this->db->where('class_id', $as->class_id)->where('division_id', $as->section_id)->where('status', 1)->where('academic_year_id', $year_id)->count_all_results('tbl_students');
         }
         $pending = max(0, $total_expected - $submitted);
         $completion_pct = ($total_expected > 0) ? round(($submitted / $total_expected) * 100, 1) : 0;
@@ -157,11 +157,11 @@ class Homework_model extends CI_Model {
     {
         $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
         return $this->db
-            ->select('a.*, sub.subject_name, c.class_name, sec.section_name, s.full_name as teacher_name')
+            ->select('a.*, sub.subject_name, c.class_name, div.division_name as division_name, div.division_name as section_name, s.full_name as teacher_name')
             ->from('tbl_assignments a')
             ->join('tbl_subjects sub', 'sub.subject_id = a.subject_id', 'left')
             ->join('tbl_classes c', 'c.class_id = a.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = a.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = a.division_id', 'left')
             ->join('tbl_staff s', 's.staff_id = a.teacher_id', 'left')
             ->where('a.academic_year_id', $year_id)
             ->where('a.status', 'Published')

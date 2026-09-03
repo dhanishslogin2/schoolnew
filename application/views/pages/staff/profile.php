@@ -126,7 +126,7 @@
                 <thead>
                   <tr class="border-b border-outline-variant/60 bg-surface-container-low">
                     <th class="text-left px-3.5 py-2 text-label-md text-on-surface-variant">Subject</th>
-                    <th class="text-left px-3.5 py-2 text-label-md text-on-surface-variant">Class & Section</th>
+                    <th class="text-left px-3.5 py-2 text-label-md text-on-surface-variant">Class & Division</th>
                     <th class="text-left px-3.5 py-2 text-label-md text-on-surface-variant">Periods/Wk</th>
                     <th class="text-left px-3.5 py-2 text-label-md text-on-surface-variant">Days</th>
                   </tr>
@@ -270,7 +270,7 @@
             <thead>
               <tr class="border-b border-outline-variant/60 bg-surface-container-low">
                 <th class="text-left px-4 py-2.5 text-label-md text-on-surface-variant">Subject</th>
-                <th class="text-left px-4 py-2.5 text-label-md text-on-surface-variant">Class & Section</th>
+                <th class="text-left px-4 py-2.5 text-label-md text-on-surface-variant">Class & Division</th>
                 <th class="text-left px-4 py-2.5 text-label-md text-on-surface-variant">Periods/Week</th>
                 <th class="text-left px-4 py-2.5 text-label-md text-on-surface-variant">Working Days</th>
                 <th class="text-left px-4 py-2.5 text-label-md text-on-surface-variant">Remarks</th>

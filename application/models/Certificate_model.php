@@ -14,11 +14,11 @@ class Certificate_model extends CI_Model {
 
     public function get_all($filters = array())
     {
-        $this->db->select('cert.*, st.first_name, st.last_name, st.admission_number, st.guardian_name, c.class_name, sec.section_name, ct.type_name, ct.type_code, ct.prefix, ay.year_name, u.username as generator_name')
+        $this->db->select('cert.*, st.first_name, st.last_name, st.admission_number, st.guardian_name, c.class_name, div.division_name as division_name, div.division_name as section_name, ct.type_name, ct.type_code, ct.prefix, ay.year_name, u.username as generator_name')
             ->from('tbl_certificates cert')
             ->join('tbl_students st', 'st.student_id = cert.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_certificate_types ct', 'ct.type_id = cert.certificate_type_id', 'left')
             ->join('tbl_academic_years ay', 'ay.academic_year_id = cert.academic_year_id', 'left')
             ->join('tbl_users u', 'u.user_id = cert.generated_by', 'left')
@@ -55,11 +55,11 @@ class Certificate_model extends CI_Model {
 
     public function get_by_id($id)
     {
-        return $this->db->select('cert.*, st.first_name, st.last_name, st.admission_number, st.date_of_birth, st.gender, st.address as student_address, st.guardian_name, st.guardian_phone, st.created_at as admission_date, c.class_name, sec.section_name, ct.type_name, ct.type_code, ct.prefix, ay.year_name, tmpl.header_content, tmpl.footer_content, tmpl.logo_position, tmpl.signature_layout, tmpl.paper_size, tmpl.orientation, u.username as generator_name')
+        return $this->db->select('cert.*, st.first_name, st.last_name, st.admission_number, st.date_of_birth, st.gender, st.address as student_address, st.guardian_name, st.guardian_phone, st.created_at as admission_date, c.class_name, div.division_name as division_name, div.division_name as section_name, ct.type_name, ct.type_code, ct.prefix, ay.year_name, tmpl.header_content, tmpl.footer_content, tmpl.logo_position, tmpl.signature_layout, tmpl.paper_size, tmpl.orientation, u.username as generator_name')
             ->from('tbl_certificates cert')
             ->join('tbl_students st', 'st.student_id = cert.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_certificate_types ct', 'ct.type_id = cert.certificate_type_id', 'left')
             ->join('tbl_academic_years ay', 'ay.academic_year_id = cert.academic_year_id', 'left')
             ->join('tbl_certificate_templates tmpl', 'tmpl.template_id = cert.template_id', 'left')

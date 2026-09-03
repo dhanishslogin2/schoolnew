@@ -55,9 +55,9 @@
         </div>
 
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Section *</label>
-          <select name="section_id" onchange="this.form.submit()" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
-            <option value="">-- Select Section --</option>
+          <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Division *</label>
+          <select name="division_id" onchange="this.form.submit()" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+            <option value="">-- Select Division --</option>
             <?php foreach ($sections as $s): ?>
               <?php if (!$selected_class || $s->class_id == $selected_class): ?>
                 <option value="<?php echo $s->section_id; ?>" <?php echo ($selected_section == $s->section_id) ? 'selected' : ''; ?>>

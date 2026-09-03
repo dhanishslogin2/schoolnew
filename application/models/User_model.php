@@ -441,11 +441,11 @@ class User_model extends CI_Model {
     public function get_parent_children($parent_user_id)
     {
         return $this->db
-            ->select('ps.*, s.first_name, s.last_name, s.admission_number, c.class_name, sec.section_name')
+            ->select('ps.*, s.first_name, s.last_name, s.admission_number, c.class_name, div.division_name as division_name, div.division_name as section_name')
             ->from('tbl_parent_students ps')
             ->join('tbl_students s', 's.student_id = ps.student_id')
             ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = s.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = s.section_id', 'left')
             ->where('ps.parent_user_id', (int)$parent_user_id)
             ->get()
             ->result();

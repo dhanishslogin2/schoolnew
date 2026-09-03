@@ -39,7 +39,7 @@
           <span class="text-[12px] text-on-surface-variant block font-mono">Adm: <?php echo html_escape($result->admission_number); ?></span>
         </div>
         <div>
-          <span class="text-[11px] text-on-surface-variant uppercase font-semibold block">Class & Section</span>
+          <span class="text-[11px] text-on-surface-variant uppercase font-semibold block">Class & Division</span>
           <strong class="text-on-surface"><?php echo html_escape($result->class_name . ' ' . $result->section_name); ?></strong>
           <span class="text-[12px] text-on-surface-variant block">Roll #: <strong class="text-primary font-mono"><?php echo html_escape($result->roll_number ?: '—'); ?></strong></span>
         </div>

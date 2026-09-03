@@ -264,8 +264,9 @@ class MY_Controller extends CI_Controller {
                     return 'academic-years';
                 case 'classes':
                     return 'classes';
+                case 'divisions':
                 case 'sections':
-                    return 'sections';
+                    return 'academics-divisions';
                 case 'subjects':
                     return 'subjects';
                 case 'class_teachers':

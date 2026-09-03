@@ -58,9 +58,9 @@
         </div>
 
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Section</label>
-          <select name="section_id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
-            <option value="">All Sections</option>
+          <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Division</label>
+          <select name="division_id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+            <option value="">All Divisions</option>
             <?php foreach ($sections as $s): ?>
               <option value="<?php echo $s->section_id; ?>" <?php echo ($filters['section_id'] == $s->section_id) ? 'selected' : ''; ?>>
                 <?php echo html_escape($s->class_name . ' ' . $s->section_name); ?>

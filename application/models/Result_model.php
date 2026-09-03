@@ -24,14 +24,14 @@ class Result_model extends CI_Model {
 
         // 1. Identify students with approved marks for this exam
         $this->db
-            ->select('st.student_id, st.academic_year_id, st.class_id, st.section_id')
+            ->select('st.student_id, st.academic_year_id, st.class_id, st.division_id')
             ->from('tbl_students st')
             ->join('tbl_exam_marks m', 'm.student_id = st.student_id AND m.exam_id = ' . (int)$exam_id, 'inner')
             ->where('st.status', 1)
             ->group_by('st.student_id');
 
         if ($class_id) $this->db->where('st.class_id', $class_id);
-        if ($section_id) $this->db->where('st.section_id', $section_id);
+        if ($section_id) $this->db->where('st.division_id', $section_id);
 
         $students = $this->db->get()->result();
 
@@ -100,7 +100,7 @@ class Result_model extends CI_Model {
                 'student_id'            => $student_id,
                 'academic_year_id'      => $stu->academic_year_id,
                 'class_id'              => $stu->class_id,
-                'section_id'            => $stu->section_id,
+                'division_id'            => $stu->section_id,
                 'total_marks'           => $total_marks,
                 'max_marks'             => $max_marks,
                 'percentage'            => $percentage,
@@ -189,11 +189,11 @@ class Result_model extends CI_Model {
             ->select('result_id, section_id, ' . $sort_field . ' as score, pass_status')
             ->from($this->table)
             ->where('exam_id', $exam_id)
-            ->order_by('section_id', 'ASC')
+            ->order_by('division_id', 'ASC')
             ->order_by($sort_field, 'DESC');
 
         if ($class_id) $this->db->where('class_id', $class_id);
-        if ($section_id) $this->db->where('section_id', $section_id);
+        if ($section_id) $this->db->where('division_id', $section_id);
 
         $sec_results = $this->db->get()->result();
         $by_section = [];
@@ -207,7 +207,7 @@ class Result_model extends CI_Model {
 
             foreach ($rows as $index => $row) {
                 if (!$settings->include_failed_in_rank && $row->pass_status === 'Fail') {
-                    $this->db->where('result_id', $row->result_id)->update($this->table, ['section_rank' => NULL]);
+                    $this->db->where('result_id', $row->result_id)->update($this->table, ['division_rank' => NULL]);
                     continue;
                 }
 
@@ -218,7 +218,7 @@ class Result_model extends CI_Model {
                     $rank = $index + 1;
                 }
 
-                $this->db->where('result_id', $row->result_id)->update($this->table, ['section_rank' => $rank]);
+                $this->db->where('result_id', $row->result_id)->update($this->table, ['division_rank' => $rank]);
                 $prev_score = $score;
             }
         }
@@ -231,12 +231,12 @@ class Result_model extends CI_Model {
     {
         $this->db
             ->select('r.*, e.exam_name, e.status as exam_status, st.admission_number, st.roll_number, st.first_name, st.last_name, st.photo,
-                c.class_name, sec.section_name, y.year_name')
+                c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
             ->from('tbl_student_results r')
             ->join('tbl_exams e', 'e.exam_id = r.exam_id', 'left')
             ->join('tbl_students st', 'st.student_id = r.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = r.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = r.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = r.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = r.academic_year_id', 'left')
             ->order_by('r.percentage', 'DESC')
             ->order_by('CAST(st.roll_number AS UNSIGNED)', 'ASC');
@@ -266,7 +266,7 @@ class Result_model extends CI_Model {
         if (!empty($filters['exam_id'])) $this->db->where('r.exam_id', $filters['exam_id']);
         if (!empty($filters['academic_year_id'])) $this->db->where('r.academic_year_id', $filters['academic_year_id']);
         if (!empty($filters['class_id'])) $this->db->where('r.class_id', $filters['class_id']);
-        if (!empty($filters['section_id'])) $this->db->where('r.section_id', $filters['section_id']);
+        if (!empty($filters['division_id'])) $this->db->where('r.division_id', $filters['division_id']);
         if (!empty($filters['student_id'])) $this->db->where('r.student_id', $filters['student_id']);
         if (!empty($filters['pass_status'])) $this->db->where('r.pass_status', $filters['pass_status']);
         if (isset($filters['is_published']) && $filters['is_published'] !== '') {
@@ -288,13 +288,13 @@ class Result_model extends CI_Model {
             ->select('r.*, e.exam_name, e.start_date as exam_start_date, e.end_date as exam_end_date, t.type_name as exam_type,
                 st.admission_number, st.roll_number, st.first_name, st.last_name, st.gender, st.date_of_birth, st.photo,
                 st.guardian_name, st.guardian_phone,
-                c.class_name, sec.section_name, y.year_name')
+                c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
             ->from('tbl_student_results r')
             ->join('tbl_exams e', 'e.exam_id = r.exam_id', 'left')
             ->join('tbl_exam_types t', 't.exam_type_id = e.exam_type_id', 'left')
             ->join('tbl_students st', 'st.student_id = r.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = r.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = r.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = r.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = r.academic_year_id', 'left')
             ->where('r.result_id', $result_id)
             ->get()
@@ -328,7 +328,7 @@ class Result_model extends CI_Model {
     {
         $this->db->where('exam_id', $exam_id);
         if ($class_id) $this->db->where('class_id', $class_id);
-        if ($section_id) $this->db->where('section_id', $section_id);
+        if ($section_id) $this->db->where('division_id', $section_id);
 
         $updated = $this->db->update($this->table, [
             'is_published' => 1,
@@ -364,10 +364,10 @@ class Result_model extends CI_Model {
     public function get_student_progress_report($student_id, $academic_year_id = NULL)
     {
         $student = $this->db
-            ->select('st.*, c.class_name, sec.section_name, y.year_name')
+            ->select('st.*, c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = st.academic_year_id', 'left')
             ->where('st.student_id', $student_id)
             ->get()

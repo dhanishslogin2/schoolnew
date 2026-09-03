@@ -30,7 +30,7 @@
         <?php endforeach; ?>
       </select>
       <select onchange="applyFilter('section_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
-        <option value="">All Sections</option>
+        <option value="">All Divisions</option>
         <?php foreach ($sections as $sec): ?>
           <option value="<?php echo $sec->section_id; ?>" <?php echo ($this->input->get('section_id') == $sec->section_id) ? 'selected' : ''; ?>><?php echo html_escape($sec->class_name . ' ' . $sec->section_name); ?></option>
         <?php endforeach; ?>
@@ -55,7 +55,7 @@
             <tr class="border-b border-outline-variant/60">
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Admission No.</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Student</th>
-              <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Class & Section</th>
+              <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Class & Division</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Gender</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Date of Birth</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide whitespace-nowrap">Guardian</th>

@@ -12,6 +12,7 @@ class Staff extends MY_Controller {
         $this->load->model('Designation_model');
         $this->load->model('Subject_model');
         $this->load->model('Class_model');
+        $this->load->model('Division_model');
         $this->load->model('Section_model');
         $this->load->model('Academic_year_model');
         $this->load->library('form_validation');
@@ -694,7 +695,7 @@ class Staff extends MY_Controller {
         $designations      = $this->Designation_model->get_all();
         $years             = $this->Academic_year_model->get_all();
         $classes           = $this->Class_model->get_all();
-        $sections          = $this->Section_model->get_all();
+        $sections          = $this->Division_model->get_all();
         $subjects          = $this->Subject_model->get_all();
         $document_types    = $this->Staff_document_type_model->get_active_types();
         $existing_docs_map = $this->Staff_model->get_staff_documents_map($staff_id);
@@ -960,7 +961,7 @@ class Staff extends MY_Controller {
                     'academic_year_id' => $this->input->post('academic_year_id') ?: 1,
                     'subject_id'       => $this->input->post('subject_id'),
                     'class_id'         => $this->input->post('class_id'),
-                    'section_id'       => $this->input->post('section_id') ?: NULL,
+                    'division_id'       => $this->input->post('division_id') ?: NULL,
                     'periods'          => $this->input->post('periods') ? intval($this->input->post('periods')) : 5,
                     'working_days'     => $this->input->post('working_days') ?: 'Mon,Tue,Wed,Thu,Fri',
                     'remarks'          => $this->input->post('remarks'),
@@ -985,7 +986,7 @@ class Staff extends MY_Controller {
         $teachers  = $this->Staff_model->get_teachers();
         $years     = $this->Academic_year_model->get_all();
         $classes   = $this->Class_model->get_all();
-        $sections  = $this->Section_model->get_all();
+        $sections  = $this->Division_model->get_all();
         $subjects  = $this->Subject_model->get_all();
 
         $this->render('pages/staff/workload', array(
@@ -996,6 +997,7 @@ class Staff extends MY_Controller {
             'teachers'    => $teachers,
             'years'       => $years,
             'classes'     => $classes,
+            'divisions'    => $this->Division_model->get_all(),
             'sections'    => $sections,
             'subjects'    => $subjects,
         ));

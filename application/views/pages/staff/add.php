@@ -32,7 +32,7 @@
     <div class="elevation-1 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 p-6 max-w-4xl">
       <?php echo form_open_multipart('staff/register', array('class' => 'space-y-6', 'id' => 'add_staff_form')); ?>
         
-        <!-- SECTION 1: Personal Details -->
+        <!-- DIVISION 1: Personal Details -->
         <div>
           <h3 class="font-headline-md text-headline-md text-on-surface mb-3 flex items-center gap-2">
             <span class="material-symbols-outlined text-primary text-[20px]">person</span>1. Personal Details
@@ -64,7 +64,7 @@
           </div>
         </div>
 
-        <!-- SECTION 2: Contact Information -->
+        <!-- DIVISION 2: Contact Information -->
         <div class="pt-4 border-t border-outline-variant/40">
           <h3 class="font-headline-md text-headline-md text-on-surface mb-3 flex items-center gap-2">
             <span class="material-symbols-outlined text-primary text-[20px]">call</span>2. Contact Details
@@ -89,7 +89,7 @@
           </div>
         </div>
 
-        <!-- SECTION 3: Employment Information -->
+        <!-- DIVISION 3: Employment Information -->
         <div class="pt-4 border-t border-outline-variant/40">
           <h3 class="font-headline-md text-headline-md text-on-surface mb-3 flex items-center gap-2">
             <span class="material-symbols-outlined text-primary text-[20px]">badge</span>3. Employment Details
@@ -133,7 +133,7 @@
           </div>
         </div>
 
-        <!-- SECTION 4: Professional & Teacher Specific Fields -->
+        <!-- DIVISION 4: Professional & Teacher Specific Fields -->
         <div class="pt-4 border-t border-outline-variant/40">
           <h3 class="font-headline-md text-headline-md text-on-surface mb-3 flex items-center gap-2">
             <span class="material-symbols-outlined text-primary text-[20px]">school</span>4. Professional Details
@@ -154,7 +154,7 @@
           </div>
         </div>
 
-        <!-- SECTION 5: Staff Profile Photo (Interactive Cropper) -->
+        <!-- DIVISION 5: Staff Profile Photo (Interactive Cropper) -->
         <div class="pt-4 border-t border-outline-variant/40">
           <div class="flex items-center justify-between gap-2 mb-3">
             <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
@@ -203,7 +203,7 @@
           </div>
         </div>
 
-        <!-- SECTION 6: Staff Documents (Dynamic & Mandatory) -->
+        <!-- DIVISION 6: Staff Documents (Dynamic & Mandatory) -->
         <div class="pt-4 border-t border-outline-variant/40">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
             <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">

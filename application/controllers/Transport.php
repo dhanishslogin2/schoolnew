@@ -16,6 +16,7 @@ class Transport extends MY_Controller {
         $this->load->model('Transport_document_model');
         $this->load->model('Transport_setting_model');
         $this->load->model('Class_model');
+        $this->load->model('Division_model');
         $this->load->model('Section_model');
         $this->load->model('Student_model');
     }
@@ -319,7 +320,7 @@ class Transport extends MY_Controller {
                 'academic_year_id' => $this->academic_year_id,
                 'student_id'       => $student_id,
                 'class_id'         => $st ? $st->class_id : NULL,
-                'section_id'       => $st ? $st->section_id : NULL,
+                'division_id'       => $st ? $st->section_id : NULL,
                 'route_id'         => $route_id,
                 'pickup_stop_id'   => $pickup_stop_id,
                 'drop_stop_id'     => $drop_stop_id,
@@ -340,7 +341,7 @@ class Transport extends MY_Controller {
             'academic_year_id' => $year_id,
             'route_id'         => $this->input->get('route_id') ?: NULL,
             'class_id'         => $this->input->get('class_id') ?: NULL,
-            'section_id'       => $this->input->get('section_id') ?: NULL,
+            'division_id'       => $this->input->get('division_id') ?: NULL,
             'status'           => $this->input->get('status') ?: 'Active',
             'search'           => $this->input->get('search') ?: NULL,
         ];
@@ -403,7 +404,7 @@ class Transport extends MY_Controller {
                     'academic_year_id' => $this->academic_year_id,
                     'student_id'       => $sid,
                     'class_id'         => $st ? $st->class_id : NULL,
-                    'section_id'       => $st ? $st->section_id : NULL,
+                    'division_id'       => $st ? $st->section_id : NULL,
                     'route_id'         => $route_id,
                     'pickup_stop_id'   => $pickup_stop_id,
                     'drop_stop_id'     => $pickup_stop_id,
@@ -421,11 +422,11 @@ class Transport extends MY_Controller {
 
         $year_id = $this->academic_year_id;
         $class_id = $this->input->get('class_id') ?: NULL;
-        $section_id = $this->input->get('section_id') ?: NULL;
+        $section_id = $this->input->get('division_id') ?: NULL;
 
         $data['title'] = 'Bulk Transport Assignment';
         $data['class_id'] = $class_id;
-        $data['section_id'] = $section_id;
+        $data['division_id'] = $section_id;
         $data['classes'] = $this->Class_model->get_all($year_id);
         $data['routes'] = $this->Route_model->get_all(TRUE);
         $data['vehicles'] = $this->Vehicle_model->get_all(TRUE);

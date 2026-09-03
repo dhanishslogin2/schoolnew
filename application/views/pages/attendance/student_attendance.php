@@ -63,7 +63,7 @@
           </div>
           <div class="flex items-center gap-1.5">
             <span class="material-symbols-outlined text-[17px] text-secondary">meeting_room</span>
-            <span>Section / Division: <strong class="text-on-surface"><?php echo htmlspecialchars(!empty($student->section_name) ? $student->section_name : 'A'); ?></strong></span>
+            <span>Division: <strong class="text-on-surface"><?php echo htmlspecialchars(!empty(($student->division_name ?? $student->section_name)) ? ($student->division_name ?? $student->section_name) : 'A'); ?></strong></span>
           </div>
           <div class="flex items-center gap-1.5">
             <span class="material-symbols-outlined text-[17px] text-secondary">calendar_month</span>

@@ -81,7 +81,7 @@
       </div>
     </div>
 
-    <!-- 2 Column Section: Pending Requests Actionable Desk + Student Leaves -->
+    <!-- 2 Column Division: Pending Requests Actionable Desk + Student Leaves -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       
       <!-- Pending Approvals Desk -->

@@ -159,13 +159,13 @@
         <input type="text" id="all-students-search-input" onkeyup="if(event.key === 'Enter') triggerDataTableReload()" placeholder="Search students by name, admission no., roll no..." class="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600"/>
       </div>
 
-      <!-- Section Filter (3 cols) -->
+      <!-- Division Filter (3 cols) -->
       <div class="lg:col-span-3 relative">
-        <select id="all-students-section-filter" onchange="triggerDataTableReload()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600">
-          <option value="">All Sections</option>
+        <select id="all-students-division-filter" name="division_id" onchange="triggerDataTableReload()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600">
+          <option value="">All Divisions</option>
           <?php foreach ($sections as $sec): ?>
-            <option value="<?php echo $sec->section_id; ?>">
-              <?php echo html_escape(($sec->class_name ? $sec->class_name . ' - ' : '') . $sec->section_name); ?>
+            <option value="<?php echo ($sec->division_id ?? $sec->section_id); ?>">
+              <?php echo html_escape(($sec->class_name ? $sec->class_name . ' - ' : '') . ($sec->division_name ?? $sec->section_name)); ?>
             </option>
           <?php endforeach; ?>
         </select>
@@ -208,7 +208,7 @@
             <th class="p-3">Admission No</th>
             <th class="p-3">Roll No</th>
             <th class="p-3">Class</th>
-            <th class="p-3">Section</th>
+            <th class="p-3">Division</th>
             <th class="p-3">DOB</th>
             <th class="p-3">Gender</th>
             <th class="p-3">Parent / Guardian</th>
@@ -252,7 +252,8 @@
         data: function (d) {
           d.academic_year_id = currentAcademicYearId;
           d.class_id         = (currentClassId !== null && currentClassId !== '' && currentClassId > 0) ? currentClassId : '';
-          d.section_id       = $('#all-students-section-filter').val() || '';
+          d.division_id = $('#all-students-division-filter').val() || '';
+            d.section_id  = d.division_id;
           d.status           = $('#all-students-status-filter').val() || '';
           d.custom_search    = $('#all-students-search-input').val() || '';
           if (window.CSRF_TOKEN_NAME && window.CSRF_HASH) {
@@ -293,7 +294,7 @@
           <div class="py-12 text-center text-slate-400 space-y-2">
             <span class="material-symbols-outlined text-[42px] text-slate-300">school</span>
             <div class="font-bold text-slate-700 text-sm">No students found for this class and academic year.</div>
-            <p class="text-xs text-slate-500">Try changing your search keywords, section filters, or switch academic session.</p>
+            <p class="text-xs text-slate-500">Try changing your search keywords, division filters, or switch academic session.</p>
           </div>
         `,
         processing: '<div class="flex items-center justify-center p-4 text-emerald-800 font-bold text-xs"><span class="material-symbols-outlined animate-spin mr-2">progress_activity</span> Loading students...</div>'
@@ -338,7 +339,7 @@
   // Reset Filters
   function resetAllFilters() {
     $('#all-students-search-input').val('');
-    $('#all-students-section-filter').val('');
+    $('#all-students-division-filter').val('');
     $('#all-students-status-filter').val('1');
     reloadClassCounts();
     triggerDataTableReload();

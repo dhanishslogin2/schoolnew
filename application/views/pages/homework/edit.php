@@ -97,10 +97,10 @@
             </div>
 
             <div>
-              <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Section *</label>
-              <select name="section_id" required class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                <option value="1" <?php echo ($assignment->section_id == 1) ? 'selected' : ''; ?>>Section A</option>
-                <option value="2" <?php echo ($assignment->section_id == 2) ? 'selected' : ''; ?>>Section B</option>
+              <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Division *</label>
+              <select name="division_id" required class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                <option value="1" <?php echo ($assignment->section_id == 1) ? 'selected' : ''; ?>>Division A</option>
+                <option value="2" <?php echo ($assignment->section_id == 2) ? 'selected' : ''; ?>>Division B</option>
               </select>
             </div>
 

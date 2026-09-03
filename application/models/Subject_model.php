@@ -92,7 +92,7 @@ class Subject_model extends CI_Model {
             ->order_by('sub.subject_name', 'ASC');
 
         if ($section_id) {
-            $this->db->where('sa.section_id', (int)$section_id);
+            $this->db->where('sa.division_id', (int)$section_id);
         }
 
         $via_allocations = $this->db->get()->result();

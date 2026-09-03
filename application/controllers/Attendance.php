@@ -11,6 +11,7 @@ class Attendance extends MY_Controller {
         $this->load->model('Attendance_notification_model');
         $this->load->model('Attendance_setting_model');
         $this->load->model('Class_model');
+        $this->load->model('Division_model');
         $this->load->model('Section_model');
         $this->load->model('Student_model');
         $this->load->model('Academic_year_model');
@@ -33,14 +34,15 @@ class Attendance extends MY_Controller {
 
         $date       = normalize_date_to_academic_year($this->input->get('date'), $year_id);
         $class_id   = $this->input->get('class_id') ?: NULL;
-        $section_id = $this->input->get('section_id') ?: NULL;
+        $division_id = $this->input->get('division_id') ?: ($this->input->get('section_id') ?: NULL);
+        $section_id = $division_id;
 
         $current_year    = get_academic_year_record($year_id);
         $stats           = $this->Attendance_model->get_dashboard_stats($date, $class_id, $section_id, $year_id);
         $class_overview  = $this->Attendance_model->get_class_overview($date, $year_id, $class_id, $section_id);
         $recent_activity = $this->Attendance_model->get_recent_activity(8, $year_id);
         $classes         = $this->Class_model->get_all($year_id);
-        $sections        = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
+        $sections        = $class_id ? $this->Division_model->get_by_class($class_id) : $this->Division_model->get_all();
         $years           = $this->Academic_year_model->get_all();
 
         $this->render('pages/attendance/dashboard', array(
@@ -213,7 +215,8 @@ class Attendance extends MY_Controller {
 
         $date       = normalize_date_to_academic_year($this->input->get('date'), $year_id);
         $class_id   = $this->input->get('class_id') ?: NULL;
-        $section_id = $this->input->get('section_id') ?: NULL;
+        $division_id = $this->input->get('division_id') ?: ($this->input->get('section_id') ?: NULL);
+        $section_id = $division_id;
         $period_id  = $this->input->get('period_id') ?: NULL;
 
         // Block and redirect LKG-10 classes away from period-wise attendance
@@ -244,7 +247,8 @@ class Attendance extends MY_Controller {
             $post_date       = normalize_date_to_academic_year($this->input->post('date') ?: $date, $post_year_id);
             $post_period_id  = $this->input->post('period_id') ?: $period_id;
             $post_class_id   = $this->input->post('class_id') ?: $class_id;
-            $post_section_id = $this->input->post('section_id') ?: $section_id;
+            $post_division_id = $this->input->post('division_id') ?: ($this->input->post('section_id') ?: $section_id);
+            $post_section_id  = $post_division_id;
             $user_id         = $this->session->userdata('user_id');
 
             if (!is_higher_secondary_class($post_class_id)) {
@@ -286,7 +290,7 @@ class Attendance extends MY_Controller {
         }
 
         $current_year = get_academic_year_record($year_id);
-        $sections = $class_id ? $this->Section_model->get_by_class($class_id) : array();
+        $sections = $class_id ? $this->Division_model->get_by_class($class_id) : array();
         $periods  = $this->Period_model->get_all(TRUE);
         $years    = $this->Academic_year_model->get_all();
         $settings = $this->Attendance_setting_model->get_settings();
@@ -297,7 +301,9 @@ class Attendance extends MY_Controller {
             'breadcrumb'        => array('Attendance', 'Period-wise Attendance (+1 / +2)'),
             'students'          => $students,
             'classes'           => $classes,
+            'divisions'         => $sections,
             'sections'          => $sections,
+            'division_id'       => $section_id,
             'periods'           => $periods,
             'years'             => $years,
             'current_year'      => $current_year,
@@ -356,11 +362,15 @@ class Attendance extends MY_Controller {
         $selected_class = $this->Class_model->get_by_id($class_id);
         $is_higher_sec  = is_higher_secondary_class($selected_class ?: $class_id);
 
-        // Section handling: Fallback to default Section A if none configured
-        $sections           = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
-        $default_section_id = $class_id ? $this->Section_model->get_default_section_id($class_id) : NULL;
-        $section_id         = $this->input->get('section_id') ? (int)$this->input->get('section_id') : $default_section_id;
-        $selected_section   = $section_id ? $this->Section_model->get_by_id($section_id) : NULL;
+        // Division handling: Fallback to default Division A if none configured
+        $divisions          = $class_id ? $this->Division_model->get_by_class($class_id) : $this->Division_model->get_all();
+        $sections           = $divisions;
+        $default_division_id = $class_id ? $this->Division_model->get_default_division_id($class_id) : NULL;
+        $default_section_id  = $default_division_id;
+        $division_id        = $this->input->get('division_id') ? (int)$this->input->get('division_id') : ($this->input->get('section_id') ? (int)$this->input->get('section_id') : $default_division_id);
+        $section_id         = $division_id;
+        $selected_division  = $division_id ? $this->Division_model->get_by_id($division_id) : NULL;
+        $selected_section   = $selected_division;
 
         // Higher Secondary (+1/+2) Subject & Period handling
         $subjects   = array();
@@ -380,7 +390,8 @@ class Attendance extends MY_Controller {
             $post_raw_date   = $this->input->post('date') ?: $date;
             $post_date       = date('Y-m-d', strtotime($post_raw_date));
             $post_class_id   = (int)($this->input->post('class_id') ?: $class_id);
-            $post_section_id = (int)($this->input->post('section_id') ?: $section_id);
+            $post_division_id = (int)($this->input->post('division_id') ?: ($this->input->post('section_id') ?: $section_id));
+            $post_section_id  = $post_division_id;
             $post_year_id    = (int)($this->input->post('academic_year_id') ?: $year_id);
             $user_id         = $this->session->userdata('user_id');
 
@@ -450,9 +461,12 @@ class Attendance extends MY_Controller {
             'breadcrumb'        => array('Attendance', 'Mark Attendance'),
             'classes'           => $classes,
             'years'             => $years,
+            'divisions'         => $sections,
             'sections'          => $sections,
+            'division_id'       => $section_id,
             'current_year'      => $current_year,
             'selected_class'    => $selected_class,
+            'selected_division' => $selected_section,
             'selected_section'  => $selected_section,
             'class_id'          => $class_id,
             'section_id'        => $section_id,
@@ -498,10 +512,10 @@ class Attendance extends MY_Controller {
         $is_higher_sec  = is_higher_secondary_class($selected_class ?: $class_id);
 
         // Sections & default Section A fallback
-        $sections           = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
-        $default_section_id = $class_id ? $this->Section_model->get_default_section_id($class_id) : NULL;
+        $sections           = $class_id ? $this->Division_model->get_by_class($class_id) : $this->Division_model->get_all();
+        $default_section_id = $class_id ? $this->Division_model->get_default_division_id($class_id) : NULL;
         $section_id         = $this->input->get('section_id') ? (int)$this->input->get('section_id') : $default_section_id;
-        $selected_section   = $section_id ? $this->Section_model->get_by_id($section_id) : NULL;
+        $selected_section   = $section_id ? $this->Division_model->get_by_id($section_id) : NULL;
 
         $sections_overview = $this->Attendance_model->get_class_overview($date, $year_id, $class_id, $section_id);
         $current_year      = get_academic_year_record($year_id);
@@ -512,10 +526,14 @@ class Attendance extends MY_Controller {
             'breadcrumb'        => array('Attendance', 'Class Attendance'),
             'classes'           => $classes,
             'years'             => $years,
+            'divisions'         => $sections,
             'sections'          => $sections,
+            'division_id'       => $section_id,
             'current_year'      => $current_year,
+            'divisions_overview' => $sections_overview,
             'sections_overview' => $sections_overview,
             'selected_class'    => $selected_class,
+            'selected_division' => $selected_section,
             'selected_section'  => $selected_section,
             'class_id'          => $class_id,
             'section_id'        => $section_id,
@@ -545,8 +563,8 @@ class Attendance extends MY_Controller {
         $class_id = (int)($this->input->get('class_id') ?: $default_class_id);
 
         // Sections with default Section A fallback
-        $sections = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
-        $default_section_id = $class_id ? $this->Section_model->get_default_section_id($class_id) : NULL;
+        $sections = $class_id ? $this->Division_model->get_by_class($class_id) : $this->Division_model->get_all();
+        $default_section_id = $class_id ? $this->Division_model->get_default_division_id($class_id) : NULL;
         $section_id = $this->input->get('section_id') ? (int)$this->input->get('section_id') : $default_section_id;
 
         // Default Dates (From: 1st of current month normalized; To: today normalized)
@@ -572,7 +590,7 @@ class Attendance extends MY_Controller {
         $report_data = $this->Attendance_model->get_range_attendance_report($from_date, $to_date, $class_id, $section_id, $year_id);
 
         $selected_class   = $this->Class_model->get_by_id($class_id);
-        $selected_section = $section_id ? $this->Section_model->get_by_id($section_id) : NULL;
+        $selected_section = $section_id ? $this->Division_model->get_by_id($section_id) : NULL;
         $is_higher_sec    = is_higher_secondary_class($selected_class ?: $class_id);
 
         $this->render('pages/attendance/view_attendance', array(
@@ -581,9 +599,12 @@ class Attendance extends MY_Controller {
             'breadcrumb'       => array('Attendance', 'Class Attendance', 'View Attendance'),
             'years'            => $years,
             'classes'          => $classes,
+            'divisions'        => $sections,
             'sections'         => $sections,
+            'division_id'      => $section_id,
             'current_year'     => $current_year,
             'selected_class'   => $selected_class,
+            'selected_division' => $selected_section,
             'selected_section' => $selected_section,
             'academic_year_id' => $year_id,
             'class_id'         => $class_id,
@@ -726,7 +747,7 @@ class Attendance extends MY_Controller {
 
         $matrix   = $this->Attendance_model->get_calendar_data($year, $month, $class_id, $section_id, $student_id, $type, $year_id);
         $classes  = $this->Class_model->get_all($year_id);
-        $sections = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
+        $sections = $class_id ? $this->Division_model->get_by_class($class_id) : $this->Division_model->get_all();
         $students = ($class_id && $section_id) ? $this->Student_model->get_all(array('section_id' => $section_id, 'academic_year_id' => $year_id, 'status' => 1)) : array();
 
         $selected_date = $this->input->get('date') ? normalize_date_to_academic_year($this->input->get('date'), $year_id) : NULL;
@@ -747,7 +768,9 @@ class Attendance extends MY_Controller {
             'student_id'    => $student_id,
             'type'          => $type,
             'classes'       => $classes,
+            'divisions'     => $sections,
             'sections'      => $sections,
+            'division_id'     => $section_id,
             'students'      => $students,
             'current_year'  => $current_year,
             'selected_date' => $selected_date,
@@ -818,7 +841,7 @@ class Attendance extends MY_Controller {
 
         $current_year = get_academic_year_record($year_id);
         $classes  = $this->Class_model->get_all($year_id);
-        $sections = $class_id ? $this->Section_model->get_by_class($class_id) : $this->Section_model->get_all();
+        $sections = $class_id ? $this->Division_model->get_by_class($class_id) : $this->Division_model->get_all();
         $students = ($class_id && $section_id) ? $this->Student_model->get_by_section($section_id) : array();
         $is_higher_sec = $class_id ? is_higher_secondary_class($class_id) : FALSE;
 
@@ -829,7 +852,9 @@ class Attendance extends MY_Controller {
             'report_type'   => $report_type,
             'reports'       => $data_results,
             'classes'       => $classes,
+            'divisions'     => $sections,
             'sections'      => $sections,
+            'division_id'     => $section_id,
             'students'      => $students,
             'current_year'  => $current_year,
             'year_id'       => $year_id,
@@ -849,14 +874,14 @@ class Attendance extends MY_Controller {
         if ($report_type === 'student' || $report_type === 'monthly') {
             $is_higher_sec = !empty($data) && isset($data[0]->class_name) && is_higher_secondary_class($data[0]->class_name);
             if ($is_higher_sec) {
-                fputcsv($output, array('Admission No', 'Roll No', 'Student Name', 'Class', 'Section', 'Present', 'Half Day', 'Absent', 'Late Coming', 'Total Classes', 'Attendance %'));
+                fputcsv($output, array('Admission No', 'Roll No', 'Student Name', 'Class', 'Division', 'Present', 'Half Day', 'Absent', 'Late Coming', 'Total Classes', 'Attendance %'));
                 foreach ($data as $r) {
                     fputcsv($output, array(
                         $r->admission_number,
                         $r->roll_number,
                         $r->first_name . ' ' . $r->last_name,
                         $r->class_name,
-                        $r->section_name,
+                        ($r->division_name ?? $r->section_name),
                         $r->present_count ?: 0,
                         $r->half_day_count ?: 0,
                         $r->absent_count ?: 0,
@@ -866,14 +891,14 @@ class Attendance extends MY_Controller {
                     ));
                 }
             } else {
-                fputcsv($output, array('Admission No', 'Roll No', 'Student Name', 'Class', 'Section', 'Present Days', 'Half Day', 'Absent Days', 'Total Days', 'Attendance %'));
+                fputcsv($output, array('Admission No', 'Roll No', 'Student Name', 'Class', 'Division', 'Present Days', 'Half Day', 'Absent Days', 'Total Days', 'Attendance %'));
                 foreach ($data as $r) {
                     fputcsv($output, array(
                         $r->admission_number,
                         $r->roll_number,
                         $r->first_name . ' ' . $r->last_name,
                         $r->class_name,
-                        $r->section_name,
+                        ($r->division_name ?? $r->section_name),
                         $r->present_count ?: 0,
                         $r->half_day_count ?: 0,
                         $r->absent_count ?: 0,
@@ -898,7 +923,7 @@ class Attendance extends MY_Controller {
                 ));
             }
         } else {
-            fputcsv($output, array('Class', 'Section', 'Present', 'Half Day', 'Absent', 'Late Coming', 'Attendance %'));
+            fputcsv($output, array('Class', 'Division', 'Present', 'Half Day', 'Absent', 'Late Coming', 'Attendance %'));
             foreach ($data as $r) {
                 $is_hs = isset($r->class_name) && is_higher_secondary_class($r->class_name);
                 fputcsv($output, array(

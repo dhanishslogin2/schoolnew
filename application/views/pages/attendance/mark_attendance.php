@@ -81,16 +81,16 @@
           </select>
         </div>
 
-        <!-- Section / Session -->
+        <!-- Division / Session -->
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Section / Session *</label>
-          <select name="section_id" onchange="this.form.submit()" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Division / Session *</label>
+          <select name="division_id" onchange="this.form.submit()" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <?php if (empty($sections)): ?>
-              <option value="<?php echo $section_id ?: 0; ?>">Section A (Default)</option>
+              <option value="<?php echo $section_id ?: 0; ?>">Division A (Default)</option>
             <?php else: ?>
               <?php foreach ($sections as $sec): ?>
-                <option value="<?php echo $sec->section_id; ?>" <?php echo ($section_id == $sec->section_id) ? 'selected' : ''; ?>>
-                  Section <?php echo html_escape($sec->section_name); ?>
+                <option value="<?php echo ($sec->division_id ?? $sec->section_id); ?>" <?php echo ($section_id == ($sec->division_id ?? $sec->section_id)) ? 'selected' : ''; ?>>
+                  Division <?php echo html_escape($sec->division_name ?? $sec->section_name); ?>
                 </option>
               <?php endforeach; ?>
             <?php endif; ?>
@@ -141,7 +141,7 @@
       <div class="p-8 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 text-center elevation-1 mb-8">
         <span class="material-symbols-outlined text-[48px] text-outline mb-2">group_off</span>
         <h4 class="font-title-md text-title-md text-on-surface font-semibold">No Enrolled Students Found</h4>
-        <p class="text-body-md text-on-surface-variant mt-1">There are no active students enrolled in this class and section for the selected academic year.</p>
+        <p class="text-body-md text-on-surface-variant mt-1">There are no active students enrolled in this class and division for the selected academic year.</p>
       </div>
     <?php else: ?>
       <!-- Attendance Roll Sheet -->
@@ -151,7 +151,7 @@
           <div>
             <div class="flex items-center gap-2.5 flex-wrap">
               <h3 class="font-title-lg text-title-lg font-bold text-on-surface">
-                <?php echo html_escape($selected_class ? $selected_class->class_name : 'Class'); ?> — Section <?php echo html_escape($selected_section ? $selected_section->section_name : 'A'); ?>
+                <?php echo html_escape($selected_class ? $selected_class->class_name : 'Class'); ?> — Division <?php echo html_escape($selected_section ? ($selected_section->division_name ?? $selected_section->section_name) : 'A'); ?>
               </h3>
               <?php if ($is_already_marked): ?>
                 <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
@@ -199,7 +199,7 @@
           <input type="hidden" name="date" value="<?php echo html_escape($date); ?>"/>
           <input type="hidden" name="academic_year_id" value="<?php echo html_escape($year_id); ?>"/>
           <input type="hidden" name="class_id" value="<?php echo html_escape($class_id); ?>"/>
-          <input type="hidden" name="section_id" value="<?php echo html_escape($section_id); ?>"/>
+          <input type="hidden" name="division_id" value="<?php echo html_escape($section_id); ?>"/>
           <?php if ($is_higher_sec): ?>
             <input type="hidden" name="period_id" value="<?php echo html_escape($period_id); ?>"/>
             <input type="hidden" name="subject_id" value="<?php echo html_escape($subject_id); ?>"/>

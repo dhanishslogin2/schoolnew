@@ -9,11 +9,11 @@ class Attendance_notification_model extends CI_Model {
     public function get_all($filters = array(), $limit = NULL, $offset = NULL)
     {
         $this->db
-            ->select('n.*, st.admission_number, st.first_name, st.last_name, st.guardian_name, st.guardian_relation, st.guardian_phone, st.guardian_email, c.class_name, sec.section_name, a.attendance_status')
+            ->select('n.*, st.admission_number, st.first_name, st.last_name, st.guardian_name, st.guardian_relation, st.guardian_phone, st.guardian_email, c.class_name, div.division_name as division_name, div.division_name as section_name, a.attendance_status')
             ->from('tbl_attendance_notifications n')
             ->join('tbl_students st', 'st.student_id = n.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_attendance a', 'a.attendance_id = n.attendance_id', 'left')
             ->order_by('n.created_at', 'DESC');
 
@@ -32,7 +32,7 @@ class Attendance_notification_model extends CI_Model {
             ->from('tbl_attendance_notifications n')
             ->join('tbl_students st', 'st.student_id = n.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left');
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left');
 
         $this->_apply_filters($filters);
 
@@ -53,8 +53,8 @@ class Attendance_notification_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('st.class_id', $filters['class_id']);
         }
-        if (!empty($filters['section_id'])) {
-            $this->db->where('st.section_id', $filters['section_id']);
+        if (!empty($filters['division_id'])) {
+            $this->db->where('st.division_id', $filters['division_id']);
         }
         if (!empty($filters['date'])) {
             $this->db->where('n.attendance_date', $filters['date']);
@@ -80,11 +80,11 @@ class Attendance_notification_model extends CI_Model {
     public function get_by_id($id)
     {
         return $this->db
-            ->select('n.*, st.admission_number, st.first_name, st.last_name, st.guardian_name, st.guardian_relation, st.guardian_phone, st.guardian_email, c.class_name, sec.section_name, a.attendance_status, a.remarks as attendance_remarks')
+            ->select('n.*, st.admission_number, st.first_name, st.last_name, st.guardian_name, st.guardian_relation, st.guardian_phone, st.guardian_email, c.class_name, div.division_name as division_name, div.division_name as section_name, a.attendance_status, a.remarks as attendance_remarks')
             ->from('tbl_attendance_notifications n')
             ->join('tbl_students st', 'st.student_id = n.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_attendance a', 'a.attendance_id = n.attendance_id', 'left')
             ->where('n.notification_id', $id)
             ->get()

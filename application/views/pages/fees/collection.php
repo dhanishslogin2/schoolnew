@@ -65,7 +65,7 @@
 
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-body-md">
           <div class="p-3 bg-surface-container-low rounded-xl">
-            <span class="text-on-surface-variant text-[12px] block">Class & Section</span>
+            <span class="text-on-surface-variant text-[12px] block">Class & Division</span>
             <span class="font-semibold text-on-surface"><?php echo html_escape(($student_info->class_name ?? '') . ' - ' . ($student_info->section_name ?? '')); ?></span>
           </div>
           <div class="p-3 bg-surface-container-low rounded-xl">

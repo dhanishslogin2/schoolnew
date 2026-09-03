@@ -50,14 +50,14 @@
           </select>
         </div>
 
-        <!-- Section Filter -->
+        <!-- Division Filter -->
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Section</label>
-          <select name="section_id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
-            <option value="">All Sections</option>
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Division</label>
+          <select name="division_id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+            <option value="">All Divisions</option>
             <?php foreach ($sections as $sec): ?>
-              <option value="<?php echo $sec->section_id; ?>" <?php echo ($section_id == $sec->section_id) ? 'selected' : ''; ?>>
-                <?php echo html_escape($sec->class_name . ' ' . $sec->section_name); ?>
+              <option value="<?php echo ($sec->division_id ?? $sec->section_id); ?>" <?php echo ($section_id == ($sec->division_id ?? $sec->section_id)) ? 'selected' : ''; ?>>
+                <?php echo html_escape($sec->class_name . ' ' . ($sec->division_name ?? $sec->section_name)); ?>
               </option>
             <?php endforeach; ?>
           </select>
@@ -224,7 +224,7 @@
                         <span class="text-[12px] text-on-surface-variant">(<?php echo html_escape($d->admission_number); ?>)</span>
                       </td>
                       <td class="px-3 py-2.5 text-body-md text-on-surface-variant whitespace-nowrap">
-                        <?php echo html_escape($d->class_name . ' ' . $d->section_name); ?>
+                        <?php echo html_escape($d->class_name . ' ' . ($d->division_name ?? $d->section_name)); ?>
                       </td>
                       <td class="px-3 py-2.5 text-center whitespace-nowrap">
                         <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold <?php echo $badgeClass; ?>">

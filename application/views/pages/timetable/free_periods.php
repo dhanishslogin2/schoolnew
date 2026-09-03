@@ -50,7 +50,7 @@
       </form>
     </div>
 
-    <!-- 2 Column Section: Free Teachers + Ongoing Classes -->
+    <!-- 2 Column Division: Free Teachers + Ongoing Classes -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       
       <!-- Free Faculty List -->
@@ -128,7 +128,7 @@
           <thead>
             <tr class="border-b border-outline-variant/60 bg-surface-container-low/50">
               <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Period</th>
-              <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Class & Section</th>
+              <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Class & Division</th>
               <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase whitespace-nowrap">Subject</th>
               <th class="text-left px-4 py-3 text-label-md font-semibold text-error uppercase whitespace-nowrap">Absent / Regular Teacher</th>
               <th class="text-left px-4 py-3 text-label-md font-semibold text-secondary uppercase whitespace-nowrap">Assigned Proxy Faculty</th>
@@ -179,7 +179,7 @@
           <input type="hidden" name="original_teacher_id" id="sub-orig-id" value="0"/>
 
           <div class="p-3 rounded-xl bg-surface-container-low border border-outline-variant/50 space-y-1 text-body-md">
-            <div class="flex justify-between"><span class="text-on-surface-variant">Class & Section:</span><strong id="sub-class-label" class="text-on-surface">Class 10 A</strong></div>
+            <div class="flex justify-between"><span class="text-on-surface-variant">Class & Division:</span><strong id="sub-class-label" class="text-on-surface">Class 10 A</strong></div>
             <div class="flex justify-between"><span class="text-on-surface-variant">Subject:</span><strong id="sub-sub-label" class="text-primary">Mathematics</strong></div>
             <div class="flex justify-between"><span class="text-on-surface-variant">Regular Faculty:</span><span id="sub-orig-name" class="text-error font-medium">Teacher</span></div>
           </div>

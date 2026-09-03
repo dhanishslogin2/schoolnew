@@ -20,7 +20,7 @@
     <?php echo form_open('leave/settings'); ?>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         
-        <!-- Section 1: Policies & Half-Day -->
+        <!-- Division 1: Policies & Half-Day -->
         <div class="p-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 space-y-4">
           <div class="flex items-center gap-2 pb-3 border-b border-outline-variant/50">
             <span class="material-symbols-outlined text-primary text-[24px]">tune</span>
@@ -62,7 +62,7 @@
           </div>
         </div>
 
-        <!-- Section 2: Approvals & Carry Forward -->
+        <!-- Division 2: Approvals & Carry Forward -->
         <div class="p-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 space-y-4">
           <div class="flex items-center gap-2 pb-3 border-b border-outline-variant/50">
             <span class="material-symbols-outlined text-secondary text-[24px]">verified</span>

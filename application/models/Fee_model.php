@@ -153,14 +153,14 @@ class Fee_model extends CI_Model {
     {
         $academic_year_id = $academic_year_id ? (int)$academic_year_id : get_current_academic_year_id();
 
-        $this->db->select('fp.*, st.admission_number, st.first_name, st.last_name, c.class_name, sec.section_name, fh.head_name as category_name, sf.invoice_no')
+        $this->db->select('fp.*, st.admission_number, st.first_name, st.last_name, c.class_name, div.division_name as division_name, div.division_name as section_name, fh.head_name as category_name, sf.invoice_no')
                  ->from('tbl_fee_payments fp')
                  ->join('tbl_students st', 'st.student_id = fp.student_id', 'left')
                  ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'left')
                  ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
                  ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left')
                  ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-                 ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+                 ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
                  ->where('fp.status', 1);
 
         if ($academic_year_id) {
@@ -175,11 +175,11 @@ class Fee_model extends CI_Model {
 
     public function get_student_fees($filters = array(), $limit = 100)
     {
-        $this->db->select('sf.*, st.admission_number, st.first_name, st.last_name, st.roll_number, st.guardian_name, st.guardian_phone, c.class_name, sec.section_name, fh.head_name as category_name, fh.category_code, fs.frequency')
+        $this->db->select('sf.*, st.admission_number, st.first_name, st.last_name, st.roll_number, st.guardian_name, st.guardian_phone, c.class_name, div.division_name as division_name, div.division_name as section_name, fh.head_name as category_name, fh.category_code, fs.frequency')
                  ->from('tbl_student_fees sf')
                  ->join('tbl_students st', 'st.student_id = sf.student_id', 'inner')
                  ->join('tbl_classes c', 'c.class_id = sf.class_id', 'left')
-                 ->join('tbl_sections sec', 'sec.section_id = sf.section_id', 'left')
+                 ->join('tbl_divisions div', 'div.division_id = sf.division_id', 'left')
                  ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
                  ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left');
 
@@ -192,8 +192,8 @@ class Fee_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('sf.class_id', $filters['class_id']);
         }
-        if (!empty($filters['section_id'])) {
-            $this->db->where('sf.section_id', $filters['section_id']);
+        if (!empty($filters['division_id'])) {
+            $this->db->where('sf.division_id', $filters['division_id']);
         }
         if (!empty($filters['fee_head_id'])) {
             $this->db->where('fs.fee_head_id', $filters['fee_head_id']);
@@ -216,11 +216,11 @@ class Fee_model extends CI_Model {
 
     public function get_student_fee_by_id($id)
     {
-        return $this->db->select('sf.*, st.admission_number, st.first_name, st.last_name, st.roll_number, st.guardian_name, st.guardian_phone, c.class_name, sec.section_name, fh.head_name as category_name, fh.category_code, fs.amount as structure_amount, fs.frequency')
+        return $this->db->select('sf.*, st.admission_number, st.first_name, st.last_name, st.roll_number, st.guardian_name, st.guardian_phone, c.class_name, div.division_name as division_name, div.division_name as section_name, fh.head_name as category_name, fh.category_code, fs.amount as structure_amount, fs.frequency')
                         ->from('tbl_student_fees sf')
                         ->join('tbl_students st', 'st.student_id = sf.student_id', 'inner')
                         ->join('tbl_classes c', 'c.class_id = sf.class_id', 'left')
-                        ->join('tbl_sections sec', 'sec.section_id = sf.section_id', 'left')
+                        ->join('tbl_divisions div', 'div.division_id = sf.division_id', 'left')
                         ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
                         ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left')
                         ->where('sf.student_fee_id', $id)
@@ -284,7 +284,7 @@ class Fee_model extends CI_Model {
             'student_id'        => $student_id,
             'academic_year_id'  => $academic_year_id,
             'class_id'          => $student->class_id,
-            'section_id'        => $student->section_id,
+            'division_id'        => $student->section_id,
             'fee_structure_id'  => $fee_structure_id,
             'original_amount'   => $orig,
             'discount_amount'   => $disc,
@@ -319,7 +319,7 @@ class Fee_model extends CI_Model {
             $this->db->where('class_id', $class_id);
         }
         if ($section_id > 0) {
-            $this->db->where('section_id', $section_id);
+            $this->db->where('division_id', $section_id);
         }
         $students = $this->db->get()->result();
 
@@ -408,14 +408,14 @@ class Fee_model extends CI_Model {
 
     public function get_receipt_by_id($payment_id)
     {
-        return $this->db->select('fp.*, st.admission_number, st.first_name, st.last_name, st.roll_number, st.guardian_name, st.guardian_phone, c.class_name, sec.section_name, fh.head_name as category_name, sf.invoice_no, sf.original_amount, sf.discount_amount, sf.concession_amount, sf.final_amount, sf.paid_amount as total_paid_to_date, sf.due_amount as remaining_due, sf.due_date, u.name as collected_by_name')
+        return $this->db->select('fp.*, st.admission_number, st.first_name, st.last_name, st.roll_number, st.guardian_name, st.guardian_phone, c.class_name, div.division_name as division_name, div.division_name as section_name, fh.head_name as category_name, sf.invoice_no, sf.original_amount, sf.discount_amount, sf.concession_amount, sf.final_amount, sf.paid_amount as total_paid_to_date, sf.due_amount as remaining_due, sf.due_date, u.name as collected_by_name')
                         ->from('tbl_fee_payments fp')
                         ->join('tbl_students st', 'st.student_id = fp.student_id', 'inner')
                         ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'inner')
                         ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
                         ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left')
                         ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-                        ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+                        ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
                         ->join('tbl_users u', 'u.user_id = fp.collected_by', 'left')
                         ->where('fp.payment_id', $payment_id)
                         ->get()
@@ -424,14 +424,14 @@ class Fee_model extends CI_Model {
 
     public function get_payments($filters = array(), $limit = 100)
     {
-        $this->db->select('fp.*, st.admission_number, st.first_name, st.last_name, c.class_name, sec.section_name, fh.head_name as category_name, sf.invoice_no, u.name as collected_by_name')
+        $this->db->select('fp.*, st.admission_number, st.first_name, st.last_name, c.class_name, div.division_name as division_name, div.division_name as section_name, fh.head_name as category_name, sf.invoice_no, u.name as collected_by_name')
                  ->from('tbl_fee_payments fp')
                  ->join('tbl_students st', 'st.student_id = fp.student_id', 'inner')
                  ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'left')
                  ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
                  ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left')
                  ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-                 ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+                 ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
                  ->join('tbl_users u', 'u.user_id = fp.collected_by', 'left')
                  ->where('fp.status', 1);
 
@@ -475,7 +475,7 @@ class Fee_model extends CI_Model {
             ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
             ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->where('fp.is_deleted', 'n')
             ->where('fp.status', 1);
 
@@ -531,14 +531,14 @@ class Fee_model extends CI_Model {
 
         $this->db->select('fp.payment_id, fp.receipt_no, fp.amount_paid, fp.payment_mode, fp.transaction_reference, fp.payment_date,
                            st.student_id, st.admission_number, st.first_name, st.last_name, 
-                           c.class_name, sec.section_name, fh.head_name as category_name, sf.invoice_no, u.name as collected_by_name')
+                           c.class_name, div.division_name as division_name, div.division_name as section_name, fh.head_name as category_name, sf.invoice_no, u.name as collected_by_name')
                  ->from('tbl_fee_payments fp')
                  ->join('tbl_students st', 'st.student_id = fp.student_id', 'inner')
                  ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'left')
                  ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
                  ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left')
                  ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-                 ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+                 ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
                  ->join('tbl_users u', 'u.user_id = fp.collected_by', 'left')
                  ->where('fp.is_deleted', 'n')
                  ->where('fp.status', 1);
@@ -601,11 +601,11 @@ class Fee_model extends CI_Model {
     public function get_due_fees($filters = array(), $limit = 100)
     {
         $today = date('Y-m-d');
-        $this->db->select("sf.*, st.admission_number, st.first_name, st.last_name, st.roll_number, st.guardian_name, st.guardian_phone, c.class_name, sec.section_name, fh.head_name as category_name, DATEDIFF('{$today}', sf.due_date) as days_overdue")
+        $this->db->select("sf.*, st.admission_number, st.first_name, st.last_name, st.roll_number, st.guardian_name, st.guardian_phone, c.class_name, div.division_name as division_name, div.division_name as section_name, fh.head_name as category_name, DATEDIFF('{$today}', sf.due_date) as days_overdue")
                  ->from('tbl_student_fees sf')
                  ->join('tbl_students st', 'st.student_id = sf.student_id', 'inner')
                  ->join('tbl_classes c', 'c.class_id = sf.class_id', 'left')
-                 ->join('tbl_sections sec', 'sec.section_id = sf.section_id', 'left')
+                 ->join('tbl_divisions div', 'div.division_id = sf.division_id', 'left')
                  ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
                  ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left')
                  ->where('sf.due_amount >', 0)
@@ -617,8 +617,8 @@ class Fee_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('sf.class_id', $filters['class_id']);
         }
-        if (!empty($filters['section_id'])) {
-            $this->db->where('sf.section_id', $filters['section_id']);
+        if (!empty($filters['division_id'])) {
+            $this->db->where('sf.division_id', $filters['division_id']);
         }
         if (!empty($filters['fee_head_id'])) {
             $this->db->where('fs.fee_head_id', $filters['fee_head_id']);

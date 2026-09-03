@@ -16,6 +16,7 @@ class Communication extends MY_Controller {
         $this->load->model('Notification_queue_model');
         $this->load->model('Academic_year_model');
         $this->load->model('Class_model');
+        $this->load->model('Division_model');
         $this->load->model('Section_model');
         $this->load->model('Staff_model');
         $this->load->model('Student_model');
@@ -503,7 +504,7 @@ class Communication extends MY_Controller {
                 'target_role'  => $this->input->post('target_role') ?: 'All',
                 'target_type'  => $this->input->post('target_type') ?: 'Entire School',
                 'class_id'     => $this->input->post('class_id') ?: NULL,
-                'section_id'   => $this->input->post('section_id') ?: NULL,
+                'division_id'   => $this->input->post('division_id') ?: NULL,
                 'priority'     => $this->input->post('priority') ?: 'Normal',
                 'attachment'   => $attachment,
                 'publish_date' => $this->input->post('publish_date') ?: date('Y-m-d'),

@@ -134,10 +134,10 @@
         </div>
           
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1.5">Section</label>
-          <select name="section_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5">Division</label>
+          <select name="division_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
             <?php foreach ($sections as $sec): ?>
-              <option value="<?php echo $sec->section_id; ?>" <?php echo ($student->section_id == $sec->section_id) ? 'selected' : ''; ?>><?php echo html_escape($sec->class_name . ' ' . $sec->section_name); ?></option>
+              <option value="<?php echo ($sec->division_id ?? $sec->section_id); ?>" <?php echo (($student->division_id ?? $student->section_id) == ($sec->division_id ?? $sec->section_id)) ? 'selected' : ''; ?>><?php echo html_escape($sec->class_name . ' ' . ($sec->division_name ?? $sec->section_name)); ?></option>
             <?php endforeach; ?>
           </select>
         </div>

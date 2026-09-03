@@ -117,11 +117,11 @@
 
     <!-- Main Two Column Content -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-      <!-- Left 2 Cols: Class Hierarchy & Section Breakdown -->
+      <!-- Left 2 Cols: Class Hierarchy & Division Breakdown -->
       <div class="lg:col-span-2 elevation-1 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 p-5 space-y-4">
         <div class="flex items-center justify-between">
           <h3 class="font-headline-md text-title-md font-bold text-on-surface flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary text-[20px]">table_chart</span>Class & Section Configuration
+            <span class="material-symbols-outlined text-primary text-[20px]">table_chart</span>Class & Division Configuration
           </h3>
           <a href="<?php echo site_url('academics/classes'); ?>" class="text-xs font-semibold text-primary hover:underline">Manage All Classes</a>
         </div>
@@ -135,7 +135,7 @@
                   <p class="text-[11px] text-on-surface-variant mt-0.5"><?php echo (int)($c->section_count ?? 0); ?> Sections • <?php echo (int)($c->student_count ?? 0); ?> Students</p>
                 </div>
                 <div class="text-right">
-                  <a href="<?php echo site_url('academics/sections?class_id=' . $c->class_id); ?>" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-surface-container-high text-on-surface hover:bg-surface-container-highest">
+                  <a href="<?php echo site_url('academics/divisions?class_id=' . $c->class_id); ?>" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-surface-container-high text-on-surface hover:bg-surface-container-highest">
                     Sections
                   </a>
                 </div>

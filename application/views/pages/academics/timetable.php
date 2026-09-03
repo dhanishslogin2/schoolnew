@@ -52,7 +52,7 @@
           </select>
         </div>
         <div>
-          <label class="block text-label-md text-on-surface mb-1 font-semibold">Select Section *</label>
+          <label class="block text-label-md text-on-surface mb-1 font-semibold">Select Division *</label>
           <select id="tt_filter_section" onchange="reloadTimetable()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md">
             <?php if (empty($class_sections)): ?>
               <option value="">No sections in this class</option>
@@ -148,8 +148,8 @@
               </select>
             </div>
             <div>
-              <label class="block text-label-md mb-1">Section *</label>
-              <select name="section_id" id="modal_tt_section" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md">
+              <label class="block text-label-md mb-1">Division *</label>
+              <select name="division_id" id="modal_tt_section" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md">
                 <?php foreach ($class_sections as $sec): ?>
                   <option value="<?php echo $sec->section_id; ?>" <?php echo ($selected_section == $sec->section_id) ? 'selected' : ''; ?>>Section <?php echo html_escape($sec->section_name); ?></option>
                 <?php endforeach; ?>
@@ -244,7 +244,7 @@
             <input type="hidden" name="action" value="add_period"/>
             <input type="hidden" name="academic_year_id" value="<?php echo $selected_year; ?>"/>
             <input type="hidden" name="class_id" value="<?php echo $selected_class; ?>"/>
-            <input type="hidden" name="section_id" value="<?php echo $selected_section; ?>"/>
+            <input type="hidden" name="division_id" value="<?php echo $selected_section; ?>"/>
             <h4 class="font-headline-md text-[15px] font-bold text-on-surface">Add New Period Slot</h4>
             <div class="grid grid-cols-3 gap-2">
               <div>
@@ -278,7 +278,7 @@
 
       function handleClassFilterChange(classId) {
         // Fetch sections for newly selected class, select first section, and reload
-        fetch('<?php echo site_url('academics/ajax_get_sections/'); ?>' + classId)
+        fetch('<?php echo site_url('academics/ajax_get_divisions/'); ?>' + classId)
           .then(res => res.json())
           .then(data => {
             var firstSecId = (data.length > 0) ? data[0].section_id : '';
@@ -336,7 +336,7 @@
         if (!classId) return;
 
         // Fetch Sections
-        fetch('<?php echo site_url('academics/ajax_get_sections/'); ?>' + classId)
+        fetch('<?php echo site_url('academics/ajax_get_divisions/'); ?>' + classId)
           .then(res => res.json())
           .then(data => {
             var opts = '';

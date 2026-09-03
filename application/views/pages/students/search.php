@@ -37,9 +37,9 @@
             </select>
           </div>
           <div>
-            <label class="block text-label-md text-on-surface mb-1">Section</label>
-            <select name="section_id" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
-              <option value="">All Sections</option>
+            <label class="block text-label-md text-on-surface mb-1">Division</label>
+            <select name="division_id" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
+              <option value="">All Divisions</option>
               <?php foreach ($sections as $sec): ?>
                 <option value="<?php echo $sec->section_id; ?>" <?php echo ($this->input->get('section_id') == $sec->section_id) ? 'selected' : ''; ?>><?php echo html_escape($sec->class_name . ' - ' . $sec->section_name); ?></option>
               <?php endforeach; ?>
@@ -81,7 +81,7 @@
             <tr class="border-b border-outline-variant/60">
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide">Admission No.</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide">Student Name</th>
-              <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide">Class & Section</th>
+              <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide">Class & Division</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide">Gender</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide">Guardian & Contact</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase tracking-wide">Status</th>

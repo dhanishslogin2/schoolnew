@@ -5,12 +5,12 @@ class Fee_adjustment_model extends CI_Model {
 
     public function get_adjustments($filters = array(), $limit = 50)
     {
-        $this->db->select('fa.*, st.first_name, st.last_name, st.admission_number, c.class_name, sec.section_name, sf.invoice_no, fh.head_name as category_name, u.name as adjusted_by_name')
+        $this->db->select('fa.*, st.first_name, st.last_name, st.admission_number, c.class_name, div.division_name as division_name, div.division_name as section_name, sf.invoice_no, fh.head_name as category_name, u.name as adjusted_by_name')
                  ->from('tbl_fee_adjustments fa')
                  ->join('tbl_student_fees sf', 'sf.student_fee_id = fa.student_fee_id', 'inner')
                  ->join('tbl_students st', 'st.student_id = fa.student_id', 'inner')
                  ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-                 ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+                 ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
                  ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
                  ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left')
                  ->join('tbl_users u', 'u.user_id = fa.adjusted_by', 'left');
@@ -33,12 +33,12 @@ class Fee_adjustment_model extends CI_Model {
 
     public function get_refunds($filters = array(), $limit = 50)
     {
-        $this->db->select('fr.*, fp.receipt_no, fp.amount_paid as original_paid, fp.payment_date, st.first_name, st.last_name, st.admission_number, c.class_name, sec.section_name, u.name as approved_by_name')
+        $this->db->select('fr.*, fp.receipt_no, fp.amount_paid as original_paid, fp.payment_date, st.first_name, st.last_name, st.admission_number, c.class_name, div.division_name as division_name, div.division_name as section_name, u.name as approved_by_name')
                  ->from('tbl_fee_refunds fr')
                  ->join('tbl_fee_payments fp', 'fp.payment_id = fr.payment_id', 'inner')
                  ->join('tbl_students st', 'st.student_id = fr.student_id', 'inner')
                  ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-                 ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+                 ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
                  ->join('tbl_users u', 'u.user_id = fr.approved_by', 'left');
 
         if (!empty($filters['student_id'])) {

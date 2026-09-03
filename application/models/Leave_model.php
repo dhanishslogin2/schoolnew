@@ -56,14 +56,14 @@ class Leave_model extends CI_Model {
     public function get_applications($filters = array(), $limit = 50, $offset = 0)
     {
         $this->db
-            ->select('a.*, lt.type_name, lt.type_code, s.full_name as staff_name, s.employee_code, d.department_name, st.first_name, st.last_name, st.admission_number, st.admission_number as admission_no, st.guardian_name, c.class_name, sec.section_name, approver.full_name as approver_name')
+            ->select('a.*, lt.type_name, lt.type_code, s.full_name as staff_name, s.employee_code, d.department_name, st.first_name, st.last_name, st.admission_number, st.admission_number as admission_no, st.guardian_name, c.class_name, div.division_name as division_name, div.division_name as section_name, approver.full_name as approver_name')
             ->from('tbl_leave_applications a')
             ->join('tbl_leave_types lt', 'lt.type_id = a.leave_type_id', 'left')
             ->join('tbl_staff s', 's.staff_id = a.staff_id', 'left')
             ->join('tbl_departments d', 'd.department_id = s.department_id', 'left')
             ->join('tbl_students st', 'st.student_id = a.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = a.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = a.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = a.division_id', 'left')
             ->join('tbl_staff approver', 'approver.staff_id = a.approved_by', 'left')
             ->where('a.is_deleted', 'n')
             ->order_by('a.applied_date', 'DESC')
@@ -75,7 +75,7 @@ class Leave_model extends CI_Model {
         if (!empty($filters['applicant_type'])) $this->db->where('a.applicant_type', $filters['applicant_type']);
         if (!empty($filters['status'])) $this->db->where('a.status', $filters['status']);
         if (!empty($filters['class_id'])) $this->db->where('a.class_id', $filters['class_id']);
-        if (!empty($filters['section_id'])) $this->db->where('a.section_id', $filters['section_id']);
+        if (!empty($filters['division_id'])) $this->db->where('a.division_id', $filters['division_id']);
         if (!empty($filters['department_id'])) $this->db->where('s.department_id', $filters['department_id']);
         if (!empty($filters['leave_type_id'])) $this->db->where('a.leave_type_id', $filters['leave_type_id']);
         if (!empty($filters['student_id'])) $this->db->where('a.student_id', $filters['student_id']);
@@ -99,7 +99,7 @@ class Leave_model extends CI_Model {
     public function get_by_id($id)
     {
         return $this->db
-            ->select('a.*, lt.type_name, lt.type_code, s.full_name as staff_name, s.employee_code, d.department_name, des.designation_name, st.first_name, st.last_name, st.admission_number, st.admission_number as admission_no, st.guardian_name, st.guardian_phone as emergency_phone, c.class_name, sec.section_name, approver.full_name as approver_name')
+            ->select('a.*, lt.type_name, lt.type_code, s.full_name as staff_name, s.employee_code, d.department_name, des.designation_name, st.first_name, st.last_name, st.admission_number, st.admission_number as admission_no, st.guardian_name, st.guardian_phone as emergency_phone, c.class_name, div.division_name as division_name, div.division_name as section_name, approver.full_name as approver_name')
             ->from('tbl_leave_applications a')
             ->join('tbl_leave_types lt', 'lt.type_id = a.leave_type_id', 'left')
             ->join('tbl_staff s', 's.staff_id = a.staff_id', 'left')
@@ -107,7 +107,7 @@ class Leave_model extends CI_Model {
             ->join('tbl_designations des', 'des.designation_id = s.designation_id', 'left')
             ->join('tbl_students st', 'st.student_id = a.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = a.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = a.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = a.division_id', 'left')
             ->join('tbl_staff approver', 'approver.staff_id = a.approved_by', 'left')
             ->where('a.' . $this->primaryKey, $id)
             ->where('a.is_deleted', 'n')

@@ -59,12 +59,12 @@
         </div>
 
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Section *</label>
-          <select name="section_id" onchange="this.form.submit()" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
-            <option value="">-- Select Section --</option>
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Division *</label>
+          <select name="division_id" onchange="this.form.submit()" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+            <option value="">-- Select Division --</option>
             <?php foreach ($sections as $sec): ?>
-              <option value="<?php echo $sec->section_id; ?>" <?php echo ($section_id == $sec->section_id) ? 'selected' : ''; ?>>
-                <?php echo html_escape($sec->class_name . ' ' . $sec->section_name); ?>
+              <option value="<?php echo ($sec->division_id ?? $sec->section_id); ?>" <?php echo ($section_id == ($sec->division_id ?? $sec->section_id)) ? 'selected' : ''; ?>>
+                <?php echo html_escape($sec->class_name . ' ' . ($sec->division_name ?? $sec->section_name)); ?>
               </option>
             <?php endforeach; ?>
           </select>
@@ -88,7 +88,7 @@
       <!-- Prompt to Select Filters -->
       <div class="p-8 rounded-xl bg-surface-container-lowest border border-outline-variant/50 text-center elevation-1">
         <span class="material-symbols-outlined text-[48px] text-primary/60 mb-2">schedule</span>
-        <h3 class="font-title-md text-title-md text-on-surface font-semibold">Select Class, Section, and Period</h3>
+        <h3 class="font-title-md text-title-md text-on-surface font-semibold">Select Class, Division, and Period</h3>
         <p class="text-body-md text-on-surface-variant max-w-md mx-auto mt-1">Please select all required parameters above to load the student list and record period attendance.</p>
       </div>
     <?php else: ?>
@@ -111,7 +111,7 @@
         <input type="hidden" name="date" value="<?php echo html_escape($date); ?>"/>
         <input type="hidden" name="academic_year_id" value="<?php echo html_escape($year_id); ?>"/>
         <input type="hidden" name="class_id" value="<?php echo html_escape($class_id); ?>"/>
-        <input type="hidden" name="section_id" value="<?php echo html_escape($section_id); ?>"/>
+        <input type="hidden" name="division_id" value="<?php echo html_escape($section_id); ?>"/>
         <input type="hidden" name="period_id" value="<?php echo html_escape($period_id); ?>"/>
 
         <!-- Control Bar & Live Counters -->
@@ -161,7 +161,7 @@
               </thead>
               <tbody class="divide-y divide-outline-variant/40">
                 <?php if (empty($students)): ?>
-                  <tr><td colspan="5" class="px-4 py-8 text-center text-on-surface-variant text-body-md">No students found in this class and section.</td></tr>
+                  <tr><td colspan="5" class="px-4 py-8 text-center text-on-surface-variant text-body-md">No students found in this class and division.</td></tr>
                 <?php else: ?>
                   <?php foreach ($students as $st): ?>
                     <?php

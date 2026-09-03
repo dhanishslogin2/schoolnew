@@ -11,6 +11,7 @@ class Attendance_model extends CI_Model {
         parent::__construct();
         $this->load->model('Attendance_setting_model');
         $this->load->model('Attendance_notification_model');
+        $this->load->model('Division_model');
         $this->load->model('Section_model');
     }
 
@@ -23,8 +24,8 @@ class Attendance_model extends CI_Model {
         $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
 
         // Check if class has other configured sections in tbl_sections
-        $default_sec_id = $class_id ? $this->Section_model->get_default_section_id($class_id) : null;
-        $has_other = $class_id ? $this->Section_model->has_other_sections($class_id, $default_sec_id) : false;
+        $default_sec_id = $class_id ? $this->Division_model->get_default_division_id($class_id) : null;
+        $has_other = $class_id ? $this->Division_model->has_other_divisions($class_id, $default_sec_id) : false;
 
         // Total active students matching filter
         $this->db->where('status', 1)->where('is_deleted', 'n');
@@ -41,13 +42,13 @@ class Attendance_model extends CI_Model {
                     // All students in this class belong to default Section A
                 } else {
                     $this->db->group_start()
-                        ->where('section_id', (int)$section_id)
+                        ->where('division_id', (int)$section_id)
                         ->or_where('section_id IS NULL', null, false)
-                        ->or_where('section_id', 0)
+                        ->or_where('division_id', 0)
                         ->group_end();
                 }
             } else {
-                $this->db->where('section_id', (int)$section_id);
+                $this->db->where('division_id', (int)$section_id);
             }
         }
         $total_students = $this->db->count_all_results('tbl_students');
@@ -71,7 +72,7 @@ class Attendance_model extends CI_Model {
             if (!$has_other && $class_id) {
                 // Class has only default Section A
             } else {
-                $this->db->where('section_id', (int)$section_id);
+                $this->db->where('division_id', (int)$section_id);
             }
         }
 
@@ -134,21 +135,21 @@ class Attendance_model extends CI_Model {
                 return array();
             }
 
-            // Check if this class has active configured sections in tbl_sections
-            $configured_sections = $this->db
+            // Check if this class has active configured divisions in tbl_divisions
+            $configured_divisions = $this->db
                 ->where('class_id', (int)$class_id)
                 ->where('status', 1)
                 ->where('is_deleted', 'n')
-                ->order_by('section_name', 'ASC')
-                ->get('tbl_sections')
+                ->order_by('division_name', 'ASC')
+                ->get('tbl_divisions')
                 ->result();
 
             $is_higher_sec = is_higher_secondary_class($class_id);
 
-            if (!empty($configured_sections)) {
-                // Class has configured section(s) in DB - load them normally
+            if (!empty($configured_divisions)) {
+                // Class has configured division(s) in DB - load them normally
                 if ($is_higher_sec) {
-                    $select_fields = "c.class_id, c.class_name, sec.section_id, sec.section_name,
+                    $select_fields = "c.class_id, c.class_name, div.division_id, div.division_name,
                         COUNT(DISTINCT st.student_id) as total_students,
                         SUM(CASE WHEN a.attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
                         SUM(CASE WHEN a.attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
@@ -158,7 +159,7 @@ class Attendance_model extends CI_Model {
                         COUNT(a.attendance_id) as marked_count";
                     $att_type_cond = "(a.attendance_type = 'Daily' OR a.attendance_type = 'Period-wise')";
                 } else {
-                    $select_fields = "c.class_id, c.class_name, sec.section_id, sec.section_name,
+                    $select_fields = "c.class_id, c.class_name, div.division_id, div.division_name,
                         COUNT(DISTINCT st.student_id) as total_students,
                         SUM(CASE WHEN a.attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
                         SUM(CASE WHEN a.attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
@@ -172,21 +173,23 @@ class Attendance_model extends CI_Model {
                 $this->db
                     ->select($select_fields, FALSE)
                     ->from('tbl_classes c')
-                    ->join('tbl_sections sec', "sec.class_id = c.class_id AND sec.status = 1 AND sec.is_deleted = 'n'", 'inner')
-                    ->join('tbl_students st', "st.class_id = c.class_id AND (st.section_id = sec.section_id OR (sec.section_name = 'A' AND (st.section_id IS NULL OR st.section_id = 0))) AND st.status = 1 AND st.is_deleted = 'n' AND (st.academic_year_id = " . (int)$year_id . " OR st.academic_year_id IS NULL)", 'left')
+                    ->join('tbl_divisions div', "div.class_id = c.class_id AND div.status = 1 AND div.is_deleted = 'n'", 'inner')
+                    ->join('tbl_students st', "st.class_id = c.class_id AND (st.division_id = div.division_id OR (div.division_name = 'A' AND (st.division_id IS NULL OR st.division_id = 0))) AND st.status = 1 AND st.is_deleted = 'n' AND (st.academic_year_id = " . (int)$year_id . " OR st.academic_year_id IS NULL)", 'left')
                     ->join($this->table . ' a', "a.student_id = st.student_id AND a.attendance_date = " . $this->db->escape($date) . " AND {$att_type_cond} AND a.is_deleted = 'n' AND (a.academic_year_id = " . (int)$year_id . " OR a.academic_year_id IS NULL)", 'left')
                     ->where('c.class_id', (int)$class_id)
                     ->where('c.status', 1)
-                    ->group_by(array('c.class_id', 'sec.section_id', 'c.class_name', 'sec.section_name'))
-                    ->order_by('sec.section_name', 'ASC');
+                    ->group_by(array('c.class_id', 'div.division_id', 'c.class_name', 'div.division_name'))
+                    ->order_by('div.division_name', 'ASC');
 
                 if ($section_id) {
-                    $this->db->where('sec.section_id', (int)$section_id);
+                    $this->db->where('div.division_id', (int)$section_id);
                 }
 
                 $results = $this->db->get()->result();
 
                 foreach ($results as $row) {
+                    $row->section_id = $row->division_id;
+                    $row->section_name = $row->division_name;
                     $marked = (int)$row->marked_count;
                     $row->is_marked = ($marked > 0);
                     $row->percentage = ($marked > 0) ? round(($row->present_count / $marked) * 100, 1) : 0;
@@ -198,8 +201,8 @@ class Attendance_model extends CI_Model {
 
                 return $results;
             } else {
-                // Class has NO configured sections -> Fallback automatically to Section A
-                $default_sec_id = $this->Section_model->get_default_section_id($class_id);
+                // Class has NO configured divisions -> Fallback automatically to Division A
+                $default_sec_id = $this->Division_model->get_default_division_id($class_id);
 
                 // Count active students belonging to this class
                 $total_students = (int)$this->db
@@ -267,6 +270,8 @@ class Attendance_model extends CI_Model {
                 $sec_overview = (object) array(
                     'class_id'       => (int)$class_id,
                     'class_name'     => $class_row ? $class_row->class_name : 'Class ' . $class_id,
+                    'division_id'    => $default_sec_id ?: 0,
+                    'division_name'  => 'A',
                     'section_id'     => $default_sec_id ?: 0,
                     'section_name'   => 'A',
                     'total_students' => $total_students,
@@ -311,11 +316,11 @@ class Attendance_model extends CI_Model {
         $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
 
         $this->db
-            ->select('a.*, st.first_name, st.last_name, st.admission_number, st.roll_number, c.class_name, sec.section_name, p.period_name, u.name as marked_by_name')
+            ->select('a.*, st.first_name, st.last_name, st.admission_number, st.roll_number, c.class_name, div.division_name, p.period_name, u.name as marked_by_name')
             ->from($this->table . ' a')
             ->join('tbl_students st', 'st.student_id = a.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = a.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = a.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = a.division_id', 'left')
             ->join('tbl_periods p', 'p.period_id = a.period_id', 'left')
             ->join('tbl_users u', 'u.user_id = a.marked_by', 'left');
 
@@ -337,10 +342,10 @@ class Attendance_model extends CI_Model {
     public function get_daily_sheet($date, $class_id = NULL, $section_id = NULL, $year_id = NULL)
     {
         $this->db
-            ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.middle_name, st.last_name, st.photo, st.guardian_name, st.guardian_phone, st.guardian_email, c.class_name, COALESCE(sec.section_name, "A") as section_name, a.attendance_id, a.attendance_status, a.remarks, a.attendance_type, a.updated_at')
+            ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.middle_name, st.last_name, st.photo, st.guardian_name, st.guardian_phone, st.guardian_email, c.class_name, COALESCE(div.division_name, "A") as section_name, a.attendance_id, a.attendance_status, a.remarks, a.attendance_type, a.updated_at')
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_date = ' . $this->db->escape($date) . ' AND a.attendance_type = "Daily" AND a.is_deleted = "n"', 'left')
             ->where('st.status', 1)
             ->where('st.is_deleted', 'n')
@@ -356,20 +361,20 @@ class Attendance_model extends CI_Model {
         }
 
         if ($section_id) {
-            $default_sec_id = $this->Section_model->get_default_section_id($class_id);
-            $has_other = $class_id ? $this->Section_model->has_other_sections($class_id, $default_sec_id) : false;
+            $default_sec_id = $this->Division_model->get_default_division_id($class_id);
+            $has_other = $class_id ? $this->Division_model->has_other_divisions($class_id, $default_sec_id) : false;
             if ((int)$section_id === (int)$default_sec_id || !$has_other) {
                 if (!$has_other && $class_id) {
                     // All students in this class belong to default Section A
                 } else {
                     $this->db->group_start()
-                        ->where('st.section_id', (int)$section_id)
-                        ->or_where('st.section_id IS NULL', null, false)
-                        ->or_where('st.section_id', 0)
+                        ->where('st.division_id', (int)$section_id)
+                        ->or_where('st.division_id IS NULL', null, false)
+                        ->or_where('st.division_id', 0)
                         ->group_end();
                 }
             } else {
-                $this->db->where('st.section_id', (int)$section_id);
+                $this->db->where('st.division_id', (int)$section_id);
             }
         }
 
@@ -384,10 +389,10 @@ class Attendance_model extends CI_Model {
             ->where('attendance_type', 'Daily')
             ->where('is_deleted', 'n');
 
-        $default_sec_id = $this->Section_model->get_default_section_id($class_id);
-        $has_other = $class_id ? $this->Section_model->has_other_sections($class_id, $default_sec_id) : false;
+        $default_sec_id = $this->Division_model->get_default_division_id($class_id);
+        $has_other = $class_id ? $this->Division_model->has_other_divisions($class_id, $default_sec_id) : false;
         if ($has_other && $section_id) {
-            $this->db->where('section_id', (int)$section_id);
+            $this->db->where('division_id', (int)$section_id);
         }
 
         if ($year_id) {
@@ -443,7 +448,7 @@ class Attendance_model extends CI_Model {
                     'student_id'        => $student_id,
                     'academic_year_id'  => $academic_year_id,
                     'class_id'          => $class_id,
-                    'section_id'        => $section_id,
+                    'division_id'       => $section_id,
                     'attendance_date'   => $date,
                     'attendance_type'   => 'Daily',
                     'period_id'         => NULL,
@@ -481,10 +486,10 @@ class Attendance_model extends CI_Model {
         }
 
         $this->db
-            ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, st.photo, c.class_name, COALESCE(sec.section_name, \'A\') as section_name, p.period_name, p.period_number, p.start_time, p.end_time, a.attendance_id, a.attendance_status, a.remarks, a.updated_at')
+            ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, st.photo, c.class_name, COALESCE(div.division_name, \'A\') as section_name, p.period_name, p.period_number, p.start_time, p.end_time, a.attendance_id, a.attendance_status, a.remarks, a.updated_at')
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_periods p', 'p.period_id = ' . $this->db->escape($period_id), 'left')
             ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_date = ' . $this->db->escape($date) . ' AND a.attendance_type = \'Period-wise\' AND a.period_id = ' . $this->db->escape($period_id) . $subject_join . ' AND a.is_deleted = \'n\'', 'left')
             ->where('st.status', 1)
@@ -501,20 +506,20 @@ class Attendance_model extends CI_Model {
         }
 
         if ($section_id) {
-            $default_sec_id = $this->Section_model->get_default_section_id($class_id);
-            $has_other = $class_id ? $this->Section_model->has_other_sections($class_id, $default_sec_id) : false;
+            $default_sec_id = $this->Division_model->get_default_division_id($class_id);
+            $has_other = $class_id ? $this->Division_model->has_other_divisions($class_id, $default_sec_id) : false;
             if ((int)$section_id === (int)$default_sec_id || !$has_other) {
                 if (!$has_other && $class_id) {
                     // All students in this class belong to default Section A
                 } else {
                     $this->db->group_start()
-                        ->where('st.section_id', (int)$section_id)
-                        ->or_where('st.section_id IS NULL', null, false)
-                        ->or_where('st.section_id', 0)
+                        ->where('st.division_id', (int)$section_id)
+                        ->or_where('st.division_id IS NULL', null, false)
+                        ->or_where('st.division_id', 0)
                         ->group_end();
                 }
             } else {
-                $this->db->where('st.section_id', (int)$section_id);
+                $this->db->where('st.division_id', (int)$section_id);
             }
         }
 
@@ -534,10 +539,10 @@ class Attendance_model extends CI_Model {
             $this->db->where('subject_id', (int)$subject_id);
         }
 
-        $default_sec_id = $this->Section_model->get_default_section_id($class_id);
-        $has_other = $class_id ? $this->Section_model->has_other_sections($class_id, $default_sec_id) : false;
+        $default_sec_id = $this->Division_model->get_default_division_id($class_id);
+        $has_other = $class_id ? $this->Division_model->has_other_divisions($class_id, $default_sec_id) : false;
         if ($has_other && $section_id) {
-            $this->db->where('section_id', (int)$section_id);
+            $this->db->where('division_id', (int)$section_id);
         }
 
         if ($year_id) {
@@ -608,7 +613,7 @@ class Attendance_model extends CI_Model {
                     'student_id'        => $student_id,
                     'academic_year_id'  => $academic_year_id,
                     'class_id'          => $class_id,
-                    'section_id'        => $section_id,
+                    'division_id'       => $section_id,
                     'attendance_date'   => $date,
                     'attendance_type'   => 'Period-wise',
                     'period_id'         => $period_id,
@@ -634,11 +639,11 @@ class Attendance_model extends CI_Model {
     public function get_history($filters = array(), $limit = NULL, $offset = NULL)
     {
         $this->db
-            ->select('a.*, st.admission_number, st.roll_number, st.first_name, st.last_name, c.class_name, sec.section_name, p.period_name, p.period_number, u.name as marked_by_name')
+            ->select('a.*, st.admission_number, st.roll_number, st.first_name, st.last_name, c.class_name, div.division_name, p.period_name, p.period_number, u.name as marked_by_name')
             ->from($this->table . ' a')
             ->join('tbl_students st', 'st.student_id = a.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = a.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = a.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = a.division_id', 'left')
             ->join('tbl_periods p', 'p.period_id = a.period_id', 'left')
             ->join('tbl_users u', 'u.user_id = a.marked_by', 'left')
             ->order_by('a.attendance_date', 'DESC')
@@ -659,7 +664,7 @@ class Attendance_model extends CI_Model {
             ->from($this->table . ' a')
             ->join('tbl_students st', 'st.student_id = a.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = a.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = a.section_id', 'left');
+            ->join('tbl_divisions div', 'div.division_id = a.division_id', 'left');
 
         $this->_apply_history_filters($filters);
 
@@ -680,8 +685,9 @@ class Attendance_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('a.class_id', $filters['class_id']);
         }
-        if (!empty($filters['section_id'])) {
-            $this->db->where('a.section_id', $filters['section_id']);
+        $f_div = $filters['division_id'] ?? ($f_div ?? null);
+        if (!empty($f_div)) {
+            $this->db->where('a.division_id', $f_div);
         }
         if (!empty($filters['student_id'])) {
             $this->db->where('a.student_id', $filters['student_id']);
@@ -713,11 +719,11 @@ class Attendance_model extends CI_Model {
     {
         // Tracking is dedicated for Absent, Late, Excused
         $this->db
-            ->select('a.*, st.admission_number, st.roll_number, st.first_name, st.last_name, st.guardian_name, st.guardian_phone, c.class_name, sec.section_name, p.period_name')
+            ->select('a.*, st.admission_number, st.roll_number, st.first_name, st.last_name, st.guardian_name, st.guardian_phone, c.class_name, div.division_name, p.period_name')
             ->from($this->table . ' a')
             ->join('tbl_students st', 'st.student_id = a.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = a.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = a.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = a.division_id', 'left')
             ->join('tbl_periods p', 'p.period_id = a.period_id', 'left')
             ->where_in('a.attendance_status', array('Absent', 'Late', 'Excused', 'Leave'))
             ->order_by('a.attendance_date', 'DESC')
@@ -731,7 +737,8 @@ class Attendance_model extends CI_Model {
             }
         }
         if (!empty($filters['class_id'])) $this->db->where('a.class_id', $filters['class_id']);
-        if (!empty($filters['section_id'])) $this->db->where('a.section_id', $filters['section_id']);
+        $f_div = $filters['division_id'] ?? ($f_div ?? null);
+        if (!empty($f_div)) $this->db->where('a.division_id', $f_div);
         if (!empty($filters['student_id'])) $this->db->where('a.student_id', $filters['student_id']);
         if (!empty($filters['academic_year_id'])) $this->db->where('a.academic_year_id', $filters['academic_year_id']);
         if (!empty($filters['from_date'])) $this->db->where('a.attendance_date >=', $filters['from_date']);
@@ -761,7 +768,7 @@ class Attendance_model extends CI_Model {
 
         if ($student_id) $this->db->where('a.student_id', $student_id);
         if ($class_id) $this->db->where('a.class_id', $class_id);
-        if ($section_id) $this->db->where('a.section_id', $section_id);
+        if ($section_id) $this->db->where('a.division_id', $section_id);
         if ($academic_year_id) $this->db->where('a.academic_year_id', $academic_year_id);
 
         $records = $this->db
@@ -788,21 +795,21 @@ class Attendance_model extends CI_Model {
     public function get_date_attendance_details($date, $class_id = NULL, $section_id = NULL, $student_id = NULL, $type = 'Daily', $academic_year_id = NULL)
     {
         $this->db
-            ->select('a.*, st.first_name, st.last_name, st.admission_number, st.roll_number, c.class_name, sec.section_name, p.period_name')
+            ->select('a.*, st.first_name, st.last_name, st.admission_number, st.roll_number, c.class_name, div.division_name, p.period_name')
             ->from($this->table . ' a')
             ->join('tbl_students st', 'st.student_id = a.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = a.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = a.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = a.division_id', 'left')
             ->join('tbl_periods p', 'p.period_id = a.period_id', 'left')
             ->where('a.attendance_date', $date)
             ->where('a.attendance_type', $type)
             ->order_by('c.class_id', 'ASC')
-            ->order_by('sec.section_id', 'ASC')
+            ->order_by('div.division_id', 'ASC')
             ->order_by('CAST(st.roll_number AS UNSIGNED)', 'ASC');
 
         if ($student_id) $this->db->where('a.student_id', $student_id);
         if ($class_id) $this->db->where('a.class_id', $class_id);
-        if ($section_id) $this->db->where('a.section_id', $section_id);
+        if ($section_id) $this->db->where('a.division_id', $section_id);
         if ($academic_year_id) $this->db->where('a.academic_year_id', $academic_year_id);
 
         return $this->db->get()->result();
@@ -816,21 +823,21 @@ class Attendance_model extends CI_Model {
         $academic_year_id = $academic_year_id ? (int)$academic_year_id : get_current_academic_year_id();
 
         $this->db
-            ->select("c.class_name, sec.section_name,
+            ->select("c.class_name, div.division_name,
                 SUM(CASE WHEN a.attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
                 SUM(CASE WHEN a.attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
                 SUM(CASE WHEN a.attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
                 SUM(CASE WHEN a.attendance_status = 'Late Coming' THEN 1 ELSE 0 END) as late_count,
                 0 as excused_count,
                 COUNT(a.attendance_id) as total_count", FALSE)
-            ->from('tbl_sections sec')
-            ->join('tbl_classes c', 'c.class_id = sec.class_id', 'inner')
-            ->join('tbl_attendance a', 'a.section_id = sec.section_id AND a.attendance_type = "Daily" AND a.academic_year_id = ' . (int)$academic_year_id, 'left')
-            ->where('sec.status', 1)
+            ->from('tbl_divisions div')
+            ->join('tbl_classes c', 'c.class_id = div.class_id', 'inner')
+            ->join('tbl_attendance a', 'a.division_id = div.division_id AND a.attendance_type = "Daily" AND a.academic_year_id = ' . (int)$academic_year_id, 'left')
+            ->where('div.status', 1)
             ->where('c.academic_year_id', $academic_year_id)
-            ->group_by('sec.section_id')
+            ->group_by('div.division_id')
             ->order_by('c.class_id', 'ASC')
-            ->order_by('sec.section_name', 'ASC');
+            ->order_by('div.division_name', 'ASC');
 
         if ($class_id) $this->db->where('c.class_id', $class_id);
 
@@ -849,7 +856,7 @@ class Attendance_model extends CI_Model {
         $year_id = !empty($filters['academic_year_id']) ? (int)$filters['academic_year_id'] : get_current_academic_year_id();
 
         $this->db
-            ->select("st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, c.class_name, sec.section_name,
+            ->select("st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, c.class_name, div.division_name,
                 SUM(CASE WHEN a.attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
                 SUM(CASE WHEN a.attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
                 SUM(CASE WHEN a.attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
@@ -858,17 +865,18 @@ class Attendance_model extends CI_Model {
                 COUNT(a.attendance_id) as total_days", FALSE)
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_type = "Daily" AND a.academic_year_id = ' . (int)$year_id, 'left')
             ->where('st.status', 1)
             ->where('st.academic_year_id', $year_id)
             ->group_by('st.student_id')
             ->order_by('c.class_id', 'ASC')
-            ->order_by('sec.section_id', 'ASC')
+            ->order_by('div.division_id', 'ASC')
             ->order_by('CAST(st.roll_number AS UNSIGNED)', 'ASC');
 
         if (!empty($filters['class_id'])) $this->db->where('st.class_id', $filters['class_id']);
-        if (!empty($filters['section_id'])) $this->db->where('st.section_id', $filters['section_id']);
+        $f_div = $filters['division_id'] ?? ($f_div ?? null);
+        if (!empty($f_div)) $this->db->where('st.division_id', $f_div);
         if (!empty($filters['student_id'])) $this->db->where('st.student_id', $filters['student_id']);
         if (!empty($filters['from_date'])) $this->db->where('a.attendance_date >=', $filters['from_date']);
         if (!empty($filters['to_date'])) $this->db->where('a.attendance_date <=', $filters['to_date']);
@@ -892,7 +900,7 @@ class Attendance_model extends CI_Model {
         $end_date   = date('Y-m-t', strtotime($start_date));
 
         $this->db
-            ->select("st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, c.class_name, sec.section_name,
+            ->select("st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, c.class_name, div.division_name,
                 SUM(CASE WHEN a.attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
                 SUM(CASE WHEN a.attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
                 SUM(CASE WHEN a.attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
@@ -901,17 +909,18 @@ class Attendance_model extends CI_Model {
                 COUNT(a.attendance_id) as total_days", FALSE)
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join($this->table . ' a', 'a.student_id = st.student_id AND a.attendance_type = "Daily" AND a.academic_year_id = ' . (int)$year_id . ' AND a.attendance_date >= ' . $this->db->escape($start_date) . ' AND a.attendance_date <= ' . $this->db->escape($end_date), 'left')
             ->where('st.status', 1)
             ->where('st.academic_year_id', $year_id)
             ->group_by('st.student_id')
             ->order_by('c.class_id', 'ASC')
-            ->order_by('sec.section_id', 'ASC')
+            ->order_by('div.division_id', 'ASC')
             ->order_by('CAST(st.roll_number AS UNSIGNED)', 'ASC');
 
         if (!empty($filters['class_id'])) $this->db->where('st.class_id', $filters['class_id']);
-        if (!empty($filters['section_id'])) $this->db->where('st.section_id', $filters['section_id']);
+        $f_div = $filters['division_id'] ?? ($f_div ?? null);
+        if (!empty($f_div)) $this->db->where('st.division_id', $f_div);
 
         $results = $this->db->get()->result();
 
@@ -946,7 +955,8 @@ class Attendance_model extends CI_Model {
         if (!empty($filters['from_date'])) $this->db->where('a.attendance_date >=', $filters['from_date']);
         if (!empty($filters['to_date'])) $this->db->where('a.attendance_date <=', $filters['to_date']);
         if (!empty($filters['class_id'])) $this->db->where('a.class_id', $filters['class_id']);
-        if (!empty($filters['section_id'])) $this->db->where('a.section_id', $filters['section_id']);
+        $f_div = $filters['division_id'] ?? ($f_div ?? null);
+        if (!empty($f_div)) $this->db->where('a.division_id', $f_div);
 
         $results = $this->db->get()->result();
 
@@ -1127,13 +1137,13 @@ class Attendance_model extends CI_Model {
 
         // 2. Resolve default Section A fallback
         $this->load->model('Section_model');
-        $has_other_sections = $this->Section_model->has_other_sections($class_id, $section_id);
+        $has_other_sections = $this->Division_model->has_other_divisions($class_id, $section_id);
 
         // 3. Query active enrolled students
-        $this->db->select('s.student_id, s.admission_number, s.roll_number, s.first_name, s.last_name, s.gender, c.class_name, COALESCE(sec.section_name, "A") as section_name')
+        $this->db->select('s.student_id, s.admission_number, s.roll_number, s.first_name, s.last_name, s.gender, c.class_name, COALESCE(div.division_name, "A") as section_name')
                  ->from('tbl_students s')
                  ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
-                 ->join('tbl_sections sec', 'sec.section_id = s.section_id', 'left')
+                 ->join('tbl_divisions div', 'div.division_id = s.division_id', 'left')
                  ->where('s.class_id', $class_id)
                  ->where('s.status', 'Active');
 
@@ -1142,7 +1152,7 @@ class Attendance_model extends CI_Model {
         }
 
         if ($has_other_sections && $section_id) {
-            $this->db->where('s.section_id', $section_id);
+            $this->db->where('s.division_id', $section_id);
         }
 
         $this->db->order_by('CAST(s.roll_number AS UNSIGNED)', 'ASC')

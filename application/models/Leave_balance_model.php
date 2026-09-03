@@ -64,14 +64,14 @@ class Leave_balance_model extends CI_Model {
     public function get_all_balances($academic_year_id = 1, $entity_type = 'Staff', $limit = 50)
     {
         $this->db
-            ->select('b.*, lt.type_name, lt.type_code, s.full_name as staff_name, s.employee_code, d.department_name, st.first_name, st.last_name, st.admission_number, st.admission_number as admission_no, c.class_name, sec.section_name')
+            ->select('b.*, lt.type_name, lt.type_code, s.full_name as staff_name, s.employee_code, d.department_name, st.first_name, st.last_name, st.admission_number, st.admission_number as admission_no, c.class_name, div.division_name as division_name, div.division_name as section_name')
             ->from('tbl_leave_balances b')
             ->join('tbl_leave_types lt', 'lt.type_id = b.leave_type_id', 'left')
             ->join('tbl_staff s', "s.staff_id = b.entity_id AND b.entity_type = 'Staff'", 'left')
             ->join('tbl_departments d', 'd.department_id = s.department_id', 'left')
             ->join('tbl_students st', "st.student_id = b.entity_id AND b.entity_type = 'Student'", 'left')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->where('b.academic_year_id', $academic_year_id)
             ->where('b.entity_type', $entity_type)
             ->limit($limit);

@@ -9,11 +9,11 @@ class Timetable_model extends CI_Model {
     public function get_entries($filters = array())
     {
         $this->db
-            ->select('tt.*, y.year_name, c.class_name, sec.section_name, p.period_name, p.start_time, p.end_time, p.period_order, sub.subject_name, sub.subject_code, s.full_name as teacher_name, s.employee_code')
+            ->select('tt.*, y.year_name, c.class_name, div.division_name as division_name, div.division_name as section_name, p.period_name, p.start_time, p.end_time, p.period_order, sub.subject_name, sub.subject_code, s.full_name as teacher_name, s.employee_code')
             ->from('tbl_timetable tt')
             ->join('tbl_academic_years y', 'y.academic_year_id = tt.academic_year_id', 'left')
             ->join('tbl_classes c', 'c.class_id = tt.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = tt.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = tt.division_id', 'left')
             ->join('tbl_periods p', 'p.period_id = tt.period_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = tt.subject_id', 'left')
             ->join('tbl_staff s', 's.staff_id = tt.teacher_id', 'left')
@@ -28,8 +28,8 @@ class Timetable_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('tt.class_id', $filters['class_id']);
         }
-        if (!empty($filters['section_id'])) {
-            $this->db->where('tt.section_id', $filters['section_id']);
+        if (!empty($filters['division_id'])) {
+            $this->db->where('tt.division_id', $filters['division_id']);
         }
         if (!empty($filters['day'])) {
             $this->db->where('tt.day', $filters['day']);
@@ -47,11 +47,11 @@ class Timetable_model extends CI_Model {
     public function get_by_id($id)
     {
         return $this->db
-            ->select('tt.*, y.year_name, c.class_name, sec.section_name, p.period_name, p.start_time, p.end_time, sub.subject_name, sub.subject_code, s.full_name as teacher_name')
+            ->select('tt.*, y.year_name, c.class_name, div.division_name as division_name, div.division_name as section_name, p.period_name, p.start_time, p.end_time, sub.subject_name, sub.subject_code, s.full_name as teacher_name')
             ->from('tbl_timetable tt')
             ->join('tbl_academic_years y', 'y.academic_year_id = tt.academic_year_id', 'left')
             ->join('tbl_classes c', 'c.class_id = tt.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = tt.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = tt.division_id', 'left')
             ->join('tbl_periods p', 'p.period_id = tt.period_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = tt.subject_id', 'left')
             ->join('tbl_staff s', 's.staff_id = tt.teacher_id', 'left')
@@ -65,7 +65,7 @@ class Timetable_model extends CI_Model {
         $entries = $this->get_entries([
             'academic_year_id' => $year_id,
             'class_id'         => $class_id,
-            'section_id'       => $section_id
+            'division_id'       => $section_id
         ]);
 
         $matrix = [];
@@ -131,7 +131,7 @@ class Timetable_model extends CI_Model {
             ->join('tbl_staff s', 's.staff_id = tt.teacher_id', 'left')
             ->where('tt.academic_year_id', $data['academic_year_id'])
             ->where('tt.class_id', $data['class_id'])
-            ->where('tt.section_id', $data['section_id'])
+            ->where('tt.division_id', $data['division_id'])
             ->where('tt.day', $data['day'])
             ->where('tt.period_id', $data['period_id'])
             ->where('tt.status', 1);
@@ -147,10 +147,10 @@ class Timetable_model extends CI_Model {
         // 2. Conflict Check: Teacher collision (Same teacher in another class at the same period)
         if (!empty($data['teacher_id'])) {
             $this->db
-                ->select('tt.*, c.class_name, sec.section_name, sub.subject_name, s.full_name as teacher_name')
+                ->select('tt.*, c.class_name, div.division_name as division_name, div.division_name as section_name, sub.subject_name, s.full_name as teacher_name')
                 ->from('tbl_timetable tt')
                 ->join('tbl_classes c', 'c.class_id = tt.class_id', 'left')
-                ->join('tbl_sections sec', 'sec.section_id = tt.section_id', 'left')
+                ->join('tbl_divisions div', 'div.division_id = tt.division_id', 'left')
                 ->join('tbl_subjects sub', 'sub.subject_id = tt.subject_id', 'left')
                 ->join('tbl_staff s', 's.staff_id = tt.teacher_id', 'left')
                 ->where('tt.academic_year_id', $data['academic_year_id'])
@@ -216,7 +216,7 @@ class Timetable_model extends CI_Model {
         $pub = $this->db
             ->where('academic_year_id', $year_id)
             ->where('class_id', $class_id)
-            ->where('section_id', $section_id)
+            ->where('division_id', $section_id)
             ->get('tbl_timetable_publish')
             ->row();
 
@@ -226,7 +226,7 @@ class Timetable_model extends CI_Model {
     public function save_entry($data, $id = NULL)
     {
         // Check lock status
-        if ($this->is_schedule_locked($data['academic_year_id'], $data['class_id'], $data['section_id'])) {
+        if ($this->is_schedule_locked($data['academic_year_id'], $data['class_id'], $data['division_id'])) {
             return array('success' => FALSE, 'message' => 'This class timetable is currently LOCKED against modifications. Please unlock it in Publish/Lock management first.');
         }
 

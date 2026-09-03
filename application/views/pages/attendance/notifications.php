@@ -201,7 +201,7 @@
               <strong id="modal-notif-student" class="text-on-surface font-semibold">Student</strong>
             </div>
             <div>
-              <span class="text-[12px] text-on-surface-variant block">Class & Section</span>
+              <span class="text-[12px] text-on-surface-variant block">Class & Division</span>
               <strong id="modal-notif-class" class="text-on-surface">Class</strong>
             </div>
             <div>

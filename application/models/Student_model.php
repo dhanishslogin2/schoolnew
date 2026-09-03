@@ -35,10 +35,10 @@ class Student_model extends CI_Model {
 
         // Recent admissions
         $recent_admissions = $this->db
-            ->select('st.*, c.class_name, sec.section_name')
+            ->select('st.*, c.class_name, div.division_name as division_name, div.division_name as section_name')
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->where('st.status', 1)
             ->where('st.is_deleted', 'n')
             ->where('st.academic_year_id', $year_id)
@@ -62,10 +62,10 @@ class Student_model extends CI_Model {
     public function get_all($filters = array(), $limit = NULL, $offset = NULL)
     {
         $this->db
-            ->select("st.*, c.class_name, COALESCE(sec.section_name, 'A') as section_name, y.year_name")
+            ->select("st.*, c.class_name, COALESCE(div.division_name, 'A') as division_name, COALESCE(div.division_name, 'A') as section_name, y.year_name")
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = st.academic_year_id', 'left')
             ->where('st.status >=', 0)
             ->where('st.is_deleted', 'n')
@@ -77,13 +77,13 @@ class Student_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('st.class_id', (int)$filters['class_id']);
         }
-        if (!empty($filters['section_id'])) {
-            $default_sec_id = $this->Section_model->get_default_section_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
+        if (!empty($filters['division_id'])) {
+            $default_sec_id = $this->Division_model->get_default_division_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
             $this->db->group_start()
-                ->where('st.section_id', (int)$filters['section_id']);
-            if ((int)$filters['section_id'] === (int)$default_sec_id) {
-                $this->db->or_where('st.section_id IS NULL', null, false)
-                         ->or_where('st.section_id', 0);
+                ->where('st.division_id', (int)$filters['division_id']);
+            if ((int)$filters['division_id'] === (int)$default_sec_id) {
+                $this->db->or_where('st.division_id IS NULL', null, false)
+                         ->or_where('st.division_id', 0);
             }
             $this->db->group_end();
         }
@@ -125,13 +125,13 @@ class Student_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('st.class_id', (int)$filters['class_id']);
         }
-        if (!empty($filters['section_id'])) {
-            $default_sec_id = $this->Section_model->get_default_section_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
+        if (!empty($filters['division_id'])) {
+            $default_sec_id = $this->Division_model->get_default_division_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
             $this->db->group_start()
-                ->where('st.section_id', (int)$filters['section_id']);
-            if ((int)$filters['section_id'] === (int)$default_sec_id) {
-                $this->db->or_where('st.section_id IS NULL', null, false)
-                         ->or_where('st.section_id', 0);
+                ->where('st.division_id', (int)$filters['division_id']);
+            if ((int)$filters['division_id'] === (int)$default_sec_id) {
+                $this->db->or_where('st.division_id IS NULL', null, false)
+                         ->or_where('st.division_id', 0);
             }
             $this->db->group_end();
         }
@@ -176,10 +176,10 @@ class Student_model extends CI_Model {
         $this->db
             ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, 
                       st.gender, st.date_of_birth, st.guardian_name, st.guardian_phone, st.status, st.photo,
-                      c.class_name, sec.section_name, y.year_name')
+                      c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = st.academic_year_id', 'left')
             ->where('st.is_deleted', 'n');
 
@@ -189,8 +189,8 @@ class Student_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('st.class_id', (int)$filters['class_id']);
         }
-        if (!empty($filters['section_id'])) {
-            $this->db->where('st.section_id', (int)$filters['section_id']);
+        if (!empty($filters['division_id'])) {
+            $this->db->where('st.division_id', (int)$filters['division_id']);
         }
         if (!empty($filters['gender'])) {
             $this->db->where('st.gender', $filters['gender']);
@@ -208,7 +208,7 @@ class Student_model extends CI_Model {
                 ->or_like('st.guardian_phone', $s)
                 ->or_like('st.roll_number', $s)
                 ->or_like('c.class_name', $s)
-                ->or_like('sec.section_name', $s)
+                ->or_like('div.division_name as division_name, div.division_name as section_name', $s)
             ->group_end();
         }
 
@@ -233,10 +233,10 @@ class Student_model extends CI_Model {
     public function get_by_id($id)
     {
         return $this->db
-            ->select('st.*, c.class_name, sec.section_name, y.year_name')
+            ->select('st.*, c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = st.academic_year_id', 'left')
             ->where('st.student_id', $id)
             ->get()
@@ -258,14 +258,14 @@ class Student_model extends CI_Model {
 
         // 2. Promotions & Academic History
         $student->promotions = $this->db
-            ->select('p.*, fy.year_name as from_year, ty.year_name as to_year, fc.class_name as from_class, tc.class_name as to_class, fsec.section_name as from_section, tsec.section_name as to_section')
+            ->select('p.*, fy.year_name as from_year, ty.year_name as to_year, fc.class_name as from_class, tc.class_name as to_class, fdiv.division_name as division_name, div.division_name as section_name as from_section, tdiv.division_name as division_name, div.division_name as section_name as to_section')
             ->from('tbl_student_promotions p')
             ->join('tbl_academic_years fy', 'fy.academic_year_id = p.from_academic_year_id', 'left')
             ->join('tbl_academic_years ty', 'ty.academic_year_id = p.to_academic_year_id', 'left')
             ->join('tbl_classes fc', 'fc.class_id = p.from_class_id', 'left')
             ->join('tbl_classes tc', 'tc.class_id = p.to_class_id', 'left')
-            ->join('tbl_sections fsec', 'fsec.section_id = p.from_section_id', 'left')
-            ->join('tbl_sections tsec', 'tsec.section_id = p.to_section_id', 'left')
+            ->join('tbl_divisions fdiv', 'fdiv.division_id = p.from_division_id', 'left')
+            ->join('tbl_divisions tdiv', 'tdiv.division_id = p.to_division_id', 'left')
             ->where('p.student_id', $id)
             ->order_by('p.promotion_date', 'DESC')
             ->get()
@@ -299,11 +299,11 @@ class Student_model extends CI_Model {
     public function get_all_documents($filters = array())
     {
         $this->db
-            ->select('d.*, st.admission_number, st.first_name, st.last_name, c.class_name, sec.section_name')
+            ->select('d.*, st.admission_number, st.first_name, st.last_name, c.class_name, div.division_name as division_name, div.division_name as section_name')
             ->from('tbl_student_documents d')
             ->join('tbl_students st', 'st.student_id = d.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->where('d.status', 1)
             ->order_by('d.document_id', 'DESC');
 
@@ -354,7 +354,7 @@ class Student_model extends CI_Model {
         foreach ($student_ids as $sid) {
             $orig_from_sec = $from_sec;
             if (empty($orig_from_sec)) {
-                $st = $this->db->select('section_id')->where('student_id', (int)$sid)->get('tbl_students')->row();
+                $st = $this->db->select('division_id')->where('student_id', (int)$sid)->get('tbl_students')->row();
                 $orig_from_sec = ($st && !empty($st->section_id)) ? $st->section_id : NULL;
             }
 
@@ -363,10 +363,10 @@ class Student_model extends CI_Model {
                 'student_id'            => (int)$sid,
                 'from_academic_year_id' => (int)$from_year,
                 'from_class_id'         => (int)$from_class,
-                'from_section_id'       => $orig_from_sec ? (int)$orig_from_sec : NULL,
+                'from_division_id'       => $orig_from_sec ? (int)$orig_from_sec : NULL,
                 'to_academic_year_id'   => (int)$to_year,
                 'to_class_id'           => (int)$to_class,
-                'to_section_id'         => (int)$to_sec,
+                'to_division_id'         => (int)$to_sec,
                 'promotion_date'        => date('Y-m-d'),
                 'promotion_type'        => $type,
                 'remarks'               => $remarks ?: 'Promoted to new academic session'
@@ -376,7 +376,7 @@ class Student_model extends CI_Model {
             $this->db->where('student_id', (int)$sid)->update('tbl_students', array(
                 'academic_year_id' => (int)$to_year,
                 'class_id'         => (int)$to_class,
-                'section_id'       => (int)$to_sec,
+                'division_id'       => (int)$to_sec,
                 'updated_at'       => date('Y-m-d H:i:s')
             ));
         }
@@ -388,15 +388,15 @@ class Student_model extends CI_Model {
     public function get_promotions($filters = array())
     {
         $this->db
-            ->select('p.*, st.admission_number, st.first_name, st.last_name, fy.year_name as from_year, ty.year_name as to_year, fc.class_name as from_class, tc.class_name as to_class, fsec.section_name as from_section, tsec.section_name as to_section')
+            ->select('p.*, st.admission_number, st.first_name, st.last_name, fy.year_name as from_year, ty.year_name as to_year, fc.class_name as from_class, tc.class_name as to_class, fdiv.division_name as division_name, div.division_name as section_name as from_section, tdiv.division_name as division_name, div.division_name as section_name as to_section')
             ->from('tbl_student_promotions p')
             ->join('tbl_students st', 'st.student_id = p.student_id', 'left')
             ->join('tbl_academic_years fy', 'fy.academic_year_id = p.from_academic_year_id', 'left')
             ->join('tbl_academic_years ty', 'ty.academic_year_id = p.to_academic_year_id', 'left')
             ->join('tbl_classes fc', 'fc.class_id = p.from_class_id', 'left')
             ->join('tbl_classes tc', 'tc.class_id = p.to_class_id', 'left')
-            ->join('tbl_sections fsec', 'fsec.section_id = p.from_section_id', 'left')
-            ->join('tbl_sections tsec', 'tsec.section_id = p.to_section_id', 'left')
+            ->join('tbl_divisions fdiv', 'fdiv.division_id = p.from_division_id', 'left')
+            ->join('tbl_divisions tdiv', 'tdiv.division_id = p.to_division_id', 'left')
             ->order_by('p.promotion_id', 'DESC');
 
         if (!empty($filters['student_id'])) {
@@ -482,10 +482,10 @@ class Student_model extends CI_Model {
     public function get_admissions($filters = array())
     {
         $this->db
-            ->select('a.*, c.class_name, sec.section_name, y.year_name')
+            ->select('a.*, c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
             ->from('tbl_admissions a')
             ->join('tbl_classes c', 'c.class_id = a.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = a.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = a.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = a.academic_year_id', 'left')
             ->order_by('a.admission_id', 'DESC');
 
@@ -515,10 +515,10 @@ class Student_model extends CI_Model {
     public function get_admission_by_id($admission_id)
     {
         return $this->db
-            ->select('a.*, c.class_name, sec.section_name, y.year_name')
+            ->select('a.*, c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
             ->from('tbl_admissions a')
             ->join('tbl_classes c', 'c.class_id = a.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = a.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = a.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = a.academic_year_id', 'left')
             ->where('a.admission_id', $admission_id)
             ->get()
@@ -553,7 +553,7 @@ class Student_model extends CI_Model {
             'blood_group'      => $adm->blood_group,
             'academic_year_id' => $adm->academic_year_id,
             'class_id'         => $adm->class_id,
-            'section_id'       => $section_id ?: 1,
+            'division_id'       => $section_id ?: 1,
             'roll_number'      => $roll_number,
             'guardian_name'    => $adm->guardian_name,
             'guardian_relation'=> $adm->guardian_relation ?: 'Father',
@@ -571,7 +571,7 @@ class Student_model extends CI_Model {
         $this->db->where('admission_id', $admission_id)->update('tbl_admissions', array(
             'status'     => 'Admitted',
             'student_id' => $student_id,
-            'section_id' => $section_id ?: 1
+            'division_id' => $section_id ?: 1
         ));
 
         $this->db->trans_complete();
@@ -698,10 +698,10 @@ class Student_model extends CI_Model {
     public function get_all_students_paginated($filters = array(), $limit = 10, $offset = 0, $order_col = 'st.student_id', $order_dir = 'ASC')
     {
         $this->db
-            ->select("st.*, c.class_name, c.class_code, COALESCE(sec.section_name, 'A') as section_name, y.year_name")
+            ->select("st.*, c.class_name, c.class_code, COALESCE(div.division_name, 'A') as division_name, COALESCE(div.division_name, 'A') as section_name, y.year_name")
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = st.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = st.academic_year_id', 'left')
             ->where('st.is_deleted', 'n');
 
@@ -711,13 +711,13 @@ class Student_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('st.class_id', (int)$filters['class_id']);
         }
-        if (!empty($filters['section_id'])) {
-            $default_sec_id = $this->Section_model->get_default_section_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
+        if (!empty($filters['division_id'])) {
+            $default_sec_id = $this->Division_model->get_default_division_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
             $this->db->group_start()
-                ->where('st.section_id', (int)$filters['section_id']);
-            if ((int)$filters['section_id'] === (int)$default_sec_id) {
-                $this->db->or_where('st.section_id IS NULL', null, false)
-                         ->or_where('st.section_id', 0);
+                ->where('st.division_id', (int)$filters['division_id']);
+            if ((int)$filters['division_id'] === (int)$default_sec_id) {
+                $this->db->or_where('st.division_id IS NULL', null, false)
+                         ->or_where('st.division_id', 0);
             }
             $this->db->group_end();
         }
@@ -766,13 +766,13 @@ class Student_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('st.class_id', (int)$filters['class_id']);
         }
-        if (!empty($filters['section_id'])) {
-            $default_sec_id = $this->Section_model->get_default_section_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
+        if (!empty($filters['division_id'])) {
+            $default_sec_id = $this->Division_model->get_default_division_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
             $this->db->group_start()
-                ->where('st.section_id', (int)$filters['section_id']);
-            if ((int)$filters['section_id'] === (int)$default_sec_id) {
-                $this->db->or_where('st.section_id IS NULL', null, false)
-                         ->or_where('st.section_id', 0);
+                ->where('st.division_id', (int)$filters['division_id']);
+            if ((int)$filters['division_id'] === (int)$default_sec_id) {
+                $this->db->or_where('st.division_id IS NULL', null, false)
+                         ->or_where('st.division_id', 0);
             }
             $this->db->group_end();
         }
@@ -1033,7 +1033,7 @@ class Student_model extends CI_Model {
 
         // Resolve default section ID if needed
         if (empty($section_id)) {
-            $section_id = $this->Section_model->get_default_section_id($class_id);
+            $section_id = $this->Division_model->get_default_division_id($class_id);
         }
 
         foreach ($valid_rows as $row) {
@@ -1067,7 +1067,7 @@ class Student_model extends CI_Model {
                 'roll_number'       => !empty($row['roll_number']) ? $row['roll_number'] : '',
                 'academic_year_id'  => (int)$academic_year_id,
                 'class_id'          => (int)$class_id,
-                'section_id'        => (int)$section_id,
+                'division_id'        => (int)$section_id,
                 'status'            => 1,
                 'is_deleted'        => 'n',
                 'created_at'        => $now,

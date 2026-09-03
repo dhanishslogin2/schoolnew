@@ -17,6 +17,7 @@ class Fees extends MY_Controller {
             'Finance_audit_model',
             'Student_model',
             'Class_model',
+            'Division_model',
             'Section_model',
             'Academic_year_model'
         ));
@@ -232,7 +233,7 @@ class Fees extends MY_Controller {
                 redirect('fees/student_fees');
             } elseif ($assignment_type === 'bulk') {
                 $class_id = (int)$this->input->post('class_id');
-                $section_id = (int)$this->input->post('section_id');
+                $section_id = (int)$this->input->post('division_id');
                 $fee_structure_id = (int)$this->input->post('fee_structure_id');
                 $academic_year_id = (int)($this->input->post('academic_year_id') ?: $this->academic_year_id);
 
@@ -250,7 +251,7 @@ class Fees extends MY_Controller {
         }
 
         $classes = $this->Class_model->get_all($this->academic_year_id);
-        $sections = $this->Section_model->get_all(true);
+        $sections = $this->Division_model->get_all(true);
         $structures = $this->Fee_structure_model->get_all(array('academic_year_id' => $this->academic_year_id));
         $academic_years = $this->Academic_year_model->get_all();
         $students = $this->Student_model->get_all(array('academic_year_id' => $this->academic_year_id, 'status' => 1), 500);
@@ -259,6 +260,7 @@ class Fees extends MY_Controller {
             'title'          => 'Student Fee Assignment',
             'page_key'       => 'fee-assignments',
             'classes'        => $classes,
+            'divisions'      => $this->Division_model->get_all(),
             'sections'       => $sections,
             'structures'     => $structures,
             'academic_years' => $academic_years,
@@ -274,7 +276,7 @@ class Fees extends MY_Controller {
             'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
             'student_id'       => $student_id ?: $this->input->get('student_id'),
             'class_id'         => $this->input->get('class_id'),
-            'section_id'       => $this->input->get('section_id'),
+            'division_id'       => $this->input->get('division_id'),
             'fee_head_id'      => $this->input->get('fee_head_id'),
             'payment_status'   => $this->input->get('payment_status'),
             'search'           => $this->input->get('search'),
@@ -282,7 +284,7 @@ class Fees extends MY_Controller {
 
         $fees = $this->Fee_model->get_student_fees($filters);
         $classes = $this->Class_model->get_all($filters['academic_year_id']);
-        $sections = $this->Section_model->get_all(true);
+        $sections = $this->Division_model->get_all(true);
         $categories = $this->Fee_category_model->get_all(true);
 
         $this->render('pages/fees/student_fees', array(
@@ -290,6 +292,7 @@ class Fees extends MY_Controller {
             'page_key'   => 'student-fees',
             'fees'       => $fees,
             'classes'    => $classes,
+            'divisions'   => $this->Division_model->get_all(),
             'sections'   => $sections,
             'categories' => $categories,
             'filters'    => $filters,
@@ -554,7 +557,7 @@ class Fees extends MY_Controller {
         $filters = array(
             'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
             'class_id'         => $this->input->get('class_id'),
-            'section_id'       => $this->input->get('section_id'),
+            'division_id'       => $this->input->get('division_id'),
             'fee_head_id'      => $this->input->get('fee_head_id'),
             'status'           => $this->input->get('status'),
             'search'           => $this->input->get('search'),
@@ -562,7 +565,7 @@ class Fees extends MY_Controller {
 
         $due_fees = $this->Fee_model->get_due_fees($filters);
         $classes = $this->Class_model->get_all($filters['academic_year_id']);
-        $sections = $this->Section_model->get_all(true);
+        $sections = $this->Division_model->get_all(true);
         $categories = $this->Fee_category_model->get_all(true);
 
         $this->render('pages/fees/due_fees', array(
@@ -570,6 +573,7 @@ class Fees extends MY_Controller {
             'page_key'   => 'due-fees',
             'due_fees'   => $due_fees,
             'classes'    => $classes,
+            'divisions'   => $this->Division_model->get_all(),
             'sections'   => $sections,
             'categories' => $categories,
             'filters'    => $filters,

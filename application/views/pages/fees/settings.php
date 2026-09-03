@@ -25,7 +25,7 @@
     <?php echo form_open('fees/settings'); ?>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         
-        <!-- SECTION 1: Currency & Payment Rules -->
+        <!-- DIVISION 1: Currency & Payment Rules -->
         <div class="p-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 space-y-5">
           <div class="flex items-center gap-2.5 pb-3 border-b border-outline-variant/50">
             <span class="material-symbols-outlined text-primary text-[24px]">payments</span>
@@ -73,7 +73,7 @@
           </div>
         </div>
 
-        <!-- SECTION 2: Receipt Branding & Signatures -->
+        <!-- DIVISION 2: Receipt Branding & Signatures -->
         <div class="p-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 space-y-5">
           <div class="flex items-center gap-2.5 pb-3 border-b border-outline-variant/50">
             <span class="material-symbols-outlined text-primary text-[24px]">receipt_long</span>
@@ -92,7 +92,7 @@
         </div>
       </div>
 
-      <!-- SECTION 3: Reminder Templates -->
+      <!-- DIVISION 3: Reminder Templates -->
       <div class="p-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 space-y-5 mb-6">
         <div class="flex items-center gap-2.5 pb-3 border-b border-outline-variant/50">
           <span class="material-symbols-outlined text-primary text-[24px]">notifications</span>

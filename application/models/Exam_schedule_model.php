@@ -10,14 +10,14 @@ class Exam_schedule_model extends CI_Model {
     {
         $this->db
             ->select('s.*, e.exam_name, e.start_date as exam_start_date, e.end_date as exam_end_date,
-                c.class_name, sec.section_name, sub.subject_name, sub.subject_code,
+                c.class_name, div.division_name as division_name, div.division_name as section_name, sub.subject_name, sub.subject_code,
                 st.full_name as teacher_name, y.year_name,
                 (SELECT COUNT(*) FROM tbl_students stu WHERE stu.class_id = s.class_id AND stu.section_id = s.section_id AND stu.status = 1) as total_students,
                 (SELECT COUNT(*) FROM tbl_exam_marks m WHERE m.schedule_id = s.schedule_id) as marks_entered_count')
             ->from('tbl_exam_schedules s')
             ->join('tbl_exams e', 'e.exam_id = s.exam_id', 'left')
             ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = s.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = s.section_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = s.subject_id', 'left')
             ->join('tbl_staff st', 'st.staff_id = s.teacher_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = s.academic_year_id', 'left')
@@ -33,8 +33,8 @@ class Exam_schedule_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('s.class_id', $filters['class_id']);
         }
-        if (!empty($filters['section_id'])) {
-            $this->db->where('s.section_id', $filters['section_id']);
+        if (!empty($filters['division_id'])) {
+            $this->db->where('s.section_id', $filters['division_id']);
         }
         if (!empty($filters['subject_id'])) {
             $this->db->where('s.subject_id', $filters['subject_id']);
@@ -56,12 +56,12 @@ class Exam_schedule_model extends CI_Model {
     {
         return $this->db
             ->select('s.*, e.exam_name, e.start_date as exam_start_date, e.end_date as exam_end_date,
-                c.class_name, sec.section_name, sub.subject_name, sub.subject_code,
+                c.class_name, div.division_name as division_name, div.division_name as section_name, sub.subject_name, sub.subject_code,
                 st.full_name as teacher_name, y.year_name')
             ->from('tbl_exam_schedules s')
             ->join('tbl_exams e', 'e.exam_id = s.exam_id', 'left')
             ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = s.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = s.section_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = s.subject_id', 'left')
             ->join('tbl_staff st', 'st.staff_id = s.teacher_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = s.academic_year_id', 'left')
@@ -94,7 +94,7 @@ class Exam_schedule_model extends CI_Model {
         $this->db
             ->where('exam_id', $exam_id)
             ->where('class_id', $class_id)
-            ->where('section_id', $section_id)
+            ->where('division_id', $section_id)
             ->where('subject_id', $subject_id);
 
         if ($exclude_id) {
@@ -109,11 +109,11 @@ class Exam_schedule_model extends CI_Model {
         if (empty($room_no)) return NULL;
 
         $this->db
-            ->select('s.*, e.exam_name, c.class_name, sec.section_name, sub.subject_name')
+            ->select('s.*, e.exam_name, c.class_name, div.division_name as division_name, div.division_name as section_name, sub.subject_name')
             ->from('tbl_exam_schedules s')
             ->join('tbl_exams e', 'e.exam_id = s.exam_id', 'left')
             ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
-            ->join('tbl_sections sec', 'sec.section_id = s.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = s.section_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = s.subject_id', 'left')
             ->where('s.exam_date', $exam_date)
             ->where('s.room_no', $room_no)

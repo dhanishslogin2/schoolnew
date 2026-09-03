@@ -55,7 +55,7 @@
         <table class="w-full data-table zebra border-collapse">
           <thead>
             <tr class="border-b border-outline-variant/60">
-              <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Class & Section</th>
+              <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Class & Division</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Assigned Class Teacher</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Employee Code</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Contact Phone</th>
@@ -72,7 +72,7 @@
                 <td class="px-4 py-3 font-semibold text-on-surface whitespace-nowrap">
                   <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-primary text-[20px]">meeting_room</span>
-                    <?php echo html_escape($a->class_name . ' - Section ' . $a->section_name); ?>
+                    <?php echo html_escape($a->class_name . ' - Division ' . $a->section_name); ?>
                   </div>
                 </td>
                 <td class="px-4 py-3 font-bold text-secondary whitespace-nowrap">
@@ -117,8 +117,8 @@
             </select>
           </div>
           <div>
-            <label class="block text-label-md mb-1">Section *</label>
-            <select name="section_id" id="modal_ct_section" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
+            <label class="block text-label-md mb-1">Division *</label>
+            <select name="division_id" id="modal_ct_section" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
               <option value="">Select Class First</option>
             </select>
           </div>
@@ -160,13 +160,13 @@
           return;
         }
 
-        fetch('<?php echo site_url('academics/ajax_get_sections/'); ?>' + classId)
+        fetch('<?php echo site_url('academics/ajax_get_divisions/'); ?>' + classId)
           .then(res => res.json())
           .then(data => {
             if (data.length === 0) {
-              secSelect.innerHTML = '<option value="">No sections found</option>';
+              secSelect.innerHTML = '<option value="">No divisions found</option>';
             } else {
-              var opts = '<option value="">Select Section</option>';
+              var opts = '<option value="">Select Division</option>';
               data.forEach(function(sec) {
                 opts += '<option value="' + sec.section_id + '">Section ' + sec.section_name + '</option>';
               });

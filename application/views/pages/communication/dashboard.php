@@ -113,7 +113,7 @@
       </a>
     </div>
 
-    <!-- 2 COLUMN SECTION: Recent Activity + Failed Queue -->
+    <!-- 2 COLUMN DIVISION: Recent Activity + Failed Queue -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
       
       <!-- Left 2 Cols: Recent Notifications -->

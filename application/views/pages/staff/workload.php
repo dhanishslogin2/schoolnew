@@ -44,7 +44,7 @@
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Teacher Name</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Employee Code</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Subject</th>
-              <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Class & Section</th>
+              <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Class & Division</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Periods/Week</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Working Days</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Remarks</th>
@@ -105,8 +105,8 @@
               </select>
             </div>
             <div>
-              <label class="block text-label-md mb-1">Section *</label>
-              <select name="section_id" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
+              <label class="block text-label-md mb-1">Division *</label>
+              <select name="division_id" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
                 <?php foreach ($sections as $sec): ?>
                   <option value="<?php echo $sec->section_id; ?>"><?php echo html_escape($sec->class_name . ' ' . $sec->section_name); ?></option>
                 <?php endforeach; ?>

@@ -13,6 +13,7 @@ class Timetable extends MY_Controller {
         $this->load->model('Period_model');
         $this->load->model('Academic_year_model');
         $this->load->model('Class_model');
+        $this->load->model('Division_model');
         $this->load->model('Section_model');
         $this->load->model('Subject_model');
         $this->load->model('Staff_model');
@@ -50,8 +51,8 @@ class Timetable extends MY_Controller {
         $classes = $this->Class_model->get_all($year_id);
         $class_id = $this->input->get('class_id') ?: ($classes[0]->class_id ?? 1);
         
-        $sections = $this->Section_model->get_by_class($class_id);
-        $section_id = $this->input->get('section_id') ?: ($sections[0]->section_id ?? 1);
+        $sections = $this->Division_model->get_by_class($class_id);
+        $section_id = $this->input->get('division_id') ?: ($sections[0]->section_id ?? 1);
 
         // Handle Add/Edit schedule slot post
         if ($this->input->post()) {
@@ -60,7 +61,7 @@ class Timetable extends MY_Controller {
             $postData = [
                 'academic_year_id' => $year_id,
                 'class_id'         => $class_id,
-                'section_id'       => $section_id,
+                'division_id'       => $section_id,
                 'day'              => $this->input->post('day'),
                 'period_id'        => $this->input->post('period_id'),
                 'subject_id'       => $this->input->post('subject_id'),
@@ -83,7 +84,7 @@ class Timetable extends MY_Controller {
         $data['selected_year'] = $year_id;
         $data['classes'] = $classes;
         $data['selected_class'] = $class_id;
-        $data['sections'] = $sections;
+        $data['divisions'] = $sections;
         $data['selected_section'] = $section_id;
         $data['periods'] = $this->Period_model->get_all(TRUE);
         $data['working_days'] = $this->Timetable_setting_model->get_working_days_array();
@@ -127,7 +128,7 @@ class Timetable extends MY_Controller {
         $this->require_permission('timetable.view');
         $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $class_id = $this->input->get('class_id');
-        $section_id = $this->input->get('section_id');
+        $section_id = $this->input->get('division_id');
 
         if ($this->input->post()) {
             $this->require_permission('timetable.manage');
@@ -141,7 +142,7 @@ class Timetable extends MY_Controller {
                 $postData = [
                     'academic_year_id'      => $year_id,
                     'class_id'              => $this->input->post('class_id'),
-                    'section_id'            => $this->input->post('section_id'),
+                    'division_id'            => $this->input->post('division_id'),
                     'subject_id'            => $this->input->post('subject_id'),
                     'teacher_id'            => $this->input->post('teacher_id'),
                     'weekly_periods_target' => (int)$this->input->post('weekly_periods_target'),
@@ -159,7 +160,7 @@ class Timetable extends MY_Controller {
         $data['selected_year'] = $year_id;
         $data['classes'] = $this->Class_model->get_all($year_id);
         $data['selected_class'] = $class_id;
-        $data['sections'] = $class_id ? $this->Section_model->get_by_class($class_id) : [];
+        $data['divisions'] = $class_id ? $this->Division_model->get_by_class($class_id) : [];
         $data['selected_section'] = $section_id;
         $data['allocations'] = $this->Timetable_allocation_model->get_allocations($year_id, $class_id, $section_id);
         $data['subjects'] = $this->Subject_model->get_all(TRUE);
@@ -177,15 +178,15 @@ class Timetable extends MY_Controller {
         $classes = $this->Class_model->get_all($year_id);
         $class_id = $this->input->get('class_id') ?: ($classes[0]->class_id ?? 1);
         
-        $sections = $this->Section_model->get_by_class($class_id);
-        $section_id = $this->input->get('section_id') ?: ($sections[0]->section_id ?? 1);
+        $sections = $this->Division_model->get_by_class($class_id);
+        $section_id = $this->input->get('division_id') ?: ($sections[0]->section_id ?? 1);
 
         if ($this->input->post()) {
             $tt_id = $this->input->post('timetable_id');
             $postData = [
                 'academic_year_id' => $year_id,
                 'class_id'         => $class_id,
-                'section_id'       => $section_id,
+                'division_id'       => $section_id,
                 'day'              => $this->input->post('day'),
                 'period_id'        => $this->input->post('period_id'),
                 'subject_id'       => $this->input->post('subject_id'),
@@ -208,7 +209,7 @@ class Timetable extends MY_Controller {
         $data['selected_year'] = $year_id;
         $data['classes'] = $classes;
         $data['selected_class'] = $class_id;
-        $data['sections'] = $sections;
+        $data['divisions'] = $sections;
         $data['selected_section'] = $section_id;
         $data['periods'] = $this->Period_model->get_all(TRUE);
         $data['working_days'] = $this->Timetable_setting_model->get_working_days_array();
@@ -280,7 +281,7 @@ class Timetable extends MY_Controller {
 
         if ($this->input->post()) {
             $class_id = $this->input->post('class_id');
-            $section_id = $this->input->post('section_id');
+            $section_id = $this->input->post('division_id');
             $status = $this->input->post('status');
 
             $this->Timetable_setting_model->update_publish_status(

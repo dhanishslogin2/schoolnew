@@ -203,11 +203,11 @@
         <p class="field-error text-error text-[11px] mt-1 hidden" id="err-class_id"></p>
       </div>
       <div>
-        <label class="block font-label-md text-label-md text-on-surface mb-1.5">Section</label>
-        <select id="section_id" name="section_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
-          <option value="">Select Section</option>
+        <label class="block font-label-md text-label-md text-on-surface mb-1.5">Division</label>
+        <select id="division_id" name="division_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
+          <option value="">Select Division</option>
           <?php foreach ($sections as $sec): ?>
-            <option value="<?php echo (int)$sec->section_id; ?>" <?php echo isset($ad['section_id']) && (int)$ad['section_id'] === (int)$sec->section_id ? 'selected' : ''; ?>><?php echo html_escape($sec->section_name ?? $sec->class_name); ?></option>
+            <option value="<?php echo (int)($sec->division_id ?? $sec->section_id); ?>" <?php echo (isset($ad['division_id']) ? (int)$ad['division_id'] : (int)($ad['section_id'] ?? 0)) === (int)($sec->division_id ?? $sec->section_id) ? 'selected' : ''; ?>><?php echo html_escape(($sec->division_name ?? $sec->section_name) ?? $sec->class_name); ?></option>
           <?php endforeach; ?>
         </select>
       </div>
@@ -952,20 +952,20 @@
         $('#class_id').on('change', function () {
             var classId = $(this).val();
             if (!classId) {
-                $('#section_id').html('<option value="">Select Section</option>');
+                $('#section_id').html('<option value="">Select Division</option>');
                 return;
             }
             $.ajax({
-                url: BASE_URL + 'students/get_sections_ajax',
+                url: BASE_URL + 'students/get_divisions_ajax',
                 method: 'POST',
                 data: { class_id: classId, [CSRF_NAME]: CSRF_HASH },
                 dataType: 'json',
                 success: function (r) {
                     refreshCsrf(r);
-                    if (r && r.sections && r.sections.length > 0) {
+                    if (r && (r.divisions || r.sections) && (r.divisions || r.sections).length > 0) {
                         var opts = '';
-                        r.sections.forEach(function (sec, idx) {
-                            opts += '<option value="' + sec.section_id + '" ' + (idx === 0 ? 'selected' : '') + '>' + $('<div>').text(sec.section_name).html() + '</option>';
+                        (r.divisions || r.sections).forEach(function (sec, idx) {
+                            opts += '<option value="' + (sec.division_id || sec.section_id) + '" ' + (idx === 0 ? 'selected' : '') + '>' + $('<div>').text((sec.division_name || sec.section_name)).html() + '</option>';
                         });
                         $('#section_id').html(opts);
                     } else {

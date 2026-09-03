@@ -83,24 +83,24 @@
       </form>
     </div>
 
-    <!-- Section Cards Grid -->
+    <!-- Division Cards Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
       <?php if (empty($sections_overview)): ?>
         <div class="col-span-full p-8 rounded-xl bg-surface-container-lowest border border-outline-variant/50 text-center elevation-1">
           <span class="material-symbols-outlined text-[48px] text-outline mb-2">school</span>
-          <h4 class="font-title-md text-title-md text-on-surface font-semibold">No Sections Found</h4>
-          <p class="text-body-md text-on-surface-variant mt-1">Default Section A is automatically created for this class.</p>
+          <h4 class="font-title-md text-title-md text-on-surface font-semibold">No Divisions Found</h4>
+          <p class="text-body-md text-on-surface-variant mt-1">Default Division A is automatically created for this class.</p>
         </div>
       <?php else: ?>
         <?php foreach ($sections_overview as $sec): ?>
           <?php
-            $is_sec_active = ($section_id && (int)$section_id === (int)$sec->section_id);
+            $is_sec_active = ($section_id && (int)$section_id === (int)($sec->division_id ?? $sec->section_id));
           ?>
           <div class="p-5 rounded-2xl bg-surface-container-lowest border <?php echo $is_sec_active ? 'border-primary ring-2 ring-primary/20' : 'border-outline-variant/50'; ?> elevation-1 hover:border-primary/40 transition-all flex flex-col justify-between">
             <div>
               <div class="flex items-center justify-between pb-3 border-b border-outline-variant/40 mb-4">
                 <div>
-                  <h3 class="font-title-md text-title-md font-bold text-on-surface"><?php echo html_escape($sec->class_name . ' — Section ' . $sec->section_name); ?></h3>
+                  <h3 class="font-title-md text-title-md font-bold text-on-surface"><?php echo html_escape($sec->class_name . ' — Division ' . ($sec->division_name ?? $sec->section_name)); ?></h3>
                   <div class="text-[12px] text-on-surface-variant font-medium"><?php echo $sec->total_students; ?> Enrolled Students</div>
                 </div>
                 <div class="text-right">
@@ -153,7 +153,7 @@
 
             <!-- Action Buttons: VIEW ATTENDANCE only -->
             <div class="pt-3 border-t border-outline-variant/40 mt-2">
-              <a href="<?php echo site_url('student-attendance/view?class_id=' . $sec->class_id . '&section_id=' . $sec->section_id . '&academic_year_id=' . $year_id); ?>" class="w-full inline-flex items-center justify-center gap-1.5 text-center py-2.5 px-3 rounded-lg bg-secondary text-on-secondary hover:bg-on-secondary-fixed-variant text-label-md font-semibold transition-colors shadow-sm">
+              <a href="<?php echo site_url('student-attendance/view?class_id=' . $sec->class_id . '&division_id=' . ($sec->division_id ?? $sec->section_id) . '&academic_year_id=' . $year_id); ?>" class="w-full inline-flex items-center justify-center gap-1.5 text-center py-2.5 px-3 rounded-lg bg-secondary text-on-secondary hover:bg-on-secondary-fixed-variant text-label-md font-semibold transition-colors shadow-sm">
                 <span class="material-symbols-outlined text-[17px]">visibility</span>VIEW ATTENDANCE
               </a>
             </div>

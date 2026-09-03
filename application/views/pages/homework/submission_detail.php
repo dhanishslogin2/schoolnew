@@ -26,7 +26,7 @@
         <div class="divide-y divide-outline-variant/40 text-body-md">
           <div class="py-2 flex justify-between"><span class="text-on-surface-variant">Name:</span><strong class="text-on-surface"><?php echo html_escape($submission->first_name . ' ' . $submission->last_name); ?></strong></div>
           <div class="py-2 flex justify-between"><span class="text-on-surface-variant">Admission No:</span><span class="font-mono text-on-surface"><?php echo html_escape($submission->admission_number); ?></span></div>
-          <div class="py-2 flex justify-between"><span class="text-on-surface-variant">Class & Section:</span><span class="text-on-surface"><?php echo html_escape($submission->class_name . ' ' . $submission->section_name); ?></span></div>
+          <div class="py-2 flex justify-between"><span class="text-on-surface-variant">Class & Division:</span><span class="text-on-surface"><?php echo html_escape($submission->class_name . ' ' . $submission->section_name); ?></span></div>
           <div class="py-2 flex justify-between"><span class="text-on-surface-variant">Roll Number:</span><span class="font-mono text-on-surface">#<?php echo html_escape($submission->roll_number ?: '—'); ?></span></div>
         </div>
       </div>

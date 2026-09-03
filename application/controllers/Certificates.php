@@ -16,6 +16,7 @@ class Certificates extends MY_Controller {
             'Certificate_setting_model',
             'Student_model',
             'Class_model',
+            'Division_model',
             'Section_model',
             'Academic_year_model',
             'Setting_model'
@@ -329,7 +330,7 @@ class Certificates extends MY_Controller {
                     'student_name'     => $student->first_name . ' ' . $student->last_name,
                     'admission_number' => $student->admission_number,
                     'class_name'       => $student->class_name,
-                    'section_name'     => $student->section_name,
+                    'division_name'     => $student->section_name,
                     'dob'              => $student->date_of_birth,
                     'parent_name'      => $student->guardian_name
                 )),
