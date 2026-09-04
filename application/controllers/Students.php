@@ -2113,44 +2113,46 @@ class Students extends MY_Controller {
     public function id_cards()
     {
         $this->require_permission('students.view');
-        $student_id = $this->input->get('student_id');
-        $class_id   = $this->input->get('class_id');
-        $section_id = $this->input->get('section_id');
+        $student_id  = $this->input->get('student_id');
+        $class_id    = $this->input->get('class_id');
+        // Support both ?division_id= and legacy ?section_id= in URL
+        $division_id = $this->input->get('division_id') ?: $this->input->get('section_id');
 
         $selected_student = null;
         if (!empty($student_id)) {
             $selected_student = $this->Id_card_model->get_student_card_data((int)$student_id);
             if ($selected_student && empty($class_id)) {
-                $class_id = $selected_student->class_id;
-                $section_id = $selected_student->section_id;
+                $class_id    = $selected_student->class_id;
+                $division_id = $selected_student->division_id;
             }
         }
 
         $students = $this->Student_model->get_all(array(
             'academic_year_id' => $this->academic_year_id,
             'class_id'         => $class_id,
-            'section_id'       => $section_id,
+            'division_id'      => $division_id,
             'status'           => 1
         ));
 
-        $classes  = $this->Class_model->get_all($this->academic_year_id);
-        $sections = $this->Section_model->get_all();
-        $settings = $this->Id_card_model->get_settings();
+        $classes   = $this->Class_model->get_all($this->academic_year_id);
+        $divisions = $this->Division_model->get_all($class_id ?: null);
+        $settings  = $this->Id_card_model->get_settings();
 
         if (!$selected_student && !empty($students)) {
             $selected_student = $this->Id_card_model->get_student_card_data($students[0]->student_id);
         }
 
         $this->render('pages/students/id_cards', array(
-            'title'            => 'Student ID Cards',
-            'page_key'         => 'student-id-cards',
-            'students'         => $students,
-            'classes'          => $classes,
-            'sections'         => $sections,
-            'settings'         => $settings,
-            'selected_class'   => $class_id,
-            'selected_section' => $section_id,
-            'selected_student' => $selected_student,
+            'title'             => 'Student ID Cards',
+            'page_key'          => 'student-id-cards',
+            'students'          => $students,
+            'classes'           => $classes,
+            'sections'          => $divisions, // kept as 'sections' for view backward-compat
+            'settings'          => $settings,
+            'selected_class'    => $class_id,
+            'selected_section'  => $division_id, // kept as 'selected_section' for view backward-compat
+            'selected_division' => $division_id,
+            'selected_student'  => $selected_student,
         ));
     }
 
@@ -2250,12 +2252,12 @@ class Students extends MY_Controller {
         $student_ids = $this->input->post('student_ids');
 
         if (empty($student_ids) || !is_array($student_ids)) {
-            $class_id   = $this->input->post('class_id');
-            $section_id = $this->input->post('section_id');
+            $class_id    = $this->input->post('class_id');
+            $division_id = $this->input->post('division_id') ?: $this->input->post('section_id');
             $raw_students = $this->Student_model->get_all([
                 'academic_year_id' => $this->academic_year_id,
                 'class_id'         => $class_id,
-                'section_id'       => $section_id,
+                'division_id'      => $division_id,
                 'status'           => 1
             ]);
             $student_ids = array_map(function($st) { return $st->student_id; }, $raw_students);
@@ -2357,7 +2359,7 @@ class Students extends MY_Controller {
         $filters = [
             'academic_year_id' => $this->input->post('academic_year_id') ?: $this->academic_year_id,
             'class_id'         => $this->input->post('class_id'),
-            'section_id'       => $this->input->post('section_id'),
+            'division_id'      => $this->input->post('division_id') ?: $this->input->post('section_id'),
             'status'           => $this->input->post('status'),
             'search'           => $search_val
         ];
@@ -2626,12 +2628,12 @@ class Students extends MY_Controller {
         } elseif (!empty($student_ids)) {
             $ids = array_map('intval', explode(',', $student_ids));
         } else {
-            $class_id   = $this->input->get('class_id');
-            $section_id = $this->input->get('section_id');
+            $class_id    = $this->input->get('class_id');
+            $division_id = $this->input->get('division_id') ?: $this->input->get('section_id');
             $raw_students = $this->Student_model->get_all([
                 'academic_year_id' => $this->academic_year_id,
                 'class_id'         => $class_id,
-                'section_id'       => $section_id,
+                'division_id'      => $division_id,
                 'status'           => 1
             ]);
             $ids = array_map(function($st) { return $st->student_id; }, $raw_students);
