@@ -21,12 +21,9 @@
         <p class="text-body-md font-body-md text-on-surface-variant mt-1">Schedule date, timings, room halls, invigilators, and passing marks for each exam subject.</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap shrink-0">
-        <a href="<?php echo site_url('examinations/allocations'); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors">
-          <span class="material-symbols-outlined text-[18px]">view_module</span>Bulk Subject Allocation
-        </a>
-        <button type="button" onclick="openScheduleModal()" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
+        <a href="<?php echo site_url('examinations/allocations'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
           <span class="material-symbols-outlined text-[18px]">add_circle</span>Add Schedule
-        </button>
+        </a>
       </div>
     </div>
 
@@ -47,7 +44,7 @@
 
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Class</label>
-          <select name="class_id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+          <select name="class_id" id="filter-class-id" onchange="onFilterClassChange(this)" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <option value="">All Classes</option>
             <?php foreach ($classes as $c): ?>
               <option value="<?php echo $c->class_id; ?>" <?php echo ($filters['class_id'] == $c->class_id) ? 'selected' : ''; ?>>
@@ -59,7 +56,7 @@
 
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Division</label>
-          <select name="division_id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+          <select name="division_id" id="filter-division-id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <option value="">All Divisions</option>
             <?php foreach ($divisions as $s): ?>
               <option value="<?php echo $s->division_id; ?>" <?php echo (($filters['division_id'] ?? '') == $s->division_id) ? 'selected' : ''; ?>>
@@ -160,12 +157,12 @@
       </div>
     </div>
 
-    <!-- CREATE / EDIT SCHEDULE MODAL -->
+    <!-- EDIT SCHEDULE MODAL -->
     <div id="schedule-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden items-center justify-center p-4">
       <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant max-w-xl w-full p-6 elevation-3 space-y-4 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between pb-3 border-b border-outline-variant/50">
           <h3 id="modal-sched-title" class="font-headline-md text-title-lg text-on-surface font-semibold flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary text-[22px]">calendar_add_on</span>Add Exam Schedule
+            <span class="material-symbols-outlined text-primary text-[22px]">edit_calendar</span>Edit Exam Schedule
           </h3>
           <button onclick="closeScheduleModal()" class="p-1 rounded-lg hover:bg-surface-container-high text-on-surface-variant cursor-pointer">
             <span class="material-symbols-outlined text-[20px]">close</span>
@@ -197,19 +194,16 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Class *</label>
-              <select name="class_id" id="modal-sched-class" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+              <select name="class_id" id="modal-sched-class" required onchange="loadModalDivisions(this.value, '')" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
                 <?php foreach ($classes as $c): ?>
                   <option value="<?php echo $c->class_id; ?>"><?php echo html_escape($c->class_name); ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
             <div>
-              <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Division *</label>
-              <select name="division_id" id="modal-sched-division" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                <option value="">Select Division</option>
-                <?php foreach ($divisions as $s): ?>
-                  <option value="<?php echo $s->division_id; ?>"><?php echo html_escape($s->class_name . ' ' . $s->division_name); ?></option>
-                <?php endforeach; ?>
+              <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Division</label>
+              <select name="division_id" id="modal-sched-division" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                <option value="">All Divisions</option>
               </select>
             </div>
             <div>
@@ -283,20 +277,53 @@
 
     <!-- Modal Scripts -->
     <script>
-      function openScheduleModal() {
-        document.getElementById('modal-sched-id').value = '0';
-        document.getElementById('modal-sched-title').textContent = 'Add Exam Schedule';
-        document.getElementById('modal-sched-date').value = '';
-        document.getElementById('modal-sched-start').value = '09:30';
-        document.getElementById('modal-sched-end').value = '12:30';
-        document.getElementById('modal-sched-max').value = '100';
-        document.getElementById('modal-sched-pass').value = '35';
-        document.getElementById('modal-sched-room').value = 'Hall 1';
-        document.getElementById('modal-sched-instructions').value = '';
+      var divisionsAjaxUrl = "<?php echo site_url('examinations/ajax_get_divisions'); ?>";
 
-        var modal = document.getElementById('schedule-modal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+      function onFilterClassChange(classSelect) {
+        var divSelect = classSelect.form.querySelector('select[name="division_id"]');
+        if (divSelect) {
+          divSelect.value = '';
+        }
+        classSelect.form.submit();
+      }
+
+      function loadModalDivisions(classId, selectedDivisionId) {
+        var divSelect = document.getElementById('modal-sched-division');
+        if (!divSelect) return;
+        divSelect.innerHTML = '<option value="">Loading divisions...</option>';
+
+        if (!classId) {
+          divSelect.innerHTML = '<option value="">All Divisions</option>';
+          return;
+        }
+
+        fetch(divisionsAjaxUrl + '/' + classId)
+          .then(function(response) { return response.json(); })
+          .then(function(data) {
+            divSelect.innerHTML = '<option value="">All Divisions</option>';
+            if (data && data.length > 0) {
+              data.forEach(function(d) {
+                var opt = document.createElement('option');
+                opt.value = d.division_id;
+                opt.textContent = (d.class_name ? d.class_name + ' ' : '') + d.division_name;
+                if (selectedDivisionId && (String(d.division_id) === String(selectedDivisionId))) {
+                  opt.selected = true;
+                }
+                divSelect.appendChild(opt);
+              });
+            }
+            if (selectedDivisionId) {
+              divSelect.value = selectedDivisionId;
+            }
+          })
+          .catch(function(err) {
+            console.error('Error fetching divisions:', err);
+            divSelect.innerHTML = '<option value="">All Divisions</option>';
+          });
+      }
+
+      function openScheduleModal() {
+        window.location.href = "<?php echo site_url('examinations/allocations'); ?>";
       }
 
       function editScheduleModal(item) {
@@ -305,8 +332,9 @@
         document.getElementById('modal-sched-exam').value = item.exam_id;
         document.getElementById('modal-sched-year').value = item.academic_year_id;
         document.getElementById('modal-sched-class').value = item.class_id;
-        var divSelect = document.getElementById('modal-sched-division') || document.getElementById('modal-sched-section');
-        if (divSelect) divSelect.value = item.division_id || item.section_id;
+
+        loadModalDivisions(item.class_id, item.division_id || item.section_id || '');
+
         document.getElementById('modal-sched-subject').value = item.subject_id;
         document.getElementById('modal-sched-date').value = item.exam_date;
         document.getElementById('modal-sched-start').value = item.start_time;

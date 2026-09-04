@@ -220,7 +220,8 @@ class Examinations extends MY_Controller {
             $exam_id          = (int)$this->input->post('exam_id');
             $academic_year_id = (int)($this->input->post('academic_year_id') ?: $this->academic_year_id);
             $class_id         = (int)$this->input->post('class_id');
-            $division_id      = (int)($this->input->post('division_id') ?: $this->input->post('section_id'));
+            $raw_division_id  = $this->input->post('division_id') !== NULL ? $this->input->post('division_id') : $this->input->post('section_id');
+            $division_id      = (!empty($raw_division_id) && $raw_division_id !== 'all') ? (int)$raw_division_id : NULL;
             $subject_id       = (int)$this->input->post('subject_id');
             $teacher_id       = $this->input->post('teacher_id') ? (int)$this->input->post('teacher_id') : NULL;
             $exam_date        = $this->input->post('exam_date');
@@ -231,8 +232,14 @@ class Examinations extends MY_Controller {
             $room_no          = trim($this->input->post('room_no'));
             $instructions     = trim($this->input->post('instructions'));
 
-            if (empty($exam_id) || empty($class_id) || empty($division_id) || empty($subject_id) || empty($exam_date)) {
+            if (empty($exam_id) || empty($class_id) || empty($subject_id) || empty($exam_date)) {
                 $this->session->set_flashdata('error', 'Please fill all required schedule fields.');
+                redirect('examinations/schedules');
+            }
+
+            // Backend validation: if division_id is specified, ensure it belongs to class_id
+            if (!empty($division_id) && !$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
+                $this->session->set_flashdata('error', 'The selected division does not belong to the selected class.');
                 redirect('examinations/schedules');
             }
 
@@ -285,15 +292,29 @@ class Examinations extends MY_Controller {
             redirect('examinations/schedules');
         }
 
+        $class_id    = $this->input->get('class_id');
+        $raw_div     = $this->input->get('division_id');
+        $division_id = (!empty($raw_div) && $raw_div !== 'all') ? $raw_div : NULL;
+
+        if (!empty($class_id) && !empty($division_id)) {
+            if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
+                $division_id = NULL;
+            }
+        } elseif (empty($class_id)) {
+            $division_id = NULL;
+        }
+
         $filters = [
             'exam_id'          => $this->input->get('exam_id'),
             'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
-            'class_id'         => $this->input->get('class_id'),
-            'division_id'       => $this->input->get('division_id'),
+            'class_id'         => $class_id,
+            'division_id'      => $division_id,
             'subject_id'       => $this->input->get('subject_id'),
             'from_date'        => $this->input->get('from_date'),
             'to_date'          => $this->input->get('to_date')
         ];
+
+        $divisions = !empty($class_id) ? $this->Division_model->get_all($class_id) : [];
 
         $data = [
             'title'          => 'Exam Schedules',
@@ -302,8 +323,8 @@ class Examinations extends MY_Controller {
             'exams'          => $this->Exam_model->get_all(['academic_year_id' => $filters['academic_year_id']]),
             'academic_years' => $this->Academic_year_model->get_all(),
             'classes'        => $this->Class_model->get_all($filters['academic_year_id']),
-            'divisions'      => $this->Division_model->get_all(),
-            'sections'       => $this->Division_model->get_all(),
+            'divisions'      => $divisions,
+            'sections'       => $divisions,
             'subjects'       => $this->Subject_model->get_all(),
             'teachers'       => $this->Staff_model->get_teachers(),
             'filters'        => $filters
@@ -313,8 +334,13 @@ class Examinations extends MY_Controller {
     }
 
     /* =========================================================================
-       5. Subject / Exam Allocation
+       5. Add Schedule (Subject Allocation Workflow)
        ========================================================================= */
+    public function add_schedule()
+    {
+        $this->allocations();
+    }
+
     public function allocations()
     {
         $this->require_permission('exams.create');
@@ -363,13 +389,22 @@ class Examinations extends MY_Controller {
                 $saved_count++;
             }
 
-            $this->session->set_flashdata('success', "Allocated and updated {$saved_count} subjects for this exam.");
+            $this->session->set_flashdata('success', "Saved schedule for {$saved_count} subjects for this exam.");
             redirect("examinations/allocations?exam_id={$exam_id}&class_id={$class_id}&division_id={$division_id}");
         }
 
         $exam_id     = $this->input->get('exam_id');
         $class_id    = $this->input->get('class_id');
-        $division_id = $this->input->get('division_id') ?: $this->input->get('section_id');
+        $raw_div     = $this->input->get('division_id') ?: $this->input->get('section_id');
+        $division_id = (!empty($raw_div) && $raw_div !== 'all') ? $raw_div : NULL;
+
+        if (!empty($class_id) && !empty($division_id)) {
+            if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
+                $division_id = NULL;
+            }
+        } elseif (empty($class_id)) {
+            $division_id = NULL;
+        }
 
         $allocated_map = [];
         if ($exam_id && $class_id && $division_id) {
@@ -383,13 +418,15 @@ class Examinations extends MY_Controller {
             }
         }
 
+        $divisions = !empty($class_id) ? $this->Division_model->get_all($class_id) : [];
+
         $data = [
-            'title'             => 'Subject Allocation',
+            'title'             => 'Add Schedule',
             'page_key'          => 'exam-allocations',
             'exams'             => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
             'classes'           => $this->Class_model->get_all($this->academic_year_id),
-            'divisions'         => $this->Division_model->get_all(),
-            'sections'          => $this->Division_model->get_all(),
+            'divisions'         => $divisions,
+            'sections'          => $divisions,
             'subjects'          => $this->Subject_model->get_all(),
             'teachers'          => $this->Staff_model->get_teachers(),
             'allocated_map'     => $allocated_map,
@@ -428,8 +465,17 @@ class Examinations extends MY_Controller {
         // If schedule_id is not provided, look up by exam + class + division + subject
         $exam_id     = $this->input->get('exam_id');
         $class_id    = $this->input->get('class_id');
-        $division_id = $this->input->get('division_id') ?: $this->input->get('section_id');
+        $raw_div     = $this->input->get('division_id') ?: $this->input->get('section_id');
+        $division_id = (!empty($raw_div) && $raw_div !== 'all') ? $raw_div : NULL;
         $subject_id  = $this->input->get('subject_id');
+
+        if (!empty($class_id) && !empty($division_id)) {
+            if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
+                $division_id = NULL;
+            }
+        } elseif (empty($class_id)) {
+            $division_id = NULL;
+        }
 
         if (!$schedule_id && $exam_id && $class_id && $division_id && $subject_id) {
             $sched = $this->db
@@ -444,6 +490,8 @@ class Examinations extends MY_Controller {
 
         $marksheet = $schedule_id ? $this->Exam_mark_model->get_marks_sheet($schedule_id) : NULL;
 
+        $divisions = !empty($class_id) ? $this->Division_model->get_all($class_id) : [];
+
         $data = [
             'title'             => 'Marks Entry',
             'page_key'          => 'marks-entry',
@@ -451,8 +499,8 @@ class Examinations extends MY_Controller {
             'schedule_id'       => $schedule_id,
             'exams'             => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
             'classes'           => $this->Class_model->get_all($this->academic_year_id),
-            'divisions'         => $this->Division_model->get_all(),
-            'sections'          => $this->Division_model->get_all(),
+            'divisions'         => $divisions,
+            'sections'          => $divisions,
             'subjects'          => $this->Subject_model->get_all(),
             'selected_exam'     => $exam_id,
             'selected_class'    => $class_id,
@@ -485,13 +533,27 @@ class Examinations extends MY_Controller {
             redirect('examinations/verification');
         }
 
+        $class_id    = $this->input->get('class_id');
+        $raw_div     = $this->input->get('division_id');
+        $division_id = (!empty($raw_div) && $raw_div !== 'all') ? $raw_div : NULL;
+
+        if (!empty($class_id) && !empty($division_id)) {
+            if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
+                $division_id = NULL;
+            }
+        } elseif (empty($class_id)) {
+            $division_id = NULL;
+        }
+
         $filters = [
             'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
             'exam_id'          => $this->input->get('exam_id'),
-            'class_id'         => $this->input->get('class_id'),
-            'division_id'       => $this->input->get('division_id'),
+            'class_id'         => $class_id,
+            'division_id'      => $division_id,
             'status_filter'    => $this->input->get('status_filter')
         ];
+
+        $divisions = !empty($class_id) ? $this->Division_model->get_all($class_id) : [];
 
         $data = [
             'title'          => 'Marks Verification',
@@ -499,8 +561,8 @@ class Examinations extends MY_Controller {
             'marksheets'     => $this->Exam_mark_model->get_marksheets_for_verification($filters),
             'exams'          => $this->Exam_model->get_all(['academic_year_id' => $filters['academic_year_id']]),
             'classes'        => $this->Class_model->get_all($filters['academic_year_id']),
-            'divisions'      => $this->Division_model->get_all(),
-            'sections'       => $this->Division_model->get_all(),
+            'divisions'      => $divisions,
+            'sections'       => $divisions,
             'filters'        => $filters
         ];
 
@@ -595,19 +657,29 @@ class Examinations extends MY_Controller {
                 redirect('examinations/calculate');
             }
 
+            if (!empty($class_id) && !empty($section_id)) {
+                if (!$this->Division_model->is_valid_division_for_class($section_id, $class_id)) {
+                    $this->session->set_flashdata('error', 'The selected division does not belong to the selected class.');
+                    redirect('examinations/calculate');
+                }
+            }
+
             $count = $this->Result_model->calculate_results_for_exam($exam_id, $class_id, $section_id, $this->current_user->user_id);
 
             $this->session->set_flashdata('success', "Results and ranks calculated successfully for {$count} students.");
             redirect('examinations/results?exam_id=' . $exam_id);
         }
 
+        $class_id  = $this->input->get('class_id');
+        $divisions = !empty($class_id) ? $this->Division_model->get_all($class_id) : [];
+
         $data = [
             'title'          => 'Result Calculation',
             'page_key'       => 'result-calculation',
             'exams'          => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
             'classes'        => $this->Class_model->get_all($this->academic_year_id),
-            'divisions'      => $this->Division_model->get_all(),
-            'sections'       => $this->Division_model->get_all(),
+            'divisions'      => $divisions,
+            'sections'       => $divisions,
             'settings'       => $this->Exam_setting_model->get_settings()
         ];
 
@@ -620,17 +692,30 @@ class Examinations extends MY_Controller {
     public function results()
     {
         $this->require_permission('exams.view');
+        $class_id    = $this->input->get('class_id');
+        $raw_div     = $this->input->get('division_id');
+        $division_id = (!empty($raw_div) && $raw_div !== 'all') ? $raw_div : NULL;
+
+        if (!empty($class_id) && !empty($division_id)) {
+            if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
+                $division_id = NULL;
+            }
+        } elseif (empty($class_id)) {
+            $division_id = NULL;
+        }
+
         $filters = [
             'exam_id'          => $this->input->get('exam_id'),
             'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
-            'class_id'         => $this->input->get('class_id'),
-            'division_id'       => $this->input->get('division_id'),
+            'class_id'         => $class_id,
+            'division_id'      => $division_id,
             'pass_status'      => $this->input->get('pass_status'),
             'is_published'     => $this->input->get('is_published'),
             'search'           => $this->input->get('search')
         ];
 
         $results = $this->Result_model->get_results_list($filters);
+        $divisions = !empty($class_id) ? $this->Division_model->get_all($class_id) : [];
 
         $data = [
             'title'          => 'Student Results',
@@ -639,8 +724,8 @@ class Examinations extends MY_Controller {
             'exams'          => $this->Exam_model->get_all(['academic_year_id' => $filters['academic_year_id']]),
             'academic_years' => $this->Academic_year_model->get_all(),
             'classes'        => $this->Class_model->get_all($filters['academic_year_id']),
-            'divisions'      => $this->Division_model->get_all(),
-            'sections'       => $this->Division_model->get_all(),
+            'divisions'      => $divisions,
+            'sections'       => $divisions,
             'filters'        => $filters
         ];
 
@@ -674,14 +759,27 @@ class Examinations extends MY_Controller {
     public function ranks()
     {
         $this->require_permission('exams.view');
+        $class_id    = $this->input->get('class_id');
+        $raw_div     = $this->input->get('division_id');
+        $division_id = (!empty($raw_div) && $raw_div !== 'all') ? $raw_div : NULL;
+
+        if (!empty($class_id) && !empty($division_id)) {
+            if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
+                $division_id = NULL;
+            }
+        } elseif (empty($class_id)) {
+            $division_id = NULL;
+        }
+
         $filters = [
             'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
             'exam_id'          => $this->input->get('exam_id'),
-            'class_id'         => $this->input->get('class_id'),
-            'division_id'       => $this->input->get('division_id')
+            'class_id'         => $class_id,
+            'division_id'      => $division_id
         ];
 
         $ranks_data = $filters['exam_id'] ? $this->Result_model->get_results_list($filters) : [];
+        $divisions = !empty($class_id) ? $this->Division_model->get_all($class_id) : [];
 
         $data = [
             'title'      => 'Rank & Positions',
@@ -689,8 +787,8 @@ class Examinations extends MY_Controller {
             'results'    => $ranks_data,
             'exams'      => $this->Exam_model->get_all(['academic_year_id' => $filters['academic_year_id']]),
             'classes'    => $this->Class_model->get_all($filters['academic_year_id']),
-            'divisions'   => $this->Division_model->get_all(),
-            'sections'   => $this->Division_model->get_all(),
+            'divisions'  => $divisions,
+            'sections'   => $divisions,
             'filters'    => $filters,
             'settings'   => $this->Exam_setting_model->get_settings()
         ];
@@ -704,14 +802,27 @@ class Examinations extends MY_Controller {
     public function report_cards()
     {
         $this->require_permission('exams.view');
+        $class_id    = $this->input->get('class_id');
+        $raw_div     = $this->input->get('division_id');
+        $division_id = (!empty($raw_div) && $raw_div !== 'all') ? $raw_div : NULL;
+
+        if (!empty($class_id) && !empty($division_id)) {
+            if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
+                $division_id = NULL;
+            }
+        } elseif (empty($class_id)) {
+            $division_id = NULL;
+        }
+
         $filters = [
             'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
             'exam_id'          => $this->input->get('exam_id'),
-            'class_id'         => $this->input->get('class_id'),
-            'division_id'       => $this->input->get('division_id')
+            'class_id'         => $class_id,
+            'division_id'      => $division_id
         ];
 
         $results = ($filters['exam_id'] && $filters['class_id']) ? $this->Result_model->get_results_list($filters) : [];
+        $divisions = !empty($class_id) ? $this->Division_model->get_all($class_id) : [];
 
         $data = [
             'title'      => 'Report Cards',
@@ -719,8 +830,8 @@ class Examinations extends MY_Controller {
             'results'    => $results,
             'exams'      => $this->Exam_model->get_all(['academic_year_id' => $filters['academic_year_id']]),
             'classes'    => $this->Class_model->get_all($filters['academic_year_id']),
-            'divisions'   => $this->Division_model->get_all(),
-            'sections'   => $this->Division_model->get_all(),
+            'divisions'  => $divisions,
+            'sections'   => $divisions,
             'filters'    => $filters
         ];
 
@@ -757,22 +868,35 @@ class Examinations extends MY_Controller {
     public function progress_reports()
     {
         $this->require_permission('exams.view');
+        $class_id    = $this->input->get('class_id');
+        $raw_div     = $this->input->get('division_id');
+        $division_id = (!empty($raw_div) && $raw_div !== 'all') ? $raw_div : NULL;
+
+        if (!empty($class_id) && !empty($division_id)) {
+            if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
+                $division_id = NULL;
+            }
+        } elseif (empty($class_id)) {
+            $division_id = NULL;
+        }
+
         $filters = [
             'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
-            'class_id'         => $this->input->get('class_id'),
-            'division_id'       => $this->input->get('division_id'),
+            'class_id'         => $class_id,
+            'division_id'      => $division_id,
             'search'           => $this->input->get('search')
         ];
 
         $students = ($filters['class_id']) ? $this->Student_model->get_all($filters) : [];
+        $divisions = !empty($class_id) ? $this->Division_model->get_all($class_id) : [];
 
         $data = [
             'title'      => 'Progress Reports',
             'page_key'   => 'progress-reports',
             'students'   => $students,
             'classes'    => $this->Class_model->get_all($filters['academic_year_id']),
-            'divisions'   => $this->Division_model->get_all(),
-            'sections'   => $this->Division_model->get_all(),
+            'divisions'  => $divisions,
+            'sections'   => $divisions,
             'filters'    => $filters
         ];
 
@@ -838,11 +962,23 @@ class Examinations extends MY_Controller {
         $this->require_permission('exams.reports');
         $report_type = $this->input->get('type') ?: 'exam_performance';
 
+        $class_id    = $this->input->get('class_id');
+        $raw_div     = $this->input->get('division_id');
+        $division_id = (!empty($raw_div) && $raw_div !== 'all') ? $raw_div : NULL;
+
+        if (!empty($class_id) && !empty($division_id)) {
+            if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
+                $division_id = NULL;
+            }
+        } elseif (empty($class_id)) {
+            $division_id = NULL;
+        }
+
         $filters = [
             'academic_year_id' => $this->input->get('academic_year_id') ?: $this->academic_year_id,
             'exam_id'          => $this->input->get('exam_id'),
-            'class_id'         => $this->input->get('class_id'),
-            'division_id'       => $this->input->get('division_id')
+            'class_id'         => $class_id,
+            'division_id'      => $division_id
         ];
 
         $results = [];
@@ -877,6 +1013,8 @@ class Examinations extends MY_Controller {
             exit;
         }
 
+        $divisions = !empty($class_id) ? $this->Division_model->get_all($class_id) : [];
+
         $data = [
             'title'       => 'Examination Reports',
             'page_key'    => 'exam-reports',
@@ -884,8 +1022,8 @@ class Examinations extends MY_Controller {
             'results'     => $results,
             'exams'       => $this->Exam_model->get_all(['academic_year_id' => $filters['academic_year_id']]),
             'classes'     => $this->Class_model->get_all($filters['academic_year_id']),
-            'divisions'    => $this->Division_model->get_all(),
-            'sections'    => $this->Division_model->get_all(),
+            'divisions'   => $divisions,
+            'sections'    => $divisions,
             'filters'     => $filters
         ];
 
@@ -929,4 +1067,19 @@ class Examinations extends MY_Controller {
 
         $this->render('pages/examinations/settings', $data);
     }
+
+    /* =========================================================================
+       18. AJAX Dropdown Helpers
+       ========================================================================= */
+    public function ajax_get_divisions($class_id = NULL)
+    {
+        header('Content-Type: application/json');
+        if (empty($class_id)) {
+            echo json_encode([]);
+            return;
+        }
+        $divisions = $this->Division_model->get_all((int)$class_id);
+        echo json_encode($divisions);
+    }
 }
+

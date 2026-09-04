@@ -183,6 +183,7 @@ $route['examinations/exams']                = 'examinations/exams';
 $route['examinations/types']                = 'examinations/types';
 $route['examinations/schedules']            = 'examinations/schedules';
 $route['examinations/allocations']          = 'examinations/allocations';
+$route['examinations/add_schedule']         = 'examinations/allocations';
 $route['examinations/marks_entry']          = 'examinations/marks_entry';
 $route['examinations/verification']         = 'examinations/verification';
 $route['examinations/grades']               = 'examinations/grades';
@@ -398,4 +399,8 @@ $route['staff/download_document/(:num)']     = 'staff/download_document/$1';
 $route['staff/remove_photo/(:num)']           = 'staff/remove_photo/$1';
 
 $route['unauthorized']                       = 'unauthorized/index';
+
+$route['examinations/ajax_get_divisions']          = 'examinations/ajax_get_divisions';
+$route['examinations/ajax_get_divisions/(:num)']    = 'examinations/ajax_get_divisions/$1';
+
 

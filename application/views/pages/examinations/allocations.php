@@ -17,8 +17,8 @@
     <!-- Header & Action -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
-        <h2 class="font-headline-md text-headline-md text-on-surface">Subject / Exam Allocation</h2>
-        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Bulk allocate examination papers, timing, maximum/passing marks, and invigilator teachers across class subjects.</p>
+        <h2 class="font-headline-md text-headline-md text-on-surface">Add Schedule</h2>
+        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Schedule examination papers, timings, maximum/passing marks, and invigilator teachers across class subjects.</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap shrink-0">
         <a href="<?php echo site_url('examinations/schedules'); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors">
@@ -44,7 +44,7 @@
 
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Select Class *</label>
-          <select name="class_id" onchange="this.form.submit()" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+          <select name="class_id" onchange="if(this.form.querySelector('[name=division_id]')) this.form.querySelector('[name=division_id]').value=''; this.form.submit();" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <option value="">-- Choose Class --</option>
             <?php foreach ($classes as $c): ?>
               <option value="<?php echo $c->class_id; ?>" <?php echo ($selected_class == $c->class_id) ? 'selected' : ''; ?>>
@@ -80,7 +80,7 @@
 
         <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 overflow-hidden mb-6">
           <div class="p-4 border-b border-outline-variant/50 flex items-center justify-between">
-            <span class="text-body-md font-semibold text-on-surface">Available Subjects for Allocation</span>
+            <span class="text-body-md font-semibold text-on-surface">Available Subjects to Schedule</span>
             <div class="flex items-center gap-2">
               <button type="button" onclick="toggleSelectAll(true)" class="text-[12px] text-primary font-medium hover:underline cursor-pointer">Select All</button>
               <span class="text-on-surface-variant">•</span>
@@ -154,7 +154,7 @@
 
         <div class="flex items-center justify-end p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/50 elevation-1">
           <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
-            <span class="material-symbols-outlined text-[18px]">save</span>Save Allocations
+            <span class="material-symbols-outlined text-[18px]">save</span>Save Schedule
           </button>
         </div>
       <?php echo form_close(); ?>
@@ -162,7 +162,7 @@
       <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-12 text-center text-on-surface-variant">
         <span class="material-symbols-outlined text-[48px] text-primary mb-3">tune</span>
         <h3 class="font-headline-md text-title-lg font-bold text-on-surface">Select Exam, Class & Division</h3>
-        <p class="text-body-md mt-1 max-w-md mx-auto">Please choose an exam, class, and division from the filters above to load the subject allocation matrix.</p>
+        <p class="text-body-md mt-1 max-w-md mx-auto">Please choose an exam, class, and division from the filters above to configure examination schedules.</p>
       </div>
     <?php endif; ?>
 

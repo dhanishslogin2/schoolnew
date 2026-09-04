@@ -880,7 +880,7 @@ const PAGE_TITLES = {
   "attendance-reports": "Attendance Reports", "attendance-notifications": "Parent Notifications", "attendance-notification-history": "Notification History",
   "attendance-settings": "Attendance Settings",
   "exam-dashboard": "Examination Dashboard", "exams": "Exam Management", "exam-types": "Exam Types",
-  "exam-schedules": "Exam Schedules", "exam-allocations": "Subject Allocation", "marks-entry": "Marks Entry",
+  "exam-schedules": "Exam Schedules", "exam-allocations": "Add Schedule", "marks-entry": "Marks Entry",
   "marks-verification": "Marks Verification", "grade-management": "Grade Management", "result-calculation": "Result Calculation",
   "results": "Student Results", "exam-ranks": "Rank / Position", "report-cards": "Report Cards",
   "progress-reports": "Progress Reports", "result-publishing": "Result Publishing", "exam-reports": "Examination Reports",

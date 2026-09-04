@@ -18,7 +18,7 @@
       <form method="get" action="<?php echo site_url('examinations/progress_reports'); ?>" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Select Class *</label>
-          <select name="class_id" onchange="this.form.submit()" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+          <select name="class_id" onchange="if(this.form.querySelector('[name=division_id]')) this.form.querySelector('[name=division_id]').value=''; this.form.submit();" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <option value="">-- Choose Class --</option>
             <?php foreach ($classes as $c): ?>
               <option value="<?php echo $c->class_id; ?>" <?php echo ($filters['class_id'] == $c->class_id) ? 'selected' : ''; ?>>

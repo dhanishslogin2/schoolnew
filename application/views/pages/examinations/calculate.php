@@ -76,7 +76,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Class (Optional)</label>
-              <select name="class_id" class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+              <select name="class_id" id="calc-class" onchange="loadCalcDivisions(this.value)" class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
                 <option value="">All Applicable Classes</option>
                 <?php foreach ($classes as $c): ?>
                   <option value="<?php echo $c->class_id; ?>"><?php echo html_escape($c->class_name); ?></option>
@@ -86,7 +86,7 @@
 
             <div>
               <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Division (Optional)</label>
-              <select name="division_id" class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+              <select name="division_id" id="calc-division" class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
                 <option value="">All Divisions</option>
                 <?php foreach ($divisions as $s): ?>
                   <option value="<?php echo $s->division_id; ?>"><?php echo html_escape($s->class_name . ' ' . $s->division_name); ?></option>
@@ -103,3 +103,32 @@
         </div>
       <?php echo form_close(); ?>
     </div>
+
+    <script>
+      function loadCalcDivisions(classId) {
+        var divSelect = document.getElementById('calc-division');
+        if (!divSelect) return;
+        divSelect.innerHTML = '<option value="">Loading divisions...</option>';
+        if (!classId) {
+          divSelect.innerHTML = '<option value="">All Divisions</option>';
+          return;
+        }
+        fetch('<?php echo site_url('examinations/ajax_get_divisions'); ?>/' + classId)
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            divSelect.innerHTML = '<option value="">All Divisions</option>';
+            if (data && data.length > 0) {
+              data.forEach(function(d) {
+                var opt = document.createElement('option');
+                opt.value = d.division_id;
+                opt.textContent = (d.class_name ? d.class_name + ' ' : '') + d.division_name;
+                divSelect.appendChild(opt);
+              });
+            }
+          })
+          .catch(function(err) {
+            console.error('Error fetching divisions:', err);
+            divSelect.innerHTML = '<option value="">All Divisions</option>';
+          });
+      }
+    </script>

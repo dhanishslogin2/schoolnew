@@ -35,50 +35,26 @@ class Division_model extends CI_Model {
 
         // If a specific class was requested and no divisions exist in DB, provide default Division 'A'
         if ($class_id && empty($results)) {
-            $class_row = $this->db
-                ->select('c.class_name, c.academic_group_id, ag.group_name')
-                ->from('tbl_classes c')
-                ->join('tbl_academic_groups ag', 'ag.academic_group_id = c.academic_group_id', 'left')
-                ->where('c.class_id', (int)$class_id)
-                ->get()
-                ->row();
-
             $default_div_id = $this->get_default_division_id($class_id);
-            $student_count = $this->db
-                ->where('class_id', (int)$class_id)
-                ->where('status', 1)
-                ->where('is_deleted', 'n')
-                ->count_all_results('tbl_students');
-            $results = [
-                (object)[
-                    'division_id'        => $default_div_id,
-                    'class_id'           => (int)$class_id,
-                    'division_name'      => 'A',
-                    'class_name'         => $class_row ? $class_row->class_name : 'Class',
-                    'academic_group_id'  => $class_row ? $class_row->academic_group_id : null,
-                    'group_name'         => $class_row ? $class_row->group_name : null,
-                    'class_teacher_id'   => null,
-                    'class_teacher_name' => null,
-                    'room_no'            => '',
-                    'capacity'           => 40,
-                    'student_count'      => $student_count,
-                    'description'        => 'Default Division',
-                    'status'             => 1,
-                    'is_default'         => true,
-                    // Backward-compat aliases on object:
-                    'section_id'         => $default_div_id,
-                    'section_name'       => 'A',
-                ]
-            ];
-        } else {
-            // Provide backward-compatible section_id & section_name properties on records
-            foreach ($results as &$r) {
-                if (!isset($r->section_id) && isset($r->division_id)) {
-                    $r->section_id = $r->division_id;
-                }
-                if (!isset($r->section_name) && isset($r->division_name)) {
-                    $r->section_name = $r->division_name;
-                }
+            if ($default_div_id) {
+                $this->db
+                    ->select('div.*, c.class_name, c.academic_group_id, ag.group_name, s.full_name as class_teacher_name, 0 as student_count')
+                    ->from('tbl_divisions div')
+                    ->join('tbl_classes c', 'c.class_id = div.class_id', 'left')
+                    ->join('tbl_academic_groups ag', 'ag.academic_group_id = c.academic_group_id', 'left')
+                    ->join('tbl_staff s', 's.staff_id = div.class_teacher_id', 'left')
+                    ->where('div.division_id', $default_div_id);
+                $results = $this->db->get()->result();
+            }
+        }
+
+        // Provide backward-compatible section_id & section_name properties on records
+        foreach ($results as &$r) {
+            if (!isset($r->section_id) && isset($r->division_id)) {
+                $r->section_id = $r->division_id;
+            }
+            if (!isset($r->section_name) && isset($r->division_name)) {
+                $r->section_name = $r->division_name;
             }
         }
 
@@ -206,9 +182,31 @@ class Division_model extends CI_Model {
         }
 
         if ($class_id) {
-            $row = $this->db->query("SELECT division_id FROM tbl_divisions WHERE class_id = ? AND division_name = 'A' AND status = 1 AND is_deleted = 'n' LIMIT 1", [(int)$class_id])->row();
+            $class_id = (int)$class_id;
+            $row = $this->db->query("SELECT division_id FROM tbl_divisions WHERE class_id = ? AND division_name = 'A' AND status = 1 AND is_deleted = 'n' LIMIT 1", [$class_id])->row();
             if ($row) {
                 $cached_default_ids[$cache_key] = (int)$row->division_id;
+                return $cached_default_ids[$cache_key];
+            }
+
+            // Check if any other active division exists for this class
+            $any_class_div = $this->db->query("SELECT division_id FROM tbl_divisions WHERE class_id = ? AND status = 1 AND is_deleted = 'n' ORDER BY division_id ASC LIMIT 1", [$class_id])->row();
+            if ($any_class_div) {
+                $cached_default_ids[$cache_key] = (int)$any_class_div->division_id;
+                return $cached_default_ids[$cache_key];
+            }
+
+            // Provision a default Division 'A' specifically for this class
+            $this->db->insert('tbl_divisions', [
+                'class_id'      => $class_id,
+                'division_name' => 'A',
+                'status'        => 1,
+                'is_deleted'    => 'n',
+                'created_at'    => date('Y-m-d H:i:s')
+            ]);
+            $new_id = (int)$this->db->insert_id();
+            if ($new_id > 0) {
+                $cached_default_ids[$cache_key] = $new_id;
                 return $cached_default_ids[$cache_key];
             }
         }
@@ -222,6 +220,31 @@ class Division_model extends CI_Model {
         $any_div = $this->db->query("SELECT division_id FROM tbl_divisions WHERE status = 1 AND is_deleted = 'n' LIMIT 1")->row();
         $cached_default_ids[$cache_key] = $any_div ? (int)$any_div->division_id : 12;
         return $cached_default_ids[$cache_key];
+    }
+
+    /**
+     * Check if a division belongs to a given class.
+     *
+     * @param int $division_id
+     * @param int $class_id
+     * @return bool
+     */
+    public function is_valid_division_for_class($division_id, $class_id)
+    {
+        if (empty($division_id) || empty($class_id)) {
+            return false;
+        }
+
+        $class_id = (int)$class_id;
+        $division_id = (int)$division_id;
+
+        $count = $this->db
+            ->where('division_id', $division_id)
+            ->where('class_id', $class_id)
+            ->where('is_deleted', 'n')
+            ->count_all_results($this->table);
+
+        return ($count > 0);
     }
 
     /**

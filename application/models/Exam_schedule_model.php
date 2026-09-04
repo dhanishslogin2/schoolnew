@@ -34,7 +34,10 @@ class Exam_schedule_model extends CI_Model {
             $this->db->where('s.class_id', $filters['class_id']);
         }
         if (!empty($filters['division_id'])) {
-            $this->db->where('s.division_id', $filters['division_id']);
+            $this->db->group_start()
+                ->where('s.division_id', $filters['division_id'])
+                ->or_where('s.division_id IS NULL', NULL, FALSE)
+                ->group_end();
         }
         if (!empty($filters['subject_id'])) {
             $this->db->where('s.subject_id', $filters['subject_id']);
@@ -94,8 +97,13 @@ class Exam_schedule_model extends CI_Model {
         $this->db
             ->where('exam_id', $exam_id)
             ->where('class_id', $class_id)
-            ->where('division_id', $section_id)
             ->where('subject_id', $subject_id);
+
+        if (!empty($section_id)) {
+            $this->db->where('division_id', $section_id);
+        } else {
+            $this->db->where('division_id IS NULL', NULL, FALSE);
+        }
 
         if ($exclude_id) {
             $this->db->where($this->primaryKey . ' !=', $exclude_id);
