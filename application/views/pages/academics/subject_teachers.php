@@ -190,7 +190,9 @@
             } else {
               var opts = '<option value="">Select Division</option>';
               data.forEach(function(sec) {
-                opts += '<option value="' + sec.section_id + '">Section ' + sec.section_name + '</option>';
+                var divId = sec.division_id || sec.section_id;
+                var divName = sec.division_name || sec.section_name;
+                opts += '<option value="' + divId + '">Division ' + divName + '</option>';
               });
               secSelect.innerHTML = opts;
             }

@@ -96,7 +96,7 @@
 
                 <!-- Period Columns -->
                 <?php foreach ($periods as $p): ?>
-                  <?php $entry = $matrix[$day][$p->period_id] ?? null; ?>
+                  <?php $entry = $matrix[$day][$p->period_id] ?? ($matrix[$day]['num_' . $p->period_number] ?? null); ?>
                   <td class="p-2 border-l border-outline-variant/40 align-top text-center">
                     <?php if ($entry): ?>
                       <div class="p-2.5 rounded-xl bg-secondary-container/20 border border-secondary/30 space-y-1">

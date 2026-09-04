@@ -378,7 +378,7 @@ const NAV = [
         label: "Academic Setup",
         items: [
           { key: "academic-years", label: "Academic Year" },
-          { key: "academic-groups", label: "Academic Groups" },
+          // { key: "academic-groups", label: "Academic Groups" },
           { key: "classes", label: "Classes" },
           { key: "divisions", label: "Divisions" },
           { key: "subjects", label: "Subjects" },

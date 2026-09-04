@@ -9,7 +9,7 @@ class Timetable_model extends CI_Model {
     public function get_entries($filters = array())
     {
         $this->db
-            ->select('tt.*, y.year_name, c.class_name, d.division_name as division_name, d.division_name as section_name, p.period_name, p.start_time, p.end_time, p.period_order, sub.subject_name, sub.subject_code, s.full_name as teacher_name, s.employee_code')
+            ->select('tt.*, y.year_name, c.class_name, d.division_name as division_name, d.division_name as section_name, p.period_name, p.period_number, p.start_time, p.end_time, p.period_order, sub.subject_name, sub.subject_code, s.full_name as teacher_name, s.employee_code')
             ->from('tbl_timetable tt')
             ->join('tbl_academic_years y', 'y.academic_year_id = tt.academic_year_id', 'left')
             ->join('tbl_classes c', 'c.class_id = tt.class_id', 'left')
@@ -85,6 +85,9 @@ class Timetable_model extends CI_Model {
         $matrix = [];
         foreach ($entries as $e) {
             $matrix[$e->day][$e->period_id] = $e;
+            if (!empty($e->period_number)) {
+                $matrix[$e->day]['num_' . $e->period_number] = $e;
+            }
         }
         return $matrix;
     }

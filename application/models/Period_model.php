@@ -80,6 +80,124 @@ class Period_model extends CI_Model {
         return $this->get_all($active_only, $type);
     }
 
+    /**
+     * Get the unique set of teaching Periods for a Teacher Timetable view.
+     *
+     * Rules:
+     *  - Each period number (Period 1, Period 2, ...) must appear EXACTLY ONCE.
+     *  - No duplicate column headers across academic groups.
+     *  - Only teaching periods (period_type = 'Period') are returned (breaks excluded).
+     *  - Derives the period list from the academic groups of classes the teacher
+     *    is assigned to (or has timetable entries in).
+     *  - If no assignments exist, returns the unique teaching periods across all groups.
+     *
+     * @param  int $teacher_id  staff_id of the teacher
+     * @param  int $year_id     academic_year_id
+     * @return array of unique period row objects ordered by period_number ASC
+     */
+    public function get_for_teacher($teacher_id, $year_id)
+    {
+        $teacher_id = (int)$teacher_id;
+        $year_id    = (int)$year_id;
+
+        // 1. Identify all classes associated with this teacher
+        $class_ids = [];
+
+        // Check tbl_subject_teachers
+        $st_rows = $this->db
+            ->select('DISTINCT class_id', FALSE)
+            ->from('tbl_subject_teachers')
+            ->where('staff_id', $teacher_id)
+            ->where('academic_year_id', $year_id)
+            ->where('status', 1)
+            ->where('is_deleted', 'n')
+            ->get()
+            ->result();
+        foreach ($st_rows as $r) {
+            $class_ids[] = (int)$r->class_id;
+        }
+
+        // Check tbl_timetable entries
+        $tt_classes = $this->db
+            ->select('DISTINCT class_id', FALSE)
+            ->from('tbl_timetable')
+            ->where('teacher_id', $teacher_id)
+            ->where('academic_year_id', $year_id)
+            ->where('status', 1)
+            ->get()
+            ->result();
+        foreach ($tt_classes as $r) {
+            $class_ids[] = (int)$r->class_id;
+        }
+
+        // Fallback to tbl_subject_allocations
+        if (empty($class_ids)) {
+            $sa_rows = $this->db
+                ->select('DISTINCT class_id', FALSE)
+                ->from('tbl_subject_allocations')
+                ->where('teacher_id', $teacher_id)
+                ->where('academic_year_id', $year_id)
+                ->where('is_deleted', 'n')
+                ->get()
+                ->result();
+            foreach ($sa_rows as $r) {
+                $class_ids[] = (int)$r->class_id;
+            }
+        }
+
+        $class_ids = array_unique(array_filter($class_ids));
+
+        // 2. Identify academic groups for those classes
+        $group_ids = [];
+        if (!empty($class_ids)) {
+            $class_rows = $this->db
+                ->select('DISTINCT academic_group_id', FALSE)
+                ->where_in('class_id', $class_ids)
+                ->where('is_deleted', 'n')
+                ->get('tbl_classes')
+                ->result();
+            foreach ($class_rows as $r) {
+                if (!empty($r->academic_group_id)) {
+                    $group_ids[] = (int)$r->academic_group_id;
+                }
+            }
+        }
+
+        // 3. Fetch active teaching periods
+        $this->db->from($this->table)
+            ->where('is_deleted', 'n')
+            ->where('status', 1)
+            ->where('period_type', 'Period');
+
+        if (!empty($group_ids)) {
+            $this->db->where_in('academic_group_id', $group_ids);
+        }
+
+        // Order by academic_group_id DESC (so higher groups provide standard timings), then period_number
+        $all_periods = $this->db
+            ->order_by('academic_group_id', 'DESC')
+            ->order_by('period_number', 'ASC')
+            ->get()
+            ->result();
+
+        // 4. Strict de-duplication by period_number: exactly 1 column per period number
+        $seen = [];
+        $unique = [];
+        foreach ($all_periods as $p) {
+            $num = (int)$p->period_number;
+            if (!isset($seen[$num])) {
+                $seen[$num] = true;
+                $unique[] = $p;
+            }
+        }
+
+        usort($unique, function($a, $b) {
+            return (int)$a->period_number <=> (int)$b->period_number;
+        });
+
+        return $unique;
+    }
+
     public function get_by_id($id)
     {
         return $this->db->where($this->primaryKey, $id)->where('is_deleted', 'n')->get($this->table)->row();

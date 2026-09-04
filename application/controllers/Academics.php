@@ -631,15 +631,15 @@ class Academics extends MY_Controller {
         $this->require_permission('academics.view');
         if ($this->input->method() === 'post') {
             $this->require_permission('academics.edit');
-            $year_id    = $this->input->post('academic_year_id') ?: 1;
-            $class_id   = $this->input->post('class_id');
-            $section_id = $this->input->post('section_id');
-            $staff_id   = $this->input->post('staff_id');
+            $year_id     = $this->input->post('academic_year_id') ?: 1;
+            $class_id    = $this->input->post('class_id');
+            $division_id = $this->input->post('division_id') ?: $this->input->post('section_id');
+            $staff_id    = $this->input->post('staff_id');
 
-            if (empty($class_id) || empty($section_id) || empty($staff_id)) {
-                $this->session->set_flashdata('error', 'Please select academic year, class, section, and teacher.');
+            if (empty($class_id) || empty($division_id) || empty($staff_id)) {
+                $this->session->set_flashdata('error', 'Please select academic year, class, division, and teacher.');
             } else {
-                $res = $this->Class_teacher_model->assign($year_id, $class_id, $section_id, $staff_id);
+                $res = $this->Class_teacher_model->assign($year_id, $class_id, $division_id, $staff_id);
                 if ($res) {
                     $this->session->set_flashdata('success', 'Class Teacher assigned successfully!');
                 } else {
@@ -649,17 +649,19 @@ class Academics extends MY_Controller {
             redirect('academics/class_teachers');
         }
 
+        $div_filter = $this->input->get('division_id') ?: $this->input->get('section_id');
         $filters = array(
             'academic_year_id' => $this->input->get('academic_year_id'),
             'class_id'         => $this->input->get('class_id'),
-            'section_id'       => $this->input->get('section_id'),
+            'division_id'      => $div_filter,
+            'section_id'       => $div_filter,
             'staff_id'         => $this->input->get('staff_id'),
         );
 
         $assignments = $this->Class_teacher_model->get_all($filters);
         $years       = $this->Academic_year_model->get_all();
         $classes     = $this->Class_model->get_all();
-        $sections    = $this->Section_model->get_all();
+        $divisions   = $this->Division_model->get_all();
         $teachers    = $this->Staff_model->get_teachers();
 
         $this->render('pages/academics/class_teachers', array(
@@ -669,7 +671,8 @@ class Academics extends MY_Controller {
             'assignments' => $assignments,
             'years'       => $years,
             'classes'     => $classes,
-            'sections'    => $sections,
+            'divisions'   => $divisions,
+            'sections'    => $divisions,
             'teachers'    => $teachers,
         ));
     }
@@ -692,16 +695,16 @@ class Academics extends MY_Controller {
         $this->require_permission('academics.view');
         if ($this->input->method() === 'post') {
             $this->require_permission('academics.edit');
-            $year_id    = $this->input->post('academic_year_id') ?: 1;
-            $class_id   = $this->input->post('class_id');
-            $section_id = $this->input->post('section_id');
-            $subject_id = $this->input->post('subject_id');
-            $staff_id   = $this->input->post('staff_id');
+            $year_id     = $this->input->post('academic_year_id') ?: 1;
+            $class_id    = $this->input->post('class_id');
+            $division_id = $this->input->post('division_id') ?: $this->input->post('section_id');
+            $subject_id  = $this->input->post('subject_id');
+            $staff_id    = $this->input->post('staff_id');
 
-            if (empty($class_id) || empty($section_id) || empty($subject_id) || empty($staff_id)) {
+            if (empty($class_id) || empty($division_id) || empty($subject_id) || empty($staff_id)) {
                 $this->session->set_flashdata('error', 'Please fill all required assignment fields.');
             } else {
-                $res = $this->Subject_teacher_model->assign($year_id, $class_id, $section_id, $subject_id, $staff_id);
+                $res = $this->Subject_teacher_model->assign($year_id, $class_id, $division_id, $subject_id, $staff_id);
                 if ($res) {
                     $this->session->set_flashdata('success', 'Subject Teacher assigned successfully!');
                 } else {
@@ -711,10 +714,12 @@ class Academics extends MY_Controller {
             redirect('academics/subject_teachers');
         }
 
+        $div_filter = $this->input->get('division_id') ?: $this->input->get('section_id');
         $filters = array(
             'academic_year_id' => $this->input->get('academic_year_id'),
             'class_id'         => $this->input->get('class_id'),
-            'section_id'       => $this->input->get('section_id'),
+            'division_id'      => $div_filter,
+            'section_id'       => $div_filter,
             'subject_id'       => $this->input->get('subject_id'),
             'staff_id'         => $this->input->get('staff_id'),
         );
@@ -722,7 +727,7 @@ class Academics extends MY_Controller {
         $assignments = $this->Subject_teacher_model->get_all($filters);
         $years       = $this->Academic_year_model->get_all();
         $classes     = $this->Class_model->get_all();
-        $sections    = $this->Section_model->get_all();
+        $divisions   = $this->Division_model->get_all();
         $subjects    = $this->Subject_model->get_all();
         $teachers    = $this->Staff_model->get_teachers();
 
@@ -733,7 +738,8 @@ class Academics extends MY_Controller {
             'assignments' => $assignments,
             'years'       => $years,
             'classes'     => $classes,
-            'sections'    => $sections,
+            'divisions'   => $divisions,
+            'sections'    => $divisions,
             'subjects'    => $subjects,
             'teachers'    => $teachers,
         ));

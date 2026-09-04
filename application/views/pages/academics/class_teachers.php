@@ -72,7 +72,7 @@
                 <td class="px-4 py-3 font-semibold text-on-surface whitespace-nowrap">
                   <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-primary text-[20px]">meeting_room</span>
-                    <?php echo html_escape($a->class_name . ' - Division ' . $a->section_name); ?>
+                    <?php echo html_escape($a->class_name . ' - Division ' . ($a->division_name ?: $a->section_name)); ?>
                   </div>
                 </td>
                 <td class="px-4 py-3 font-bold text-secondary whitespace-nowrap">
@@ -154,7 +154,7 @@
 
       function loadSectionsForClass(classId) {
         var secSelect = document.getElementById('modal_ct_section');
-        secSelect.innerHTML = '<option value="">Loading sections...</option>';
+        secSelect.innerHTML = '<option value="">Loading divisions...</option>';
         if (!classId) {
           secSelect.innerHTML = '<option value="">Select Class First</option>';
           return;
@@ -168,13 +168,16 @@
             } else {
               var opts = '<option value="">Select Division</option>';
               data.forEach(function(sec) {
-                opts += '<option value="' + sec.section_id + '">Section ' + sec.section_name + '</option>';
+                var divId = sec.division_id || sec.section_id;
+                var divName = sec.division_name || sec.section_name;
+                opts += '<option value="' + divId + '">Division ' + divName + '</option>';
               });
               secSelect.innerHTML = opts;
             }
           })
           .catch(function() {
-            secSelect.innerHTML = '<option value="">Error loading sections</option>';
+            secSelect.innerHTML = '<option value="">Error loading divisions</option>';
           });
       }
+      var loadDivisionsForClass = loadSectionsForClass;
     </script>

@@ -115,7 +115,7 @@ class Timetable extends MY_Controller {
         $data['teachers'] = $teachers;
         $data['selected_teacher'] = $teacher_id;
         $data['current_teacher'] = $this->Staff_model->get_by_id($teacher_id);
-        $data['periods'] = $this->Period_model->get_all(TRUE);
+        $data['periods'] = $this->Period_model->get_for_teacher($teacher_id, $year_id);
         $data['working_days'] = $this->Timetable_setting_model->get_working_days_array();
         $data['matrix'] = $this->Timetable_model->get_matrix_for_teacher($year_id, $teacher_id);
         
