@@ -91,7 +91,7 @@
                     <span class="font-medium text-on-surface"><?php echo html_escape($r->period_name); ?></span>
                     <span class="text-[11px] font-mono text-on-surface-variant block"><?php echo date('h:i A', strtotime($r->start_time)) . ' - ' . date('h:i A', strtotime($r->end_time)); ?></span>
                   </td>
-                  <td class="px-4 py-3 whitespace-nowrap font-bold text-on-surface"><?php echo html_escape($r->class_name . ' ' . $r->section_name); ?></td>
+                  <td class="px-4 py-3 whitespace-nowrap font-bold text-on-surface"><?php echo html_escape($r->class_name . ' ' . ($r->division_name ?: $r->section_name)); ?></td>
                   <td class="px-4 py-3 whitespace-nowrap font-semibold text-primary"><?php echo html_escape($r->subject_name); ?></td>
                   <td class="px-4 py-3 whitespace-nowrap text-on-surface"><?php echo html_escape($r->teacher_name); ?></td>
                   <td class="px-4 py-3 text-center whitespace-nowrap font-mono text-[12px] text-on-surface-variant"><?php echo html_escape($r->room_no ?: '—'); ?></td>

@@ -123,21 +123,33 @@
             <?php endforeach; ?>
           </select>
         </div>
-          
+                <div>
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5">Academic Group</label>
+          <select id="edit_academic_group_id" name="academic_group_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
+            <option value="">All Groups</option>
+            <?php if (!empty($groups)): foreach ($groups as $grp): ?>
+              <option value="<?php echo $grp->academic_group_id; ?>" <?php echo (!empty($student->academic_group_id) && $student->academic_group_id == $grp->academic_group_id) ? 'selected' : ''; ?>><?php echo html_escape($grp->group_name); ?></option>
+            <?php endforeach; endif; ?>
+          </select>
+        </div>
+
         <div>
-          <label class="block font-label-md text-label-md text-on-surface mb-1.5">Class</label>
-          <select name="class_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5">Class *</label>
+          <select id="edit_class_id" name="class_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
             <?php foreach ($classes as $cls): ?>
-              <option value="<?php echo $cls->class_id; ?>" <?php echo ($student->class_id == $cls->class_id) ? 'selected' : ''; ?>><?php echo html_escape($cls->class_name); ?></option>
+              <option value="<?php echo $cls->class_id; ?>" data-group="<?php echo (int)($cls->academic_group_id ?? 0); ?>" <?php echo ($student->class_id == $cls->class_id) ? 'selected' : ''; ?>><?php echo html_escape($cls->class_name); ?></option>
             <?php endforeach; ?>
           </select>
         </div>
           
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1.5">Division</label>
-          <select name="division_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
-            <?php foreach ($sections as $sec): ?>
-              <option value="<?php echo ($sec->division_id ?? $sec->section_id); ?>" <?php echo (($student->division_id ?? $student->section_id) == ($sec->division_id ?? $sec->section_id)) ? 'selected' : ''; ?>><?php echo html_escape($sec->class_name . ' ' . ($sec->division_name ?? $sec->section_name)); ?></option>
+          <select id="edit_division_id" name="division_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
+            <?php foreach ($sections as $sec): 
+              $sec_cls_id = (int)($sec->class_id ?? 0);
+              if ($sec_cls_id && $sec_cls_id !== (int)$student->class_id) continue;
+            ?>
+              <option value="<?php echo ($sec->division_id ?? $sec->section_id); ?>" <?php echo (($student->division_id ?? $student->section_id) == ($sec->division_id ?? $sec->section_id)) ? 'selected' : ''; ?>>Division <?php echo html_escape(($sec->division_name ?? $sec->section_name)); ?></option>
             <?php endforeach; ?>
           </select>
         </div>
@@ -469,6 +481,56 @@
         $photoBtnLabel.text('Upload Photo');
         $fileStatus.text('Photo marked for removal. Save changes to update.');
         $('#err-student_image').addClass('hidden').text('');
+    });
+
+    /* Academic Group -> Class -> Division cascading */
+    $('#edit_academic_group_id').on('change', function () {
+        var groupId = $(this).val();
+        if (!groupId) {
+            $('#edit_class_id option').show();
+            return;
+        }
+        $('#edit_class_id option').each(function () {
+            var cGroup = $(this).attr('data-group');
+            if (!$(this).val() || cGroup === groupId) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+
+    $('#edit_class_id').on('change', function () {
+        var classId = $(this).val();
+        var selectedOpt = $(this).find('option:selected');
+        var group = selectedOpt.attr('data-group');
+        if (group && !$('#edit_academic_group_id').val()) {
+            $('#edit_academic_group_id').val(group);
+        }
+        if (!classId) {
+            $('#edit_division_id').html('<option value="">Select Division</option>');
+            return;
+        }
+        $.ajax({
+            url: '<?php echo site_url("students/get_divisions_ajax"); ?>',
+            method: 'POST',
+            data: { class_id: classId, [window.CSRF_TOKEN_NAME]: window.CSRF_HASH },
+            dataType: 'json',
+            success: function (r) {
+                if (r && (r.divisions || r.sections) && (r.divisions || r.sections).length > 0) {
+                    var opts = '';
+                    (r.divisions || r.sections).forEach(function (d, idx) {
+                        opts += '<option value="' + (d.division_id || d.section_id) + '" ' + (idx === 0 ? 'selected' : '') + '>Division ' + $('<div>').text((d.division_name || d.section_name)).html() + '</option>';
+                    });
+                    $('#edit_division_id').html(opts);
+                } else {
+                    $('#edit_division_id').html('<option value="12" selected>Division A</option>');
+                }
+            },
+            error: function () {
+                $('#edit_division_id').html('<option value="12" selected>Division A</option>');
+            }
+        });
     });
 
 })(jQuery);

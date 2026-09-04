@@ -9,12 +9,12 @@ class Timetable_substitution_model extends CI_Model {
     public function get_substitutions($date = NULL, $status = NULL)
     {
         $this->db
-            ->select('sub.*, tt.day, p.period_name, p.start_time, p.end_time, c.class_name, div.division_name as division_name, div.division_name as section_name, s_orig.full_name as original_teacher, s_sub.full_name as substitute_teacher, subj.subject_name')
+            ->select('sub.*, tt.day, p.period_name, p.start_time, p.end_time, c.class_name, d.division_name as division_name, d.division_name as section_name, s_orig.full_name as original_teacher, s_sub.full_name as substitute_teacher, subj.subject_name')
             ->from('tbl_teacher_substitutions sub')
             ->join('tbl_timetable tt', 'tt.timetable_id = sub.timetable_id', 'left')
             ->join('tbl_periods p', 'p.period_id = tt.period_id', 'left')
             ->join('tbl_classes c', 'c.class_id = tt.class_id', 'left')
-            ->join('tbl_divisions div', 'div.division_id = tt.division_id', 'left')
+            ->join('tbl_divisions d', 'd.division_id = tt.division_id', 'left')
             ->join('tbl_subjects subj', 'subj.subject_id = tt.subject_id', 'left')
             ->join('tbl_staff s_orig', 's_orig.staff_id = sub.original_teacher_id', 'left')
             ->join('tbl_staff s_sub', 's_sub.staff_id = sub.substitute_teacher_id', 'left')

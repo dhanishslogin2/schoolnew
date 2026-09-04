@@ -185,19 +185,28 @@
   </div>
   <div class="p-5">
     <input type="hidden" name="academic_year_id" value="<?php echo (int)$current_academic_year_id; ?>"/>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="lg:col-span-2">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div>
         <label class="block font-label-md text-label-md text-on-surface mb-1.5">Academic Year</label>
-        <div class="px-3 py-2.5 rounded-lg border border-outline-variant/40 bg-surface-container-low text-body-md text-on-surface-variant">
+        <div class="px-3 py-2.5 rounded-lg border border-outline-variant/40 bg-surface-container-low text-body-md text-on-surface-variant font-medium">
           <?php echo !empty($current_academic_year) ? html_escape($current_academic_year->year_name) : 'Current Year'; ?>
         </div>
+      </div>
+      <div>
+        <label class="block font-label-md text-label-md text-on-surface mb-1.5">Academic Group</label>
+        <select id="academic_group_id" name="academic_group_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
+          <option value="">All Groups</option>
+          <?php if (!empty($groups)): foreach ($groups as $grp): ?>
+            <option value="<?php echo (int)$grp->academic_group_id; ?>" <?php echo isset($ad['academic_group_id']) && (int)$ad['academic_group_id'] === (int)$grp->academic_group_id ? 'selected' : ''; ?>><?php echo html_escape($grp->group_name); ?></option>
+          <?php endforeach; endif; ?>
+        </select>
       </div>
       <div>
         <label class="block font-label-md text-label-md text-on-surface mb-1.5">Class <span class="text-error">*</span></label>
         <select id="class_id" name="class_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
           <option value="">Select Class</option>
           <?php foreach ($classes as $cls): ?>
-            <option value="<?php echo (int)$cls->class_id; ?>" <?php echo isset($ad['class_id']) && (int)$ad['class_id'] === (int)$cls->class_id ? 'selected' : ''; ?>><?php echo html_escape($cls->class_name); ?></option>
+            <option value="<?php echo (int)$cls->class_id; ?>" data-group="<?php echo (int)($cls->academic_group_id ?? 0); ?>" <?php echo isset($ad['class_id']) && (int)$ad['class_id'] === (int)$cls->class_id ? 'selected' : ''; ?>><?php echo html_escape($cls->class_name); ?></option>
           <?php endforeach; ?>
         </select>
         <p class="field-error text-error text-[11px] mt-1 hidden" id="err-class_id"></p>
@@ -948,13 +957,43 @@
     var $s2 = $('#step2-form');
     if ($s2.length) {
 
-        /* ── Dynamic Class -> Section Loading ──────────────────────────── */
-        $('#class_id').on('change', function () {
-            var classId = $(this).val();
-            if (!classId) {
-                $('#section_id').html('<option value="">Select Division</option>');
+        /* ── Dynamic Group -> Class Loading ───────────────────────────── */
+        $('#academic_group_id').on('change', function () {
+            var groupId = $(this).val();
+            $('#class_id').val('');
+            $('#division_id').html('<option value="">Select Division</option>');
+            $('#section_id').html('<option value="">Select Division</option>');
+
+            if (!groupId) {
+                $('#class_id option').show();
                 return;
             }
+
+            $('#class_id option').each(function () {
+                var cGroup = $(this).attr('data-group');
+                if (!$(this).val() || cGroup === groupId) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        });
+
+        /* ── Dynamic Class -> Division Loading ─────────────────────────── */
+        $('#class_id').on('change', function () {
+            var classId = $(this).val();
+            var selectedOpt = $(this).find('option:selected');
+            var group = selectedOpt.attr('data-group');
+
+            if (group && !$('#academic_group_id').val()) {
+                $('#academic_group_id').val(group);
+            }
+
+            if (!classId) {
+                $('#division_id, #section_id').html('<option value="">Select Division</option>');
+                return;
+            }
+
             $.ajax({
                 url: BASE_URL + 'students/get_divisions_ajax',
                 method: 'POST',
@@ -963,17 +1002,17 @@
                 success: function (r) {
                     refreshCsrf(r);
                     if (r && (r.divisions || r.sections) && (r.divisions || r.sections).length > 0) {
-                        var opts = '';
+                        var opts = '<option value="">Select Division</option>';
                         (r.divisions || r.sections).forEach(function (sec, idx) {
-                            opts += '<option value="' + (sec.division_id || sec.section_id) + '" ' + (idx === 0 ? 'selected' : '') + '>' + $('<div>').text((sec.division_name || sec.section_name)).html() + '</option>';
+                            opts += '<option value="' + (sec.division_id || sec.section_id) + '" ' + (idx === 0 ? 'selected' : '') + '>Division ' + $('<div>').text((sec.division_name || sec.section_name)).html() + '</option>';
                         });
-                        $('#section_id').html(opts);
+                        $('#division_id, #section_id').html(opts);
                     } else {
-                        $('#section_id').html('<option value="12" selected>A</option>');
+                        $('#division_id, #section_id').html('<option value="12" selected>Division A</option>');
                     }
                 },
                 error: function () {
-                    $('#section_id').html('<option value="12" selected>A</option>');
+                    $('#division_id, #section_id').html('<option value="12" selected>Division A</option>');
                 }
             });
         });

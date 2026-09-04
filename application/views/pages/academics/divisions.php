@@ -17,7 +17,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
         <h2 class="font-headline-md text-headline-md text-on-surface">Divisions</h2>
-        <p class="text-body-md font-body-md text-on-surface-variant mt-1"><?php echo count($divisions ?? $sections ?? []); ?> class divisions configured.</p>
+        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Manage class divisions structured under Academic Group &rarr; Class &rarr; Division hierarchy.</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
         <button onclick="openAddDivisionModal()" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
@@ -26,23 +26,101 @@
       </div>
     </div>
 
-    <!-- Filter Bar -->
-    <div class="flex flex-col md:flex-row gap-3 mb-4 flex-wrap">
-      <select onchange="window.location.href='<?php echo site_url('academics/divisions'); ?>' + (this.value ? '?class_id=' + this.value : '')" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
-        <option value="">All Classes</option>
-        <?php foreach ($classes as $cls): ?>
-          <option value="<?php echo $cls->class_id; ?>" <?php echo ($this->input->get('class_id') == $cls->class_id) ? 'selected' : ''; ?>><?php echo html_escape($cls->class_name); ?></option>
-        <?php endforeach; ?>
-      </select>
-      <a href="<?php echo site_url('academics/divisions'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[18px]">restart_alt</span>Reset</a>
+    <!-- Hierarchy & Filter Bar -->
+    <div class="flex flex-col md:flex-row items-center justify-between gap-3 mb-4">
+      <!-- Tabs for Hierarchy vs Detailed view -->
+      <div class="inline-flex p-1 rounded-xl bg-surface-container-high border border-outline-variant/40">
+        <button id="tab-btn-hierarchy" onclick="switchView('hierarchy')" class="px-4 py-2 rounded-lg text-label-md font-medium transition-all bg-surface-container-lowest text-on-surface shadow-xs cursor-pointer">
+          <span class="material-symbols-outlined text-[16px] inline-block mr-1 align-middle">account_tree</span>Academic Hierarchy
+        </button>
+        <button id="tab-btn-detailed" onclick="switchView('detailed')" class="px-4 py-2 rounded-lg text-label-md font-medium transition-all text-on-surface-variant hover:text-on-surface cursor-pointer">
+          <span class="material-symbols-outlined text-[16px] inline-block mr-1 align-middle">format_list_bulleted</span>All Divisions
+        </button>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <select onchange="window.location.href='<?php echo site_url('academics/divisions'); ?>' + (this.value ? '?class_id=' + this.value : '')" class="px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface-variant">
+          <option value="">All Classes</option>
+          <?php foreach ($classes as $cls): ?>
+            <option value="<?php echo $cls->class_id; ?>" <?php echo ($this->input->get('class_id') == $cls->class_id) ? 'selected' : ''; ?>><?php echo html_escape($cls->class_name); ?></option>
+          <?php endforeach; ?>
+        </select>
+        <a href="<?php echo site_url('academics/divisions'); ?>" class="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors" title="Reset Filters"><span class="material-symbols-outlined text-[18px]">restart_alt</span></a>
+      </div>
     </div>
 
-    <!-- Divisions Table -->
-    <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 overflow-hidden">
+    <!-- 1. ACADEMIC HIERARCHY TABLE (Academic Group | Class | Divisions) -->
+    <div id="view-hierarchy" class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 overflow-hidden mb-6">
       <div class="table-scroll overflow-x-auto">
         <table class="w-full data-table zebra border-collapse">
           <thead>
             <tr class="border-b border-outline-variant/60">
+              <th class="text-left px-5 py-3.5 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Academic Group</th>
+              <th class="text-left px-5 py-3.5 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Class</th>
+              <th class="text-left px-5 py-3.5 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Divisions</th>
+              <th class="text-center px-4 py-3.5 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Total</th>
+              <th class="text-right px-5 py-3.5 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant/30 text-body-md">
+            <?php if (empty($hierarchy)): ?>
+              <tr>
+                <td colspan="5" class="px-5 py-8 text-center text-on-surface-variant">
+                  No classes or divisions configured.
+                </td>
+              </tr>
+            <?php else: ?>
+              <?php foreach ($hierarchy as $h): ?>
+                <tr class="hover:bg-surface-container-low transition-colors">
+                  <td class="px-5 py-3.5 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                      <?php echo html_escape($h->group_name); ?>
+                    </span>
+                  </td>
+                  <td class="px-5 py-3.5 font-semibold text-on-surface whitespace-nowrap">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-primary text-[20px]">school</span>
+                      <a href="<?php echo site_url('academics/divisions?class_id=' . $h->class_id); ?>" class="hover:underline text-on-surface font-bold">
+                        <?php echo html_escape($h->class_name); ?>
+                      </a>
+                    </div>
+                  </td>
+                  <td class="px-5 py-3.5">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <?php if (!empty($h->divisions)): ?>
+                        <?php foreach ($h->divisions as $d): ?>
+                          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container-high border border-outline-variant/40 text-on-surface text-sm font-semibold">
+                            Division <?php echo html_escape($d->division_name); ?>
+                          </span>
+                        <?php endforeach; ?>
+                      <?php else: ?>
+                        <span class="text-on-surface-variant text-sm italic">None (Defaults to Division A)</span>
+                      <?php endif; ?>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3.5 text-center font-bold text-on-surface whitespace-nowrap">
+                    <?php echo (int)$h->division_count; ?>
+                  </td>
+                  <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                    <button onclick="openAddDivisionModalForClass(<?php echo $h->class_id; ?>, '<?php echo html_escape(addslashes($h->class_name)); ?>', '<?php echo html_escape(addslashes($h->group_name)); ?>')" class="px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-label-md font-medium inline-flex items-center gap-1 cursor-pointer transition-colors">
+                      <span class="material-symbols-outlined text-[16px]">add</span>Add Division
+                    </button>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 2. DETAILED DIVISIONS TABLE -->
+    <div id="view-detailed" class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 overflow-hidden hidden">
+      <div class="table-scroll overflow-x-auto">
+        <table class="w-full data-table zebra border-collapse">
+          <thead>
+            <tr class="border-b border-outline-variant/60">
+              <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Academic Group</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Class</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Division</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Class Teacher</th>
@@ -60,6 +138,11 @@
                 $div_name = $div->division_name ?? $div->section_name;
             ?>
               <tr class='hover:bg-surface-container-low transition-colors'>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                    <?php echo html_escape($div->group_name ?? 'General'); ?>
+                  </span>
+                </td>
                 <td class="px-4 py-3 font-semibold text-on-surface whitespace-nowrap"><?php echo html_escape($div->class_name); ?></td>
                 <td class="px-4 py-3 font-bold text-primary whitespace-nowrap">
                   <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-surface-container-high text-on-surface">Division <?php echo html_escape($div_name); ?></span>
@@ -68,7 +151,7 @@
                   <?php endif; ?>
                 </td>
                 <td class="px-4 py-3 text-on-surface whitespace-nowrap">
-                  <?php if ($div->class_teacher_name): ?>
+                  <?php if (!empty($div->class_teacher_name)): ?>
                     <span class="inline-flex items-center gap-1.5 font-medium text-secondary">
                       <span class="material-symbols-outlined text-[18px]">person</span><?php echo html_escape($div->class_teacher_name); ?>
                     </span>
@@ -83,8 +166,12 @@
                 </td>
                 <td class="px-4 py-3 text-right whitespace-nowrap">
                   <div class="flex items-center justify-end gap-1.5">
-                    <button onclick="openEditDivisionModal(<?php echo $div_id; ?>, <?php echo $div->class_id; ?>, '<?php echo html_escape(addslashes($div_name)); ?>', '<?php echo html_escape(addslashes($div->room_no ?: '')); ?>', <?php echo $div->capacity; ?>, '<?php echo html_escape(addslashes($div->description ?: '')); ?>')" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer" title="Edit"><span class="material-symbols-outlined text-[18px]">edit</span></button>
-                    <a href="<?php echo site_url('academics/delete_division/' . $div_id); ?>" onclick="return confirm('Deactivate division?')" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-error-container/20 hover:text-error transition-colors" title="Deactivate"><span class="material-symbols-outlined text-[18px]">delete</span></a>
+                    <?php if (empty($div->is_default)): ?>
+                      <button onclick="openEditDivisionModal(<?php echo $div_id; ?>, <?php echo $div->class_id; ?>, '<?php echo html_escape(addslashes($div_name)); ?>', '<?php echo html_escape(addslashes($div->room_no ?: '')); ?>', <?php echo $div->capacity; ?>, '<?php echo html_escape(addslashes($div->description ?: '')); ?>')" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer" title="Edit Division"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+                      <a href="<?php echo site_url('academics/delete_division/' . $div_id); ?>" onclick="return confirm('Deactivate division <?php echo html_escape($div_name); ?>?')" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-error-container/20 hover:text-error transition-colors cursor-pointer" title="Deactivate"><span class="material-symbols-outlined text-[18px]">delete</span></a>
+                    <?php else: ?>
+                      <span class="text-[11px] text-on-surface-variant italic px-2">Default</span>
+                    <?php endif; ?>
                   </div>
                 </td>
               </tr>
@@ -104,96 +191,140 @@
         <?php echo form_open('academics/divisions', array('class' => 'p-6 space-y-4')); ?>
           <input type="hidden" name="action" id="division_action" value="add"/>
           <input type="hidden" name="division_id" id="modal_division_id"/>
+          <input type="hidden" name="section_id" id="modal_section_id"/>
+          
           <div>
-            <label class="block text-label-md mb-1">Select Class *</label>
-            <select name="class_id" id="modal_division_class" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
+            <label class="block text-label-md mb-1 text-on-surface">Class *</label>
+            <select name="class_id" id="modal_division_class" required onchange="onDivisionClassChanged(this)" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface">
+              <option value="">Select Class</option>
               <?php foreach ($classes as $cls): ?>
-                <option value="<?php echo $cls->class_id; ?>"><?php echo html_escape($cls->class_name); ?></option>
+                <option value="<?php echo $cls->class_id; ?>" data-group="<?php echo html_escape($cls->group_name ?? 'General'); ?>"><?php echo html_escape($cls->class_name); ?><?php echo !empty($cls->group_name) ? ' (' . html_escape($cls->group_name) . ')' : ''; ?></option>
               <?php endforeach; ?>
             </select>
+            <!-- Auto-derived Academic Group Notice -->
+            <div id="derived-group-banner" class="mt-1.5 p-2 rounded-md bg-surface-container-high border border-outline-variant/40 text-xs text-on-surface-variant flex items-center gap-1.5 hidden">
+              <span class="material-symbols-outlined text-[16px] text-primary">category</span>
+              <span>Belongs to Academic Group: <strong id="derived-group-name" class="text-primary font-bold"></strong></span>
+            </div>
           </div>
+
           <div>
-            <label class="block text-label-md mb-1">Division Name *</label>
-            <input type="text" name="division_name" id="modal_division_name" required placeholder="e.g. A, B, C or Rose" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest"/>
+            <label class="block text-label-md mb-1 text-on-surface">Division Name *</label>
+            <input type="text" name="division_name" id="modal_division_name" required placeholder="e.g. A, B, C, D" maxlength="10" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface uppercase"/>
+            <p class="text-xs text-on-surface-variant mt-1">Unique within this class.</p>
           </div>
+
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-label-md mb-1">Room No.</label>
-              <input type="text" name="room_no" id="modal_division_room" placeholder="e.g. 102" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest"/>
+              <label class="block text-label-md mb-1 text-on-surface">Room No.</label>
+              <input type="text" name="room_no" id="modal_division_room" placeholder="e.g. 101" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface"/>
             </div>
             <div>
-              <label class="block text-label-md mb-1">Max Capacity</label>
-              <input type="number" name="capacity" id="modal_division_capacity" value="40" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest"/>
+              <label class="block text-label-md mb-1 text-on-surface">Max Capacity</label>
+              <input type="number" name="capacity" id="modal_division_capacity" value="40" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface"/>
             </div>
           </div>
+
           <div>
-            <label class="block text-label-md mb-1">Description / Notes</label>
-            <textarea name="description" id="modal_division_description" rows="2" placeholder="Optional notes for this division..." class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest"></textarea>
+            <label class="block text-label-md mb-1 text-on-surface">Description / Notes</label>
+            <textarea name="description" id="modal_division_description" rows="2" placeholder="Optional notes about this division..." class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface"></textarea>
           </div>
+
           <div class="flex justify-end gap-2 pt-4 border-t border-outline-variant">
-            <button type="button" onclick="document.getElementById('modal-division').classList.add('hidden')" class="px-4 py-2 rounded-lg border border-outline-variant text-on-surface-variant cursor-pointer">Cancel</button>
-            <button type="submit" class="px-4 py-2 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant cursor-pointer">Save Division</button>
+            <button type="button" onclick="document.getElementById('modal-division').classList.add('hidden')" class="px-4 py-2 rounded-lg border border-outline-variant text-on-surface-variant cursor-pointer text-label-md">Cancel</button>
+            <button type="submit" class="px-4 py-2 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant cursor-pointer shadow-sm">Save Division</button>
           </div>
         <?php echo form_close(); ?>
       </div>
     </div>
 
     <script>
-      function fetchNextDivisionName(classId) {
-        if (!classId) return;
-        $.ajax({
-          url: '<?php echo site_url('academics/get_next_division_ajax'); ?>',
-          type: 'POST',
-          data: {
-            class_id: classId,
-            [window.CSRF_TOKEN_NAME]: window.CSRF_HASH
-          },
-          dataType: 'json',
-          success: function(res) {
-            if (res && res.csrf_hash) window.CSRF_HASH = res.csrf_hash;
-            var nextName = res.next_division || res.next_section;
-            if (document.getElementById('division_action').value === 'add' && nextName) {
-              document.getElementById('modal_division_name').value = nextName;
-            }
-          }
-        });
+      function switchView(mode) {
+        const vHier = document.getElementById('view-hierarchy');
+        const vDet = document.getElementById('view-detailed');
+        const bHier = document.getElementById('tab-btn-hierarchy');
+        const bDet = document.getElementById('tab-btn-detailed');
+
+        if (mode === 'hierarchy') {
+          vHier.classList.remove('hidden');
+          vDet.classList.add('hidden');
+          bHier.classList.add('bg-surface-container-lowest', 'text-on-surface', 'shadow-xs');
+          bHier.classList.remove('text-on-surface-variant');
+          bDet.classList.remove('bg-surface-container-lowest', 'text-on-surface', 'shadow-xs');
+          bDet.classList.add('text-on-surface-variant');
+        } else {
+          vHier.classList.add('hidden');
+          vDet.classList.remove('hidden');
+          bDet.classList.add('bg-surface-container-lowest', 'text-on-surface', 'shadow-xs');
+          bDet.classList.remove('text-on-surface-variant');
+          bHier.classList.remove('bg-surface-container-lowest', 'text-on-surface', 'shadow-xs');
+          bHier.classList.add('text-on-surface-variant');
+        }
+      }
+
+      function onDivisionClassChanged(sel) {
+        const selectedOpt = sel.options[sel.selectedIndex];
+        const group = selectedOpt ? selectedOpt.getAttribute('data-group') : '';
+        const banner = document.getElementById('derived-group-banner');
+        const nameSpan = document.getElementById('derived-group-name');
+
+        if (group && sel.value) {
+          nameSpan.textContent = group;
+          banner.classList.remove('hidden');
+        } else {
+          banner.classList.add('hidden');
+        }
+
+        if (sel.value && document.getElementById('division_action').value === 'add') {
+          fetch('<?php echo site_url("academics/get_next_division_ajax"); ?>?class_id=' + sel.value)
+            .then(res => res.json())
+            .then(data => {
+              if (data.next_name) {
+                document.getElementById('modal_division_name').value = data.next_name;
+              }
+            });
+        }
+      }
+
+      function openAddDivisionModalForClass(classId, className, groupName) {
+        openAddDivisionModal();
+        const sel = document.getElementById('modal_division_class');
+        sel.value = classId;
+        onDivisionClassChanged(sel);
       }
 
       function openAddDivisionModal() {
         document.getElementById('division_action').value = 'add';
         document.getElementById('modal-division-title').textContent = 'Add Division';
         document.getElementById('modal_division_id').value = '';
-        document.getElementById('modal_division_name').value = 'B';
+        document.getElementById('modal_section_id').value = '';
+        document.getElementById('modal_division_name').value = 'A';
         document.getElementById('modal_division_room').value = '';
         document.getElementById('modal_division_capacity').value = '40';
         document.getElementById('modal_division_description').value = '';
+        document.getElementById('derived-group-banner').classList.add('hidden');
+
+        const filterClass = '<?php echo $this->input->get("class_id"); ?>';
+        if (filterClass) {
+          const sel = document.getElementById('modal_division_class');
+          sel.value = filterClass;
+          onDivisionClassChanged(sel);
+        }
+
         document.getElementById('modal-division').classList.remove('hidden');
-
-        var cls = document.getElementById('modal_division_class').value;
-        if (cls) {
-          fetchNextDivisionName(cls);
-        }
       }
-
-      document.getElementById('modal_division_class').addEventListener('change', function() {
-        if (document.getElementById('division_action').value === 'add') {
-          fetchNextDivisionName(this.value);
-        }
-      });
 
       function openEditDivisionModal(id, classId, name, room, capacity, desc) {
         document.getElementById('division_action').value = 'edit';
         document.getElementById('modal-division-title').textContent = 'Edit Division';
         document.getElementById('modal_division_id').value = id;
+        document.getElementById('modal_section_id').value = id;
         document.getElementById('modal_division_class').value = classId;
+        onDivisionClassChanged(document.getElementById('modal_division_class'));
         document.getElementById('modal_division_name').value = name;
-        document.getElementById('modal_division_room').value = room;
+        document.getElementById('modal_division_room').value = room || '';
         document.getElementById('modal_division_capacity').value = capacity;
         document.getElementById('modal_division_description').value = desc || '';
         document.getElementById('modal-division').classList.remove('hidden');
       }
-
-      // Backward compatibility functions
-      function openAddSectionModal() { openAddDivisionModal(); }
-      function openEditSectionModal(id, classId, name, room, capacity, desc) { openEditDivisionModal(id, classId, name, room, capacity, desc); }
     </script>

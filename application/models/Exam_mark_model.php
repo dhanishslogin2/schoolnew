@@ -15,11 +15,11 @@ class Exam_mark_model extends CI_Model {
     public function get_marks_sheet($schedule_id)
     {
         $schedule = $this->db
-            ->select('s.*, e.exam_name, c.class_name, div.division_name as division_name, div.division_name as section_name, sub.subject_name, sub.subject_code')
+            ->select('s.*, e.exam_name, c.class_name, d.division_name as division_name, sub.subject_name, sub.subject_code')
             ->from('tbl_exam_schedules s')
             ->join('tbl_exams e', 'e.exam_id = s.exam_id', 'left')
             ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
-            ->join('tbl_divisions div', 'div.division_id = s.section_id', 'left')
+            ->join('tbl_divisions d', 'd.division_id = s.division_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = s.subject_id', 'left')
             ->where('s.schedule_id', $schedule_id)
             ->get()
@@ -27,14 +27,14 @@ class Exam_mark_model extends CI_Model {
 
         if (!$schedule) return NULL;
 
-        // Fetch students for this class & section
+        // Fetch students for this class & division
         $students = $this->db
             ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, st.photo,
                 m.mark_id, m.marks_obtained, m.is_absent, m.is_exempted, m.grade, m.grade_point, m.status as mark_status, m.remarks, m.rejection_reason')
             ->from('tbl_students st')
             ->join('tbl_exam_marks m', 'm.student_id = st.student_id AND m.schedule_id = ' . (int)$schedule_id, 'left')
             ->where('st.class_id', $schedule->class_id)
-            ->where('st.division_id', $schedule->section_id)
+            ->where('st.division_id', $schedule->division_id)
             ->where('st.status', 1)
             ->order_by('CAST(st.roll_number AS UNSIGNED)', 'ASC')
             ->order_by('st.first_name', 'ASC')
@@ -128,8 +128,8 @@ class Exam_mark_model extends CI_Model {
     public function get_marksheets_for_verification($filters = array())
     {
         $this->db
-            ->select('s.schedule_id, s.exam_id, s.class_id, s.section_id, s.subject_id, s.exam_date,
-                e.exam_name, c.class_name, div.division_name as division_name, div.division_name as section_name, sub.subject_name, sub.subject_code,
+            ->select('s.schedule_id, s.exam_id, s.class_id, s.division_id, s.subject_id, s.exam_date,
+                e.exam_name, c.class_name, d.division_name as division_name, sub.subject_name, sub.subject_code,
                 u.name as entered_by_name,
                 COUNT(st.student_id) as total_students,
                 COUNT(m.mark_id) as marks_entered_count,
@@ -141,9 +141,9 @@ class Exam_mark_model extends CI_Model {
             ->from('tbl_exam_schedules s')
             ->join('tbl_exams e', 'e.exam_id = s.exam_id', 'inner')
             ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
-            ->join('tbl_divisions div', 'div.division_id = s.section_id', 'left')
+            ->join('tbl_divisions d', 'd.division_id = s.division_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = s.subject_id', 'left')
-            ->join('tbl_students st', 'st.class_id = s.class_id AND st.division_id = s.section_id AND st.status = 1', 'left')
+            ->join('tbl_students st', 'st.class_id = s.class_id AND st.division_id = s.division_id AND st.status = 1', 'left')
             ->join('tbl_exam_marks m', 'm.schedule_id = s.schedule_id AND m.student_id = st.student_id', 'left')
             ->join('tbl_users u', 'u.user_id = m.entered_by', 'left')
             ->group_by('s.schedule_id')
@@ -151,7 +151,7 @@ class Exam_mark_model extends CI_Model {
 
         if (!empty($filters['exam_id'])) $this->db->where('s.exam_id', $filters['exam_id']);
         if (!empty($filters['class_id'])) $this->db->where('s.class_id', $filters['class_id']);
-        if (!empty($filters['division_id'])) $this->db->where('s.section_id', $filters['division_id']);
+        if (!empty($filters['division_id'])) $this->db->where('s.division_id', $filters['division_id']);
 
         $rows = $this->db->get()->result();
 

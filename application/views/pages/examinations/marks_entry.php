@@ -58,10 +58,10 @@
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Division *</label>
           <select name="division_id" onchange="this.form.submit()" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <option value="">-- Select Division --</option>
-            <?php foreach ($sections as $s): ?>
+            <?php foreach ($divisions as $s): ?>
               <?php if (!$selected_class || $s->class_id == $selected_class): ?>
-                <option value="<?php echo $s->section_id; ?>" <?php echo ($selected_section == $s->section_id) ? 'selected' : ''; ?>>
-                  <?php echo html_escape($s->class_name . ' ' . $s->section_name); ?>
+                <option value="<?php echo $s->division_id; ?>" <?php echo (($selected_division ?? $selected_section) == $s->division_id) ? 'selected' : ''; ?>>
+                  <?php echo html_escape($s->class_name . ' ' . $s->division_name); ?>
                 </option>
               <?php endif; ?>
             <?php endforeach; ?>
@@ -103,7 +103,7 @@
           </div>
           <div>
             <div class="font-headline-md text-title-lg font-bold text-on-surface">
-              <?php echo html_escape($marksheet->subject_name); ?> — <?php echo html_escape($marksheet->class_name . ' ' . $marksheet->section_name); ?>
+              <?php echo html_escape($marksheet->subject_name); ?> — <?php echo html_escape($marksheet->class_name . ' ' . ($marksheet->division_name ?: '')); ?>
             </div>
             <div class="text-body-md text-on-surface-variant">
               Exam: <strong><?php echo html_escape($marksheet->exam_name); ?></strong> • Date: <?php echo date('d M Y', strtotime($marksheet->exam_date)); ?> • Max Marks: <strong class="text-primary font-mono"><?php echo (int)$marksheet->max_marks; ?></strong> • Passing: <strong class="text-secondary font-mono"><?php echo (int)$marksheet->passing_marks; ?></strong>
@@ -143,7 +143,7 @@
               </thead>
               <tbody class="divide-y divide-outline-variant/40">
                 <?php if (empty($marksheet->students)): ?>
-                  <tr><td colspan="8" class="px-4 py-8 text-center text-on-surface-variant text-body-md">No students enrolled in this section.</td></tr>
+                  <tr><td colspan="8" class="px-4 py-8 text-center text-on-surface-variant text-body-md">No students enrolled in this division.</td></tr>
                 <?php else: ?>
                   <?php $tabIndex = 1; foreach ($marksheet->students as $stu): ?>
                     <?php
@@ -293,7 +293,7 @@
     <?php else: ?>
       <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-12 text-center text-on-surface-variant">
         <span class="material-symbols-outlined text-[48px] text-primary mb-3">fact_check</span>
-        <h3 class="font-headline-md text-title-lg font-bold text-on-surface">Select Exam, Class, Section & Subject</h3>
-        <p class="text-body-md mt-1 max-w-md mx-auto">Please choose an exam, class, section, and subject from the dropdown filters above to load the student marksheet.</p>
+        <h3 class="font-headline-md text-title-lg font-bold text-on-surface">Select Exam, Class, Division & Subject</h3>
+        <p class="text-body-md mt-1 max-w-md mx-auto">Please choose an exam, class, division, and subject from the dropdown filters above to load the student marksheet.</p>
       </div>
     <?php endif; ?>

@@ -85,11 +85,11 @@
             </div>
 
             <div>
-              <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Section (Optional)</label>
+              <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Division (Optional)</label>
               <select name="division_id" class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
                 <option value="">All Divisions</option>
-                <?php foreach ($sections as $s): ?>
-                  <option value="<?php echo $s->section_id; ?>"><?php echo html_escape($s->class_name . ' ' . $s->section_name); ?></option>
+                <?php foreach ($divisions as $s): ?>
+                  <option value="<?php echo $s->division_id; ?>"><?php echo html_escape($s->class_name . ' ' . $s->division_name); ?></option>
                 <?php endforeach; ?>
               </select>
             </div>

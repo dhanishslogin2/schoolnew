@@ -50,9 +50,9 @@
       </div>
     </div>
 
-    <!-- Filter Bar (Academic Year, Date, Class) -->
+    <!-- Filter Bar (Academic Year, Date, Academic Group, Class) -->
     <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-4 mb-6">
-      <form method="get" action="<?php echo site_url('attendance/class_attendance'); ?>" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <form method="get" action="<?php echo site_url('attendance/class_attendance'); ?>" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Academic Year *</label>
           <select name="academic_year_id" onchange="this.form.submit()" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
@@ -70,10 +70,22 @@
         </div>
 
         <div>
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Academic Group</label>
+          <select id="class_att_group_select" onchange="onClassAttGroupChanged(this.value)" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+            <option value="">All Groups</option>
+            <?php if (!empty($groups)): foreach ($groups as $grp): ?>
+              <option value="<?php echo $grp->academic_group_id; ?>" <?php echo (!empty($selected_group_id) && $selected_group_id == $grp->academic_group_id) ? 'selected' : ''; ?>>
+                <?php echo html_escape($grp->group_name); ?>
+              </option>
+            <?php endforeach; endif; ?>
+          </select>
+        </div>
+
+        <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Class *</label>
-          <select name="class_id" onchange="this.form.submit()" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+          <select id="class_att_class_select" name="class_id" onchange="this.form.submit()" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <?php foreach ($classes as $cls): ?>
-              <option value="<?php echo $cls->class_id; ?>" <?php echo ($class_id == $cls->class_id) ? 'selected' : ''; ?>>
+              <option value="<?php echo $cls->class_id; ?>" data-group="<?php echo (int)($cls->academic_group_id ?? 0); ?>" <?php echo ($class_id == $cls->class_id) ? 'selected' : ''; ?>>
                 <?php echo html_escape($cls->class_name); ?>
                 <?php echo is_higher_secondary_class($cls) ? ' (+1/+2 Period)' : ' (Daily)'; ?>
               </option>
@@ -161,3 +173,27 @@
         <?php endforeach; ?>
       <?php endif; ?>
     </div>
+
+    <script>
+      function onClassAttGroupChanged(groupId) {
+        var select = document.getElementById('class_att_class_select');
+        if (!select) return;
+        var firstMatch = null;
+        for (var i = 0; i < select.options.length; i++) {
+          var opt = select.options[i];
+          var optGroup = opt.getAttribute('data-group');
+          if (!groupId || optGroup == groupId) {
+            opt.style.display = '';
+            if (!firstMatch) firstMatch = opt.value;
+          } else {
+            opt.style.display = 'none';
+          }
+        }
+        if (firstMatch && select.value !== firstMatch) {
+          select.value = firstMatch;
+          select.form.submit();
+        }
+      }
+    </script>
+  </div>
+</div>

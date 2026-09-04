@@ -38,7 +38,7 @@
   <!-- Filters Bar -->
   <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-5">
     <form method="get" action="<?php echo site_url('student-attendance/view'); ?>" id="attendanceViewFilterForm">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         
         <!-- Academic Year -->
         <div>
@@ -64,19 +64,32 @@
           <input type="date" name="to_date" id="filter_to_date" value="<?php echo htmlspecialchars($to_date); ?>" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
         </div>
 
+        <!-- Academic Group -->
+        <div>
+          <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Academic Group</label>
+          <select id="filter_academic_group" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+            <option value="">All Groups</option>
+            <?php if (!empty($groups)): foreach ($groups as $grp): ?>
+              <option value="<?php echo $grp->academic_group_id; ?>" <?php echo (!empty($selected_group_id) && $selected_group_id == $grp->academic_group_id) ? 'selected' : ''; ?>>
+                <?php echo htmlspecialchars($grp->group_name); ?>
+              </option>
+            <?php endforeach; endif; ?>
+          </select>
+        </div>
+
         <!-- Class -->
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Class *</label>
           <select name="class_id" id="filter_class" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <?php foreach ($classes as $c): ?>
-              <option value="<?php echo $c->class_id; ?>" <?php echo ((int)$class_id === (int)$c->class_id) ? 'selected' : ''; ?>>
+              <option value="<?php echo $c->class_id; ?>" data-group="<?php echo (int)($c->academic_group_id ?? 0); ?>" <?php echo ((int)$class_id === (int)$c->class_id) ? 'selected' : ''; ?>>
                 <?php echo htmlspecialchars($c->class_name); ?>
               </option>
             <?php endforeach; ?>
           </select>
         </div>
 
-        <!-- Session / Section -->
+        <!-- Session / Division -->
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1.5 font-medium">Session / Division *</label>
           <select name="division_id" id="filter_division" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
@@ -406,4 +419,77 @@
     <?php endif; ?>
   </div>
 
+  <script>
+    (function () {
+      var groupSelect = document.getElementById('filter_academic_group');
+      var classSelect = document.getElementById('filter_class');
+      var divSelect   = document.getElementById('filter_division');
+
+      if (groupSelect && classSelect) {
+        groupSelect.addEventListener('change', function () {
+          var gId = this.value;
+          var firstVisible = null;
+          for (var i = 0; i < classSelect.options.length; i++) {
+            var opt = classSelect.options[i];
+            var optGroup = opt.getAttribute('data-group');
+            if (!gId || optGroup == gId) {
+              opt.style.display = '';
+              if (!firstVisible) firstVisible = opt.value;
+            } else {
+              opt.style.display = 'none';
+            }
+          }
+          if (firstVisible && classSelect.value !== firstVisible) {
+            classSelect.value = firstVisible;
+            triggerClassChange(firstVisible);
+          }
+        });
+      }
+
+      if (classSelect && divSelect) {
+        classSelect.addEventListener('change', function () {
+          triggerClassChange(this.value);
+        });
+      }
+
+      function triggerClassChange(classId) {
+        if (!classId) return;
+        var opt = classSelect.querySelector('option[value="' + classId + '"]');
+        if (opt && groupSelect) {
+          var optGroup = opt.getAttribute('data-group');
+          if (optGroup && !groupSelect.value) {
+            groupSelect.value = optGroup;
+          }
+        }
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '<?php echo site_url("students/get_divisions_ajax"); ?>', true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        var data = 'class_id=' + encodeURIComponent(classId);
+        if (window.CSRF_TOKEN_NAME && window.CSRF_HASH) {
+          data += '&' + encodeURIComponent(window.CSRF_TOKEN_NAME) + '=' + encodeURIComponent(window.CSRF_HASH);
+        }
+        xhr.onload = function () {
+          if (xhr.status === 200) {
+            try {
+              var r = JSON.parse(xhr.responseText);
+              if (r.csrf_hash) window.CSRF_HASH = r.csrf_hash;
+              var items = r.divisions || r.sections || [];
+              if (items.length > 0) {
+                var opts = '';
+                items.forEach(function (d, idx) {
+                  opts += '<option value="' + (d.division_id || d.section_id) + '" ' + (idx === 0 ? 'selected' : '') + '>Division ' + (d.division_name || d.section_name) + '</option>';
+                });
+                divSelect.innerHTML = opts;
+              } else {
+                divSelect.innerHTML = '<option value="12" selected>Division A (Default)</option>';
+              }
+            } catch (e) {
+              divSelect.innerHTML = '<option value="12" selected>Division A (Default)</option>';
+            }
+          }
+        };
+        xhr.send(data);
+      }
+    })();
+  </script>
 </div>

@@ -668,20 +668,22 @@ class Student_model extends CI_Model {
         $params[] = $academic_year_id;
 
         return $this->db->query("
-            SELECT c.class_id, c.class_name, c.class_code, c.academic_year_id,
+            SELECT c.class_id, c.class_name, c.class_code, c.academic_year_id, c.academic_group_id,
+                   COALESCE(ag.group_name, 'General') as group_name,
                    COUNT(DISTINCT st.student_id) as total_students,
                    SUM(CASE WHEN st.status = 1 THEN 1 ELSE 0 END) as active_students,
                    SUM(CASE WHEN st.gender = 'Male' THEN 1 ELSE 0 END) as male_students,
                    SUM(CASE WHEN st.gender = 'Female' THEN 1 ELSE 0 END) as female_students
             FROM tbl_classes c
+            LEFT JOIN tbl_academic_groups ag ON ag.academic_group_id = c.academic_group_id
             LEFT JOIN tbl_students st ON st.class_id = c.class_id 
                  AND st.academic_year_id = ? 
                  AND st.is_deleted = 'n'
                  {$status_sql}
             WHERE c.status = 1 AND c.is_deleted = 'n'
               AND (c.academic_year_id = ? OR c.academic_year_id IS NULL OR c.academic_year_id = 0)
-            GROUP BY c.class_id, c.class_name
-            ORDER BY c.class_id ASC
+            GROUP BY c.class_id, c.class_name, c.academic_group_id, ag.group_name
+            ORDER BY COALESCE(ag.display_order, 99) ASC, c.class_id ASC
         ", $params)->result();
     }
 

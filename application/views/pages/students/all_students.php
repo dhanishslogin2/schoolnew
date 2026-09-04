@@ -80,11 +80,23 @@
       </span>
     </div>
 
+    <!-- Academic Group Filter Pills -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-1">
+      <button type="button" onclick="filterByAcademicGroup('all', this)" class="academic-group-pill px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-800 text-white shadow-2xs cursor-pointer" data-group-id="all">
+        All Groups
+      </button>
+      <?php if (!empty($groups)): foreach ($groups as $grp): ?>
+        <button type="button" onclick="filterByAcademicGroup('<?php echo $grp->academic_group_id; ?>', this)" class="academic-group-pill px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 cursor-pointer" data-group-id="<?php echo $grp->academic_group_id; ?>">
+          <?php echo html_escape($grp->group_name); ?>
+        </button>
+      <?php endforeach; endif; ?>
+    </div>
+
     <!-- Class Cards Horizontal Carousel / Grid -->
     <div id="class-cards-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
       
       <!-- Card: All Classes -->
-      <div onclick="selectClassCard(null, this)" class="class-card p-3 rounded-xl border transition-all cursor-pointer bg-white shadow-2xs flex flex-col justify-between <?php echo ($selected_class === NULL) ? 'border-emerald-600 ring-2 ring-emerald-600/30 bg-emerald-50/40 text-emerald-900' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 text-slate-800'; ?>" data-class-id="">
+      <div onclick="selectClassCard(null, this)" class="class-card p-3 rounded-xl border transition-all cursor-pointer bg-white shadow-2xs flex flex-col justify-between <?php echo ($selected_class === NULL) ? 'border-emerald-600 ring-2 ring-emerald-600/30 bg-emerald-50/40 text-emerald-900' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 text-slate-800'; ?>" data-class-id="" data-group-id="all">
         <div class="flex items-center justify-between gap-1">
           <span class="font-bold text-xs truncate">All Classes</span>
           <span class="material-symbols-outlined text-[16px] text-emerald-700">select_all</span>
@@ -101,7 +113,7 @@
           $isSelected = ($selected_class !== NULL && $selected_class == $cwc->class_id);
           $stCount = (int)$cwc->total_students;
         ?>
-        <div onclick="selectClassCard(<?php echo $cwc->class_id; ?>, this)" class="class-card p-3 rounded-xl border transition-all cursor-pointer bg-white shadow-2xs flex flex-col justify-between <?php echo $isSelected ? 'border-emerald-600 ring-2 ring-emerald-600/30 bg-emerald-50/40 text-emerald-900' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 text-slate-800'; ?>" data-class-id="<?php echo $cwc->class_id; ?>">
+        <div onclick="selectClassCard(<?php echo $cwc->class_id; ?>, this)" class="class-card p-3 rounded-xl border transition-all cursor-pointer bg-white shadow-2xs flex flex-col justify-between <?php echo $isSelected ? 'border-emerald-600 ring-2 ring-emerald-600/30 bg-emerald-50/40 text-emerald-900' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 text-slate-800'; ?>" data-class-id="<?php echo $cwc->class_id; ?>" data-group-id="<?php echo $cwc->academic_group_id ?? ''; ?>">
           <div class="flex items-center justify-between gap-1">
             <span class="font-bold text-xs truncate"><?php echo html_escape($cwc->class_name); ?></span>
             <span class="text-[10px] font-mono text-slate-400"><?php echo html_escape($cwc->class_code ?? ''); ?></span>
@@ -153,10 +165,20 @@
     <!-- Filters Row -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
       
-      <!-- Search Input (5 cols) -->
-      <div class="lg:col-span-5 relative">
+      <!-- Search Input (4 cols) -->
+      <div class="lg:col-span-4 relative">
         <span class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-[18px]">search</span>
         <input type="text" id="all-students-search-input" onkeyup="if(event.key === 'Enter') triggerDataTableReload()" placeholder="Search students by name, admission no., roll no..." class="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600"/>
+      </div>
+
+      <!-- Academic Group Filter (2 cols) -->
+      <div class="lg:col-span-2 relative">
+        <select id="all-students-group-filter" onchange="onGroupFilterDropdownChanged(this.value)" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600">
+          <option value="">All Groups</option>
+          <?php if (!empty($groups)): foreach ($groups as $grp): ?>
+            <option value="<?php echo $grp->academic_group_id; ?>"><?php echo html_escape($grp->group_name); ?></option>
+          <?php endforeach; endif; ?>
+        </select>
       </div>
 
       <!-- Division Filter (3 cols) -->
@@ -171,10 +193,10 @@
         </select>
       </div>
 
-      <!-- Status Filter (2 cols) -->
-      <div class="lg:col-span-2 relative">
-        <select id="all-students-status-filter" onchange="onStatusFilterChanged()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600">
-          <option value="All">All Status</option>
+      <!-- Status Filter (1 col) -->
+      <div class="lg:col-span-1 relative">
+        <select id="all-students-status-filter" onchange="onStatusFilterChanged()" class="w-full px-2 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600">
+          <option value="All">All</option>
           <option value="1" selected>Active</option>
           <option value="0">Inactive</option>
         </select>
@@ -416,5 +438,37 @@
     });
 
     $('#class-cards-grid').html(html);
+  }
+
+  // Filter Class Cards by Academic Group
+  function filterByAcademicGroup(groupId, el) {
+    $('.academic-group-pill').removeClass('bg-emerald-800 text-white shadow-2xs').addClass('border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50');
+    if (el) {
+      $(el).removeClass('border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50').addClass('bg-emerald-800 text-white shadow-2xs');
+    }
+
+    $('#all-students-group-filter').val(groupId === 'all' ? '' : groupId);
+
+    if (groupId === 'all') {
+      $('.class-card').show();
+    } else {
+      $('.class-card').each(function () {
+        const cGroup = $(this).attr('data-group-id');
+        if (cGroup === 'all' || cGroup == groupId) {
+          $(this).show();
+        } else {
+          $(this).hide();
+        }
+      });
+    }
+  }
+
+  function onGroupFilterDropdownChanged(groupId) {
+    const pill = $(`.academic-group-pill[data-group-id="${groupId || 'all'}"]`);
+    if (pill.length) {
+      filterByAcademicGroup(groupId || 'all', pill[0]);
+    } else {
+      filterByAcademicGroup(groupId || 'all', null);
+    }
   }
 </script>

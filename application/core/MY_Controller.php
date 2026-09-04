@@ -262,6 +262,9 @@ class MY_Controller extends CI_Controller {
                     return 'academics';
                 case 'years':
                     return 'academic-years';
+                case 'academic_groups':
+                case 'groups':
+                    return 'academic-groups';
                 case 'classes':
                     return 'classes';
                 case 'divisions':
@@ -421,6 +424,9 @@ class MY_Controller extends CI_Controller {
                     return 'subject-allocation';
                 case 'builder':
                     return 'timetable-builder';
+                case 'period_setup':
+                case 'periods':
+                    return 'timetable-period-setup';
                 case 'free_periods':
                     return 'free-periods';
                 case 'conflicts':

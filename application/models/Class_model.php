@@ -15,10 +15,38 @@ class Class_model extends CI_Model {
         }
 
         $this->db
-            ->select('c.*, y.year_name, s.full_name as class_teacher_name, (SELECT COUNT(student_id) FROM tbl_students WHERE class_id = c.class_id AND status = 1 AND is_deleted = \'n\') as student_count')
+            ->select('c.*, ag.group_name, y.year_name, s.full_name as class_teacher_name, (SELECT COUNT(student_id) FROM tbl_students WHERE class_id = c.class_id AND status = 1 AND is_deleted = \'n\') as student_count')
             ->from('tbl_classes c')
+            ->join('tbl_academic_groups ag', 'ag.academic_group_id = c.academic_group_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = c.academic_year_id', 'left')
             ->join('tbl_staff s', 's.staff_id = c.class_teacher_id', 'left')
+            ->where('c.status', 1)
+            ->where('c.is_deleted', 'n')
+            ->order_by('ag.display_order', 'ASC')
+            ->order_by('c.class_id', 'ASC');
+
+        if ($academic_year_id) {
+            $this->db->where('c.academic_year_id', (int)$academic_year_id);
+        }
+
+        return $this->db->get()->result();
+    }
+
+    /**
+     * Get active classes belonging to a specific Academic Group.
+     *
+     * @param int $academic_group_id
+     * @param int|null $academic_year_id
+     * @return array
+     */
+    public function get_by_group($academic_group_id, $academic_year_id = NULL)
+    {
+        $this->db
+            ->select('c.*, ag.group_name, y.year_name')
+            ->from('tbl_classes c')
+            ->join('tbl_academic_groups ag', 'ag.academic_group_id = c.academic_group_id', 'left')
+            ->join('tbl_academic_years y', 'y.academic_year_id = c.academic_year_id', 'left')
+            ->where('c.academic_group_id', (int)$academic_group_id)
             ->where('c.status', 1)
             ->where('c.is_deleted', 'n')
             ->order_by('c.class_id', 'ASC');
@@ -30,7 +58,7 @@ class Class_model extends CI_Model {
         return $this->db->get()->result();
     }
 
-    public function get_dropdown($academic_year_id = NULL)
+    public function get_dropdown($academic_year_id = NULL, $academic_group_id = NULL)
     {
         if ($academic_year_id === TRUE || $academic_year_id === NULL) {
             $academic_year_id = get_current_academic_year_id();
@@ -39,13 +67,16 @@ class Class_model extends CI_Model {
         }
 
         $this->db
-            ->select('class_id, class_name')
+            ->select('class_id, class_name, academic_group_id')
             ->where('status', 1)
             ->where('is_deleted', 'n')
             ->order_by('class_id', 'ASC');
 
         if ($academic_year_id) {
             $this->db->where('academic_year_id', (int)$academic_year_id);
+        }
+        if ($academic_group_id) {
+            $this->db->where('academic_group_id', (int)$academic_group_id);
         }
 
         return $this->db->get($this->table)->result();
@@ -54,8 +85,9 @@ class Class_model extends CI_Model {
     public function get_by_id($id)
     {
         return $this->db
-            ->select('c.*, y.year_name, s.full_name as class_teacher_name')
+            ->select('c.*, ag.group_name, y.year_name, s.full_name as class_teacher_name')
             ->from('tbl_classes c')
+            ->join('tbl_academic_groups ag', 'ag.academic_group_id = c.academic_group_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = c.academic_year_id', 'left')
             ->join('tbl_staff s', 's.staff_id = c.class_teacher_id', 'left')
             ->where('c.class_id', $id)

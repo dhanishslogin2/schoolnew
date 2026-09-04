@@ -102,7 +102,7 @@
             <?php foreach ($day_schedules as $ds): ?>
               <div class="p-3 rounded-xl bg-surface-container-low border border-outline-variant/40 flex items-center justify-between">
                 <div>
-                  <strong class="text-primary font-bold text-body-md block"><?php echo html_escape($ds->class_name . ' ' . $ds->section_name); ?> — <?php echo html_escape($ds->subject_name); ?></strong>
+                  <strong class="text-primary font-bold text-body-md block"><?php echo html_escape($ds->class_name . ' ' . ($ds->division_name ?: $ds->section_name)); ?> — <?php echo html_escape($ds->subject_name); ?></strong>
                   <span class="text-[12px] text-on-surface">Teacher: <strong><?php echo html_escape($ds->teacher_name); ?></strong></span>
                 </div>
                 <button type="button" onclick='openSubModal(<?php echo json_encode($ds); ?>)' class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-secondary text-on-secondary text-[12px] font-semibold hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer shadow-sm">
@@ -143,7 +143,7 @@
               <?php foreach ($substitutions as $sub): ?>
                 <tr class="hover:bg-surface-container-low transition-colors">
                   <td class="px-4 py-3 font-semibold text-primary whitespace-nowrap"><?php echo html_escape($sub->period_name); ?></td>
-                  <td class="px-4 py-3 font-bold text-on-surface whitespace-nowrap"><?php echo html_escape($sub->class_name . ' ' . $sub->section_name); ?></td>
+                  <td class="px-4 py-3 font-bold text-on-surface whitespace-nowrap"><?php echo html_escape($sub->class_name . ' ' . ($sub->division_name ?: $sub->section_name)); ?></td>
                   <td class="px-4 py-3 font-medium text-on-surface whitespace-nowrap"><?php echo html_escape($sub->subject_name); ?></td>
                   <td class="px-4 py-3 text-error whitespace-nowrap"><?php echo html_escape($sub->original_teacher); ?></td>
                   <td class="px-4 py-3 font-bold text-secondary whitespace-nowrap"><?php echo html_escape($sub->substitute_teacher); ?></td>
@@ -215,7 +215,7 @@
       function openSubModal(item) {
         document.getElementById('sub-tt-id').value = item.timetable_id;
         document.getElementById('sub-orig-id').value = item.teacher_id;
-        document.getElementById('sub-class-label').textContent = item.class_name + ' ' + item.section_name;
+        document.getElementById('sub-class-label').textContent = item.class_name + ' ' + (item.division_name || item.section_name);
         document.getElementById('sub-sub-label').textContent = item.subject_name;
         document.getElementById('sub-orig-name').textContent = item.teacher_name;
 

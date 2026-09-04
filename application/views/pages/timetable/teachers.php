@@ -100,8 +100,8 @@
                   <td class="p-2 border-l border-outline-variant/40 align-top text-center">
                     <?php if ($entry): ?>
                       <div class="p-2.5 rounded-xl bg-secondary-container/20 border border-secondary/30 space-y-1">
-                        <div class="font-bold text-secondary text-[13px] line-clamp-1" title="<?php echo html_escape($entry->class_name . ' ' . $entry->section_name); ?>">
-                          <?php echo html_escape($entry->class_name . ' ' . $entry->section_name); ?>
+                        <div class="font-bold text-secondary text-[13px] line-clamp-1" title="<?php echo html_escape($entry->class_name . ' ' . ($entry->division_name ?: $entry->section_name)); ?>">
+                          <?php echo html_escape($entry->class_name . ' ' . ($entry->division_name ?: $entry->section_name)); ?>
                         </div>
                         <div class="text-[12px] font-medium text-on-surface line-clamp-1" title="<?php echo html_escape($entry->subject_name); ?>">
                           <?php echo html_escape($entry->subject_name); ?>

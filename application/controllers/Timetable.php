@@ -11,6 +11,7 @@ class Timetable extends MY_Controller {
         $this->load->model('Timetable_substitution_model');
         $this->load->model('Timetable_setting_model');
         $this->load->model('Period_model');
+        $this->load->model('Academic_group_model');
         $this->load->model('Academic_year_model');
         $this->load->model('Class_model');
         $this->load->model('Division_model');
@@ -52,7 +53,7 @@ class Timetable extends MY_Controller {
         $class_id = $this->input->get('class_id') ?: ($classes[0]->class_id ?? 1);
         
         $sections = $this->Division_model->get_by_class($class_id);
-        $section_id = $this->input->get('division_id') ?: ($sections[0]->section_id ?? 1);
+        $section_id = $this->input->get('division_id') ?: ($this->input->get('section_id') ?: ($sections[0]->division_id ?? ($sections[0]->section_id ?? 1)));
 
         // Handle Add/Edit schedule slot post
         if ($this->input->post()) {
@@ -75,7 +76,7 @@ class Timetable extends MY_Controller {
             } else {
                 $this->session->set_flashdata('error', $res['message']);
             }
-            redirect("timetable/classes?academic_year_id={$year_id}&class_id={$class_id}&section_id={$section_id}");
+            redirect("timetable/classes?academic_year_id={$year_id}&class_id={$class_id}&division_id={$section_id}");
             return;
         }
 
@@ -85,8 +86,11 @@ class Timetable extends MY_Controller {
         $data['classes'] = $classes;
         $data['selected_class'] = $class_id;
         $data['divisions'] = $sections;
+        $data['sections'] = $sections;
+        $data['selected_division'] = $section_id;
         $data['selected_section'] = $section_id;
-        $data['periods'] = $this->Period_model->get_all(TRUE);
+        $data['periods'] = $this->Period_model->get_by_class($class_id, TRUE, 'Period');
+        $data['all_slots'] = $this->Period_model->get_by_class($class_id, TRUE);
         $data['working_days'] = $this->Timetable_setting_model->get_working_days_array();
         $data['matrix'] = $this->Timetable_model->get_matrix_for_class($year_id, $class_id, $section_id);
         $data['subjects'] = $this->Subject_model->get_for_class($year_id, $class_id, $section_id);
@@ -128,7 +132,7 @@ class Timetable extends MY_Controller {
         $this->require_permission('timetable.view');
         $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $class_id = $this->input->get('class_id');
-        $section_id = $this->input->get('division_id');
+        $division_id = $this->input->get('division_id') ?: $this->input->get('section_id');
 
         if ($this->input->post()) {
             $this->require_permission('timetable.manage');
@@ -142,7 +146,7 @@ class Timetable extends MY_Controller {
                 $postData = [
                     'academic_year_id'      => $year_id,
                     'class_id'              => $this->input->post('class_id'),
-                    'division_id'            => $this->input->post('division_id'),
+                    'division_id'           => $this->input->post('division_id'),
                     'subject_id'            => $this->input->post('subject_id'),
                     'teacher_id'            => $this->input->post('teacher_id'),
                     'weekly_periods_target' => (int)$this->input->post('weekly_periods_target'),
@@ -151,7 +155,7 @@ class Timetable extends MY_Controller {
                 $this->Timetable_allocation_model->save_allocation($postData, $alloc_id ?: NULL);
                 $this->session->set_flashdata('success', 'Subject quota saved successfully!');
             }
-            redirect("timetable/allocations?academic_year_id={$year_id}&class_id={$class_id}&section_id={$section_id}");
+            redirect("timetable/allocations?academic_year_id={$year_id}&class_id={$class_id}&division_id={$division_id}");
             return;
         }
 
@@ -160,9 +164,12 @@ class Timetable extends MY_Controller {
         $data['selected_year'] = $year_id;
         $data['classes'] = $this->Class_model->get_all($year_id);
         $data['selected_class'] = $class_id;
-        $data['divisions'] = $class_id ? $this->Division_model->get_by_class($class_id) : [];
-        $data['selected_section'] = $section_id;
-        $data['allocations'] = $this->Timetable_allocation_model->get_allocations($year_id, $class_id, $section_id);
+        $divisions = $class_id ? $this->Division_model->get_by_class($class_id) : $this->Division_model->get_all();
+        $data['divisions'] = $divisions;
+        $data['sections'] = $divisions;
+        $data['selected_division'] = $division_id;
+        $data['selected_section'] = $division_id;
+        $data['allocations'] = $this->Timetable_allocation_model->get_allocations($year_id, $class_id, $division_id);
         $data['subjects'] = $this->Subject_model->get_all(TRUE);
         $data['teachers'] = $this->Staff_model->get_teaching_staff();
 
@@ -179,7 +186,7 @@ class Timetable extends MY_Controller {
         $class_id = $this->input->get('class_id') ?: ($classes[0]->class_id ?? 1);
         
         $sections = $this->Division_model->get_by_class($class_id);
-        $section_id = $this->input->get('division_id') ?: ($sections[0]->section_id ?? 1);
+        $section_id = $this->input->get('division_id') ?: ($this->input->get('section_id') ?: ($sections[0]->division_id ?? ($sections[0]->section_id ?? 1)));
 
         if ($this->input->post()) {
             $tt_id = $this->input->post('timetable_id');
@@ -200,7 +207,7 @@ class Timetable extends MY_Controller {
             } else {
                 $this->session->set_flashdata('error', $res['message']);
             }
-            redirect("timetable/builder?academic_year_id={$year_id}&class_id={$class_id}&section_id={$section_id}");
+            redirect("timetable/builder?academic_year_id={$year_id}&class_id={$class_id}&division_id={$section_id}");
             return;
         }
 
@@ -210,8 +217,11 @@ class Timetable extends MY_Controller {
         $data['classes'] = $classes;
         $data['selected_class'] = $class_id;
         $data['divisions'] = $sections;
+        $data['sections'] = $sections;
+        $data['selected_division'] = $section_id;
         $data['selected_section'] = $section_id;
-        $data['periods'] = $this->Period_model->get_all(TRUE);
+        $data['periods'] = $this->Period_model->get_by_class($class_id, TRUE, 'Period');
+        $data['all_slots'] = $this->Period_model->get_by_class($class_id, TRUE);
         $data['working_days'] = $this->Timetable_setting_model->get_working_days_array();
         $data['matrix'] = $this->Timetable_model->get_matrix_for_class($year_id, $class_id, $section_id);
         $data['subjects'] = $this->Subject_model->get_for_class($year_id, $class_id, $section_id);
@@ -321,11 +331,11 @@ class Timetable extends MY_Controller {
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename=timetable_report_' . date('Ymd_His') . '.csv');
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Day', 'Period', 'Start Time', 'End Time', 'Class', 'Section', 'Subject', 'Teacher', 'Room']);
+            fputcsv($out, ['Day', 'Period', 'Start Time', 'End Time', 'Class', 'Division', 'Subject', 'Teacher', 'Room']);
             foreach ($report_data as $r) {
                 fputcsv($out, [
                     $r->day, $r->period_name, $r->start_time, $r->end_time,
-                    $r->class_name, $r->section_name, $r->subject_name, $r->teacher_name, $r->room_no
+                    $r->class_name, ($r->division_name ?: $r->section_name), $r->subject_name, $r->teacher_name, $r->room_no
                 ]);
             }
             fclose($out);
@@ -390,7 +400,7 @@ class Timetable extends MY_Controller {
         $entry = $this->Timetable_model->get_by_id($id);
         $year_id = $entry ? $entry->academic_year_id : 1;
         $class_id = $entry ? $entry->class_id : 1;
-        $section_id = $entry ? $entry->section_id : 1;
+        $division_id = $entry ? ($entry->division_id ?? $entry->section_id) : 1;
 
         $res = $this->Timetable_model->delete_entry($id);
         if ($res['success']) {
@@ -398,6 +408,89 @@ class Timetable extends MY_Controller {
         } else {
             $this->session->set_flashdata('error', $res['message']);
         }
-        redirect("timetable/classes?academic_year_id={$year_id}&class_id={$class_id}&section_id={$section_id}");
+        redirect("timetable/classes?academic_year_id={$year_id}&class_id={$class_id}&division_id={$division_id}");
+    }
+
+    // 12. Period Setup (Academic Group-Based)
+    public function period_setup()
+    {
+        $this->require_permission('timetable.manage');
+
+        $groups = $this->Academic_group_model->get_all();
+        $selected_group_id = (int)$this->input->get('academic_group_id');
+        if (!$selected_group_id && !empty($groups)) {
+            $selected_group_id = (int)$groups[0]->academic_group_id;
+        }
+
+        if ($this->input->method() === 'post') {
+            $group_id = (int)($this->input->post('academic_group_id') ?: $selected_group_id);
+            $raw_slots = $this->input->post('slots');
+
+            if (is_string($raw_slots)) {
+                $slots = json_decode($raw_slots, true) ?: [];
+            } else {
+                $slots = is_array($raw_slots) ? $raw_slots : [];
+            }
+
+            $res = $this->Period_model->save_group_periods($group_id, $slots);
+
+            if ($this->input->is_ajax_request()) {
+                return $this->output->set_content_type('application/json')->set_output(json_encode([
+                    'success'   => $res['success'],
+                    'message'   => $res['message'],
+                    'csrf_hash' => $this->security->get_csrf_hash()
+                ]));
+            }
+
+            if ($res['success']) {
+                $this->session->set_flashdata('success', $res['message']);
+            } else {
+                $this->session->set_flashdata('error', $res['message']);
+            }
+            redirect('timetable/period_setup?academic_group_id=' . $group_id);
+            return;
+        }
+
+        $slots = $this->Period_model->get_by_group($selected_group_id, FALSE);
+
+        $data = [
+            'title'             => 'Period Setup',
+            'page_key'          => 'timetable-period-setup',
+            'breadcrumb'        => array('Timetable', 'Period Setup'),
+            'groups'            => $groups,
+            'selected_group_id' => $selected_group_id,
+            'slots'             => $slots,
+        ];
+
+        $this->render('pages/timetable/period_setup', $data);
+    }
+
+    public function periods()
+    {
+        $this->period_setup();
+    }
+
+    public function ajax_get_group_periods()
+    {
+        $this->require_permission('timetable.view');
+        $group_id = (int)$this->input->get('academic_group_id');
+        $slots = $this->Period_model->get_by_group($group_id, FALSE);
+
+        return $this->output->set_content_type('application/json')->set_output(json_encode([
+            'success'   => true,
+            'group_id'  => $group_id,
+            'slots'     => $slots,
+            'csrf_hash' => $this->security->get_csrf_hash()
+        ]));
+    }
+
+    public function ajax_get_divisions($class_id = NULL)
+    {
+        if (!$class_id) {
+            $class_id = $this->input->get('class_id');
+        }
+        $divisions = $class_id ? $this->Division_model->get_all($class_id) : [];
+        return $this->output->set_content_type('application/json')->set_output(json_encode($divisions));
     }
 }
+

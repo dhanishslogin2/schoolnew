@@ -59,7 +59,7 @@
             <?php
               $pub_map = [];
               foreach ($publish_records as $pr) {
-                  $pub_map[$pr->class_id . '_' . $pr->section_id] = $pr;
+                  $pub_map[$pr->class_id . '_' . ($pr->division_id ?? $pr->section_id)] = $pr;
               }
             ?>
             <?php foreach ($classes as $c): ?>

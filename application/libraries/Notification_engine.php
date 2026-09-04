@@ -224,10 +224,10 @@ class Notification_engine {
             }
 
             if ($student_id) {
-                $st = $this->CI->db->select('s.*, c.class_name, sec.section_name')
+                $st = $this->CI->db->select('s.*, c.class_name, sec.division_name as division_name, sec.division_name as section_name')
                     ->from('tbl_students s')
                     ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
-                    ->join('tbl_sections sec', 'sec.section_id = s.section_id', 'left')
+                    ->join('tbl_divisions sec', 'sec.division_id = s.division_id', 'left')
                     ->where('s.student_id', $student_id)
                     ->get()->row();
 

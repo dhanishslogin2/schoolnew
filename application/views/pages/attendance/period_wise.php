@@ -18,12 +18,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
         <h2 class="font-headline-md text-headline-md text-on-surface">Period-wise Attendance</h2>
-        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Record and manage period-specific student attendance for subject classes.</p>
-      </div>
-      <div class="flex items-center gap-2 flex-wrap shrink-0">
-        <a href="<?php echo site_url('attendance/periods'); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors">
-          <span class="material-symbols-outlined text-[18px]">tune</span>Configure Periods
-        </a>
+        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Record and manage period-specific student attendance for subject classes (+1 and +2).</p>
       </div>
     </div>
 

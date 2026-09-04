@@ -7,6 +7,7 @@ class Academics extends MY_Controller {
     {
         parent::__construct();
         $this->load->model('Academic_year_model');
+        $this->load->model('Academic_group_model');
         $this->load->model('Class_model');
         $this->load->model('Division_model');
         $this->load->model('Section_model');
@@ -232,6 +233,139 @@ class Academics extends MY_Controller {
     }
 
     /* =========================================================================
+       1B. Academic Groups Management (Super Admin Only for Management)
+       ========================================================================= */
+    public function academic_groups()
+    {
+        $this->require_permission('academics.view');
+        $is_super_admin = $this->rbac->is_super_admin();
+
+        if ($this->input->method() === 'post') {
+            if (!$is_super_admin) {
+                show_error('Access restricted. Only Super Admin can modify Academic Groups.', 403, '403 Forbidden');
+                return;
+            }
+
+            $action = $this->input->post('action');
+            if ($action === 'add') {
+                $this->form_validation->set_rules('group_name', 'Group Name', 'required|trim');
+                if ($this->form_validation->run() === TRUE) {
+                    $name = trim($this->input->post('group_name'));
+                    if ($this->Academic_group_model->check_duplicate($name)) {
+                        $this->session->set_flashdata('error', 'Academic Group "' . $name . '" already exists.');
+                    } else {
+                        $this->Academic_group_model->insert(array(
+                            'group_name'    => $name,
+                            'description'   => $this->input->post('description', TRUE),
+                            'display_order' => (int)$this->input->post('display_order') ?: 0,
+                            'status'        => 1
+                        ));
+                        $this->session->set_flashdata('success', 'Academic Group created successfully!');
+                    }
+                } else {
+                    $this->session->set_flashdata('error', validation_errors());
+                }
+            } elseif ($action === 'edit') {
+                $id = (int)$this->input->post('academic_group_id');
+                $this->form_validation->set_rules('group_name', 'Group Name', 'required|trim');
+                if ($this->form_validation->run() === TRUE) {
+                    $name = trim($this->input->post('group_name'));
+                    if ($this->Academic_group_model->check_duplicate($name, $id)) {
+                        $this->session->set_flashdata('error', 'Academic Group "' . $name . '" already exists.');
+                    } else {
+                        $this->Academic_group_model->update($id, array(
+                            'group_name'    => $name,
+                            'description'   => $this->input->post('description', TRUE),
+                            'display_order' => (int)$this->input->post('display_order') ?: 0,
+                        ));
+                        $this->session->set_flashdata('success', 'Academic Group updated successfully!');
+                    }
+                } else {
+                    $this->session->set_flashdata('error', validation_errors());
+                }
+            }
+            redirect('academics/academic_groups');
+            return;
+        }
+
+        $groups = $this->Academic_group_model->get_all(true);
+
+        $this->render('pages/academics/academic_groups', array(
+            'title'          => 'Academic Groups',
+            'page_key'       => 'academic-groups',
+            'breadcrumb'     => array('Academic Management', 'Academic Groups'),
+            'groups'         => $groups,
+            'is_super_admin' => $is_super_admin,
+        ));
+    }
+
+    public function delete_academic_group($id = NULL)
+    {
+        if (!$this->rbac->is_super_admin()) {
+            show_error('Access restricted to Super Admin only.', 403, '403 Forbidden');
+            return;
+        }
+        if (!empty($id)) {
+            $this->Academic_group_model->soft_delete($id);
+            $this->session->set_flashdata('success', 'Academic Group deactivated.');
+        }
+        redirect('academics/academic_groups');
+    }
+
+    public function toggle_group_status($id = NULL, $status = 1)
+    {
+        if (!$this->rbac->is_super_admin()) {
+            show_error('Access restricted to Super Admin only.', 403, '403 Forbidden');
+            return;
+        }
+        if (!empty($id)) {
+            $this->Academic_group_model->set_status($id, (int)$status);
+            $msg = (int)$status === 1 ? 'Academic Group enabled.' : 'Academic Group disabled.';
+            $this->session->set_flashdata('success', $msg);
+        }
+        redirect('academics/academic_groups');
+    }
+
+    /**
+     * AJAX endpoint: Get standard allowed class options for an Academic Group from DB.
+     */
+    public function ajax_get_group_classes()
+    {
+        $this->require_permission('academics.view');
+        $group_id = (int)$this->input->get_post('academic_group_id');
+        $classes = $group_id ? $this->Academic_group_model->get_allowed_classes($group_id) : [];
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'status'          => true,
+                'classes'         => $classes,
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            ]));
+    }
+
+    /**
+     * AJAX endpoint: Get active classes configured under an Academic Group.
+     */
+    public function ajax_get_classes_by_group()
+    {
+        $this->require_permission('academics.view');
+        $group_id = (int)$this->input->get_post('academic_group_id');
+        $year_id  = $this->input->get_post('academic_year_id');
+        $classes  = $group_id ? $this->Class_model->get_by_group($group_id, $year_id) : $this->Class_model->get_all($year_id);
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'status'          => true,
+                'classes'         => $classes,
+                'csrf_token_name' => $this->security->get_csrf_token_name(),
+                'csrf_hash'       => $this->security->get_csrf_hash()
+            ]));
+    }
+
+    /* =========================================================================
        2. Classes Management
        ========================================================================= */
     public function classes()
@@ -244,13 +378,14 @@ class Academics extends MY_Controller {
                 $this->form_validation->set_rules('class_name', 'Class Name', 'required|trim');
                 if ($this->form_validation->run() === TRUE) {
                     $this->Class_model->insert(array(
-                        'academic_year_id' => $this->input->post('academic_year_id') ?: 1,
-                        'class_name'       => $this->input->post('class_name'),
-                        'class_code'       => $this->input->post('class_code') ?: strtoupper(substr($this->input->post('class_name'), 0, 4)),
-                        'capacity'         => $this->input->post('capacity') ? intval($this->input->post('capacity')) : 40,
-                        'description'      => $this->input->post('description'),
-                        'status'           => 1,
-                        'created_at'       => date('Y-m-d H:i:s')
+                        'academic_year_id'  => $this->input->post('academic_year_id') ?: 1,
+                        'academic_group_id' => $this->input->post('academic_group_id') ? (int)$this->input->post('academic_group_id') : NULL,
+                        'class_name'        => $this->input->post('class_name'),
+                        'class_code'        => $this->input->post('class_code') ?: strtoupper(substr($this->input->post('class_name'), 0, 4)),
+                        'capacity'          => $this->input->post('capacity') ? intval($this->input->post('capacity')) : 40,
+                        'description'       => $this->input->post('description'),
+                        'status'            => 1,
+                        'created_at'        => date('Y-m-d H:i:s')
                     ));
                     $this->session->set_flashdata('success', 'Class added successfully!');
                 } else {
@@ -260,12 +395,13 @@ class Academics extends MY_Controller {
                 $this->require_permission('academics.edit');
                 $id = $this->input->post('class_id');
                 $this->Class_model->update($id, array(
-                    'academic_year_id' => $this->input->post('academic_year_id') ?: 1,
-                    'class_name'       => $this->input->post('class_name'),
-                    'class_code'       => $this->input->post('class_code'),
-                    'capacity'         => $this->input->post('capacity') ? intval($this->input->post('capacity')) : 40,
-                    'description'      => $this->input->post('description'),
-                    'updated_at'       => date('Y-m-d H:i:s')
+                    'academic_year_id'  => $this->input->post('academic_year_id') ?: 1,
+                    'academic_group_id' => $this->input->post('academic_group_id') ? (int)$this->input->post('academic_group_id') : NULL,
+                    'class_name'        => $this->input->post('class_name'),
+                    'class_code'        => $this->input->post('class_code'),
+                    'capacity'          => $this->input->post('capacity') ? intval($this->input->post('capacity')) : 40,
+                    'description'       => $this->input->post('description'),
+                    'updated_at'        => date('Y-m-d H:i:s')
                 ));
                 $this->session->set_flashdata('success', 'Class updated successfully!');
             }
@@ -276,12 +412,14 @@ class Academics extends MY_Controller {
         $classes = $this->Class_model->get_all($year_id);
         $years   = $this->Academic_year_model->get_all();
 
+        $groups = $this->Academic_group_model->get_all();
         $this->render('pages/academics/classes', array(
             'title'      => 'Classes',
             'page_key'   => 'classes',
             'breadcrumb' => array('Academic Management', 'Classes'),
             'classes'    => $classes,
             'years'      => $years,
+            'groups'     => $groups,
         ));
     }
 
@@ -358,6 +496,8 @@ class Academics extends MY_Controller {
         $divisions = $this->Division_model->get_all($class_id);
         $classes   = $this->Class_model->get_all();
 
+        $hierarchy = $this->Division_model->get_hierarchy(null, $class_id);
+        $groups    = $this->Academic_group_model->get_all();
         $this->render('pages/academics/divisions', array(
             'title'      => 'Divisions',
             'page_key'   => 'academics-divisions',
@@ -365,6 +505,8 @@ class Academics extends MY_Controller {
             'divisions'  => $divisions,
             'sections'   => $divisions,
             'classes'    => $classes,
+            'hierarchy'  => $hierarchy,
+            'groups'     => $groups,
         ));
     }
 

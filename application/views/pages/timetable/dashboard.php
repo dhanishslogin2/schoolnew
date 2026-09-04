@@ -24,8 +24,8 @@
         <a href="<?php echo site_url('timetable/builder'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm">
           <span class="material-symbols-outlined text-[18px]">edit_calendar</span>Timetable Builder
         </a>
-        <a href="<?php echo site_url('attendance/periods'); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors">
-          <span class="material-symbols-outlined text-[18px]">schedule</span>Period Settings
+        <a href="<?php echo site_url('timetable/period_setup'); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors">
+          <span class="material-symbols-outlined text-[18px]">schedule</span>Period Setup
         </a>
       </div>
     </div>
@@ -145,7 +145,7 @@
           <h3 class="font-headline-md text-title-lg font-bold text-on-surface flex items-center gap-2">
             <span class="material-symbols-outlined text-secondary text-[22px]">schedule</span>School Periods
           </h3>
-          <a href="<?php echo site_url('attendance/periods'); ?>" class="text-[12px] text-primary hover:underline font-semibold">Manage</a>
+          <a href="<?php echo site_url('timetable/period_setup'); ?>" class="text-[12px] text-primary hover:underline font-semibold">Manage</a>
         </div>
 
         <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
@@ -194,7 +194,7 @@
                     <span class="font-medium text-on-surface"><?php echo html_escape($e->period_name); ?></span>
                     <span class="text-[11px] font-mono text-on-surface-variant block"><?php echo date('h:i A', strtotime($e->start_time)) . ' - ' . date('h:i A', strtotime($e->end_time)); ?></span>
                   </td>
-                  <td class="px-4 py-3 whitespace-nowrap font-bold text-on-surface"><?php echo html_escape($e->class_name . ' ' . $e->section_name); ?></td>
+                  <td class="px-4 py-3 whitespace-nowrap font-bold text-on-surface"><?php echo html_escape($e->class_name . ' ' . ($e->division_name ?: $e->section_name)); ?></td>
                   <td class="px-4 py-3 whitespace-nowrap font-semibold text-primary"><?php echo html_escape($e->subject_name); ?></td>
                   <td class="px-4 py-3 whitespace-nowrap text-on-surface"><?php echo html_escape($e->teacher_name); ?></td>
                   <td class="px-4 py-3 text-center whitespace-nowrap font-mono text-[12px] text-on-surface-variant"><?php echo html_escape($e->room_no ?: '—'); ?></td>

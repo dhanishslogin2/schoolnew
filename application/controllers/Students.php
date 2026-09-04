@@ -8,7 +8,9 @@ class Students extends MY_Controller {
         parent::__construct();
         $this->load->model('Student_model');
         $this->load->model('Student_academic_model');
+        $this->load->model('Academic_group_model');
         $this->load->model('Class_model');
+        $this->load->model('Division_model');
         $this->load->model('Section_model');
         $this->load->model('Academic_year_model');
         $this->load->model('Id_card_model');
@@ -58,17 +60,20 @@ class Students extends MY_Controller {
             $selected_class = (int)$classes_with_counts[0]->class_id;
         }
 
-        $sections = $this->Section_model->get_all();
+        $sections = $this->Division_model->get_all();
+        $groups   = $this->Academic_group_model->get_all();
 
         $this->render('pages/students/all_students', array(
             'title'               => 'All Students',
             'page_key'            => 'all-students',
             'breadcrumb'          => array('Student Management', 'All Students'),
             'years'               => $years,
+            'groups'              => $groups,
             'selected_year'       => $selected_year,
             'selected_class'      => $selected_class,
             'classes_with_counts' => $classes_with_counts,
             'sections'            => $sections,
+            'divisions'           => $sections,
         ));
     }
 
@@ -450,6 +455,7 @@ class Students extends MY_Controller {
             $this->session->set_userdata('student_registration_wizard', $wizard);
         }
 
+        $groups        = $this->Academic_group_model->get_all();
         $classes       = $this->Class_model->get_all($this->academic_year_id);
         $sections      = $this->Section_model->get_all();
         $academic_years = $this->Academic_year_model->get_all();
@@ -458,8 +464,10 @@ class Students extends MY_Controller {
             'title'          => 'Student Registration',
             'page_key'       => 'student-registration',
             'breadcrumb'     => array('Student Management', 'Student Registration'),
+            'groups'         => $groups,
             'classes'        => $classes,
             'sections'       => $sections,
+            'divisions'      => $sections,
             'academic_years' => $academic_years,
             'current_step'   => $step,
             'wizard'         => $wizard,
@@ -1384,9 +1392,10 @@ class Students extends MY_Controller {
             }
         }
 
-        $classes  = $this->Class_model->get_all($student->academic_year_id);
-        $sections = $this->Section_model->get_all();
-        $years    = $this->Academic_year_model->get_all();
+        $classes   = $this->Class_model->get_all($student->academic_year_id);
+        $sections  = $this->Division_model->get_all();
+        $years     = $this->Academic_year_model->get_all();
+        $groups    = $this->Academic_group_model->get_all();
 
         $this->render('pages/students/edit', array(
             'title'       => 'Edit Student',
@@ -1394,8 +1403,10 @@ class Students extends MY_Controller {
             'breadcrumb'  => array('Student Management', 'Edit Student'),
             'student'     => $student,
             'student_id'  => $student_id,
+            'groups'      => $groups,
             'classes'     => $classes,
             'sections'    => $sections,
+            'divisions'   => $sections,
             'years'       => $years,
             'photo_error' => $photo_error,
         ));
@@ -2651,10 +2662,9 @@ class Students extends MY_Controller {
             $to_class     = (int)$this->input->post('to_class_id');
             $to_sec_raw   = $this->input->post('to_section_id');
 
-            // Default Section A fallback if empty
+            // Default Division A fallback if empty
             if (empty($to_sec_raw)) {
-                $default_sec = $this->db->where('section_name', 'A')->where('status', 1)->where('is_deleted', 'n')->get('tbl_sections')->row();
-                $to_sec = $default_sec ? (int)$default_sec->section_id : 12;
+                $to_sec = $this->Division_model->get_default_division_id($to_class);
             } else {
                 $to_sec = (int)$to_sec_raw;
             }
@@ -2710,20 +2720,8 @@ class Students extends MY_Controller {
             $students = $this->Student_model->get_all($filters);
         }
 
-        $source_sections = $from_class ? $this->Section_model->get_by_class($from_class) : [];
-        if (empty($source_sections) && $from_class) {
-            $default_sec = $this->db->where('section_name', 'A')->where('status', 1)->where('is_deleted', 'n')->get('tbl_sections')->row();
-            $default_sec_id = $default_sec ? (int)$default_sec->section_id : 12;
-            $source_sections = [
-                (object)[
-                    'section_id'   => $default_sec_id,
-                    'section_name' => 'A',
-                    'class_id'     => $from_class,
-                    'is_default'   => true
-                ]
-            ];
-        }
-
+        $source_sections = $from_class ? $this->Division_model->get_divisions_for_class($from_class) : [];
+        $groups          = $this->Academic_group_model->get_all();
         $promotions_history = $this->Student_model->get_promotions();
 
         $this->render('pages/students/promotion', array(
@@ -2733,7 +2731,9 @@ class Students extends MY_Controller {
             'promotions_history' => $promotions_history,
             'classes'            => $classes,
             'source_sections'    => $source_sections,
+            'source_divisions'   => $source_sections,
             'years'              => $years,
+            'groups'             => $groups,
             'from_year'          => $from_year,
             'from_class'         => $from_class,
             'from_sec'           => $from_sec,
@@ -2748,9 +2748,9 @@ class Students extends MY_Controller {
         $this->require_permission('students.view');
         $class_id = (int)$this->input->get_post('class_id');
         
-        $sections = [];
+        $divisions = [];
         if ($class_id > 0) {
-            $sections = $this->Section_model->get_sections_for_class($class_id);
+            $divisions = $this->Division_model->get_divisions_for_class($class_id);
         }
 
         return $this->output
@@ -2758,9 +2758,37 @@ class Students extends MY_Controller {
             ->set_output(json_encode([
                 'status'          => true,
                 'class_id'        => $class_id,
-                'sections'        => $sections,
+                'divisions'       => $divisions,
+                'sections'        => $divisions,
                 'csrf_token_name' => $this->security->get_csrf_token_name(),
                 'csrf_hash'       => $this->security->get_csrf_hash()
+            ]));
+    }
+
+    public function get_divisions_ajax()
+    {
+        return $this->get_sections_ajax();
+    }
+
+    /**
+     * AJAX endpoint: fetch classes by academic group ID and year ID
+     */
+    public function get_classes_by_group_ajax()
+    {
+        $this->require_permission('students.view');
+        $academic_group_id = (int)$this->input->get_post('academic_group_id');
+        $academic_year_id  = (int)$this->input->get_post('academic_year_id') ?: (int)$this->academic_year_id;
+
+        $classes = $academic_group_id ? $this->Class_model->get_by_group($academic_group_id, $academic_year_id) : $this->Class_model->get_all($academic_year_id);
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'status'            => true,
+                'academic_group_id' => $academic_group_id,
+                'classes'           => $classes,
+                'csrf_token_name'   => $this->security->get_csrf_token_name(),
+                'csrf_hash'         => $this->security->get_csrf_hash()
             ]));
     }
 

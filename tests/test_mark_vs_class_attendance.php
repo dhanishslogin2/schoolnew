@@ -96,7 +96,8 @@ $app_js = file_get_contents(FCPATH . 'assets/app.js');
 assert_test("app.js has 'attendance-mark' route mapping to 'attendance/mark_attendance'", strpos($app_js, '"attendance-mark": "attendance/mark_attendance"') !== false);
 assert_test("app.js has 'Mark Attendance' menu item", strpos($app_js, '{ key: "attendance-mark", label: "Mark Attendance" }') !== false);
 assert_test("app.js has 'Class Attendance' menu item", strpos($app_js, '{ key: "attendance-class", label: "Class Attendance" }') !== false);
-assert_test("app.js groups 'Period Setup (+1 / +2)' under Attendance", strpos($app_js, '{ key: "attendance-periods", label: "Period Setup (+1 / +2)" }') !== false);
+assert_test("app.js has 'Period Attendance (+1 / +2)' under Attendance", strpos($app_js, '{ key: "attendance-period-wise", label: "Period Attendance (+1 / +2)" }') !== false);
+assert_test("app.js removed 'Period Setup (+1 / +2)' from Attendance", strpos($app_js, '{ key: "attendance-periods", label: "Period Setup (+1 / +2)" }') === false);
 assert_test("app.js groups 'Attendance Calendar' under Attendance", strpos($app_js, '{ key: "attendance-calendar", label: "Attendance Calendar" }') !== false);
 
 echo "\n=======================================================\n";

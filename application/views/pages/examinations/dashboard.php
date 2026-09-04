@@ -130,7 +130,7 @@
                     </div>
                     <div>
                       <div class="font-semibold text-on-surface text-body-md"><?php echo html_escape($ue->subject_name); ?></div>
-                      <div class="text-[12px] text-on-surface-variant"><?php echo html_escape($ue->exam_name); ?> • <span class="font-medium text-on-surface"><?php echo html_escape($ue->class_name . ' ' . $ue->section_name); ?></span></div>
+                      <div class="text-[12px] text-on-surface-variant"><?php echo html_escape($ue->exam_name); ?> • <span class="font-medium text-on-surface"><?php echo html_escape($ue->class_name . ' ' . ($ue->division_name ?: '')); ?></span></div>
                     </div>
                   </div>
                   <div class="text-right whitespace-nowrap">
@@ -167,7 +167,7 @@
                 <div class="p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/40 flex items-center justify-between gap-3">
                   <div>
                     <div class="font-semibold text-on-surface text-body-md"><?php echo html_escape($rr->exam_name); ?></div>
-                    <div class="text-[12px] text-on-surface-variant"><?php echo html_escape($rr->class_name . ' ' . $rr->section_name); ?> • Published: <?php echo date('d M Y', strtotime($rr->published_at)); ?></div>
+                    <div class="text-[12px] text-on-surface-variant"><?php echo html_escape($rr->class_name . ' ' . ($rr->division_name ?: '')); ?> • Published: <?php echo date('d M Y', strtotime($rr->published_at)); ?></div>
                   </div>
                   <div class="text-right">
                     <div class="font-bold text-body-md text-secondary"><?php echo $pass_pct; ?>% Pass</div>
@@ -215,7 +215,7 @@
                 ?>
                 <tr class="hover:bg-surface-container-low transition-colors">
                   <td class="px-4 py-3 whitespace-nowrap font-medium text-on-surface">
-                    <?php echo html_escape($ps->class_name . ' ' . $ps->section_name); ?>
+                    <?php echo html_escape($ps->class_name . ' ' . ($ps->division_name ?: '')); ?>
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap font-semibold text-on-surface">
                     <?php echo html_escape($ps->subject_name); ?>

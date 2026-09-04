@@ -21,8 +21,8 @@
         <p class="text-body-md font-body-md text-on-surface-variant mt-1">Configure institutional working days, maximum teacher workloads, consecutive class constraints, and period definitions.</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap shrink-0">
-        <a href="<?php echo site_url('attendance/periods'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm">
-          <span class="material-symbols-outlined text-[18px]">schedule</span>Manage School Periods
+        <a href="<?php echo site_url('timetable/period_setup'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm">
+          <span class="material-symbols-outlined text-[18px]">schedule</span>Period Setup
         </a>
       </div>
     </div>

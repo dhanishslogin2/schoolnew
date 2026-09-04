@@ -218,7 +218,7 @@ class Staff_model extends CI_Model {
                       (SELECT GROUP_CONCAT(DISTINCT sub.subject_name SEPARATOR ", ") FROM tbl_subjects sub WHERE sub.teacher_id = s.staff_id AND sub.status = 1) as subjects_handled,
                       (SELECT GROUP_CONCAT(DISTINCT sub.subject_name SEPARATOR ", ") FROM tbl_subjects sub WHERE sub.teacher_id = s.staff_id AND sub.status = 1) as subject_specialization,
                       (SELECT GROUP_CONCAT(DISTINCT c.class_name SEPARATOR ", ") FROM tbl_subjects sub JOIN tbl_classes c ON c.class_id = sub.class_id WHERE sub.teacher_id = s.staff_id AND sub.status = 1) as classes_handled,
-                      (SELECT GROUP_CONCAT(DISTINCT CONCAT(c.class_name, " ", div.division_name as division_name, div.division_name as section_name) SEPARATOR ", ") FROM tbl_sections sec JOIN tbl_classes c ON c.class_id = div.class_id WHERE sec.class_teacher_id = s.staff_id AND div.status = 1) as sections_handled')
+                      (SELECT GROUP_CONCAT(DISTINCT CONCAT(c.class_name, " - ", `div`.division_name) SEPARATOR ", ") FROM tbl_divisions `div` JOIN tbl_classes c ON c.class_id = `div`.class_id WHERE (`div`.class_teacher_id = s.staff_id OR `div`.division_id IN (SELECT ct.division_id FROM tbl_class_teachers ct WHERE ct.staff_id = s.staff_id AND ct.status = 1 AND ct.is_deleted = "n")) AND `div`.status = 1 AND `div`.is_deleted = "n") as sections_handled')
             ->from('tbl_staff s')
             ->join('tbl_departments d', 'd.department_id = s.department_id', 'left')
             ->join('tbl_designations dg', 'dg.designation_id = s.designation_id', 'left')
@@ -249,7 +249,11 @@ class Staff_model extends CI_Model {
             $this->db->having('subjects_handled LIKE', '%' . $filters['subject_name'] . '%');
         }
 
-        return $this->db->get()->result();
+        $results = $this->db->get()->result();
+        foreach ($results as $row) {
+            $row->divisions_handled = $row->sections_handled;
+        }
+        return $results;
     }
 
     public function get_teaching_staff($filters = array())

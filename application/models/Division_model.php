@@ -16,12 +16,14 @@ class Division_model extends CI_Model {
     public function get_all($class_id = NULL)
     {
         $this->db
-            ->select('div.*, c.class_name, s.full_name as class_teacher_name, (SELECT COUNT(student_id) FROM tbl_students WHERE division_id = div.division_id AND status = 1 AND is_deleted = \'n\') as student_count')
+            ->select('div.*, c.class_name, c.academic_group_id, ag.group_name, s.full_name as class_teacher_name, (SELECT COUNT(student_id) FROM tbl_students WHERE division_id = div.division_id AND status = 1 AND is_deleted = \'n\') as student_count')
             ->from('tbl_divisions div')
             ->join('tbl_classes c', 'c.class_id = div.class_id', 'left')
+            ->join('tbl_academic_groups ag', 'ag.academic_group_id = c.academic_group_id', 'left')
             ->join('tbl_staff s', 's.staff_id = div.class_teacher_id', 'left')
             ->where('div.status', 1)
             ->where('div.is_deleted', 'n')
+            ->order_by('ag.display_order', 'ASC')
             ->order_by('div.class_id', 'ASC')
             ->order_by('div.division_name', 'ASC');
 
@@ -33,7 +35,14 @@ class Division_model extends CI_Model {
 
         // If a specific class was requested and no divisions exist in DB, provide default Division 'A'
         if ($class_id && empty($results)) {
-            $class_row = $this->db->select('class_name')->where('class_id', (int)$class_id)->get('tbl_classes')->row();
+            $class_row = $this->db
+                ->select('c.class_name, c.academic_group_id, ag.group_name')
+                ->from('tbl_classes c')
+                ->join('tbl_academic_groups ag', 'ag.academic_group_id = c.academic_group_id', 'left')
+                ->where('c.class_id', (int)$class_id)
+                ->get()
+                ->row();
+
             $default_div_id = $this->get_default_division_id($class_id);
             $student_count = $this->db
                 ->where('class_id', (int)$class_id)
@@ -46,6 +55,8 @@ class Division_model extends CI_Model {
                     'class_id'           => (int)$class_id,
                     'division_name'      => 'A',
                     'class_name'         => $class_row ? $class_row->class_name : 'Class',
+                    'academic_group_id'  => $class_row ? $class_row->academic_group_id : null,
+                    'group_name'         => $class_row ? $class_row->group_name : null,
                     'class_teacher_id'   => null,
                     'class_teacher_name' => null,
                     'room_no'            => '',
@@ -292,6 +303,55 @@ class Division_model extends CI_Model {
         return $this->db
             ->where($this->primaryKey, $id)
             ->update($this->table, ['status' => 0, 'is_deleted' => 'y']);
+    }
+
+    /**
+     * Get grouped hierarchy for listing:
+     * Academic Group | Class | Divisions
+     *
+     * @param int|null $academic_group_id
+     * @param int|null $class_id
+     * @return array
+     */
+    public function get_hierarchy($academic_group_id = NULL, $class_id = NULL)
+    {
+        $this->db
+            ->select('c.class_id, c.class_name, c.academic_group_id, COALESCE(ag.group_name, "General") as group_name, COALESCE(ag.display_order, 99) as display_order')
+            ->from('tbl_classes c')
+            ->join('tbl_academic_groups ag', 'ag.academic_group_id = c.academic_group_id', 'left')
+            ->where('c.status', 1)
+            ->where('c.is_deleted', 'n')
+            ->order_by('display_order', 'ASC')
+            ->order_by('c.class_id', 'ASC');
+
+        if ($academic_group_id) {
+            $this->db->where('c.academic_group_id', (int)$academic_group_id);
+        }
+        if ($class_id) {
+            $this->db->where('c.class_id', (int)$class_id);
+        }
+
+        $classes = $this->db->get()->result();
+        $hierarchy = [];
+
+        foreach ($classes as $cls) {
+            $divisions = $this->get_all($cls->class_id);
+            $div_names = [];
+            foreach ($divisions as $d) {
+                $div_names[] = $d->division_name;
+            }
+            $hierarchy[] = (object)[
+                'academic_group_id' => $cls->academic_group_id,
+                'group_name'        => $cls->group_name,
+                'class_id'          => $cls->class_id,
+                'class_name'        => $cls->class_name,
+                'divisions'         => $divisions,
+                'division_names'    => implode(', ', $div_names),
+                'division_count'    => count($divisions),
+            ];
+        }
+
+        return $hierarchy;
     }
 
     // =========================================================================

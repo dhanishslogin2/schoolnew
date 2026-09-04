@@ -4,7 +4,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
         <h2 class="font-headline-md text-headline-md text-on-surface">Rank & Merit Positions</h2>
-        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Class and section merit lists computed using <?php echo html_escape($settings->rank_criteria); ?> with standard tie handling.</p>
+        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Class and division merit lists computed using <?php echo html_escape($settings->rank_criteria); ?> with standard tie handling.</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap shrink-0">
         <button onclick="window.print()" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors cursor-pointer">
@@ -44,9 +44,9 @@
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Division</label>
           <select name="division_id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <option value="">All Divisions</option>
-            <?php foreach ($sections as $s): ?>
-              <option value="<?php echo $s->section_id; ?>" <?php echo ($filters['section_id'] == $s->section_id) ? 'selected' : ''; ?>>
-                <?php echo html_escape($s->class_name . ' ' . $s->section_name); ?>
+            <?php foreach ($divisions as $s): ?>
+              <option value="<?php echo $s->division_id; ?>" <?php echo (($filters['division_id'] ?? '') == $s->division_id) ? 'selected' : ''; ?>>
+                <?php echo html_escape($s->class_name . ' ' . $s->division_name); ?>
               </option>
             <?php endforeach; ?>
           </select>
@@ -66,7 +66,7 @@
           <thead>
             <tr class="border-b border-outline-variant/60 bg-surface-container-low/50">
               <th class="text-center px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase w-20">Class Rank</th>
-              <th class="text-center px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase w-24">Section Rank</th>
+              <th class="text-center px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase w-24">Division Rank</th>
               <th class="text-center px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase w-16">Roll #</th>
               <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Student Name</th>
               <th class="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant uppercase">Class & Division</th>
@@ -94,7 +94,7 @@
                     <?php endif; ?>
                   </td>
                   <td class="px-4 py-3 text-center font-mono text-body-md font-semibold text-on-surface-variant">
-                    <?php echo $r->section_rank ?: '—'; ?>
+                    <?php echo ($r->division_rank ?? $r->section_rank) ?: '—'; ?>
                   </td>
                   <td class="px-4 py-3 text-center font-mono font-bold text-primary whitespace-nowrap">
                     <?php echo html_escape($r->roll_number ?: '—'); ?>
@@ -106,7 +106,7 @@
                     <span class="text-[12px] text-on-surface-variant block font-mono font-normal"><?php echo html_escape($r->admission_number); ?></span>
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap text-body-md text-on-surface-variant">
-                    <?php echo html_escape($r->class_name . ' ' . $r->section_name); ?>
+                    <?php echo html_escape($r->class_name . ' ' . ($r->division_name ?: '')); ?>
                   </td>
                   <td class="px-4 py-3 text-right font-mono text-body-md font-medium text-on-surface">
                     <?php echo number_format($r->total_marks, 1); ?> / <?php echo (int)$r->max_marks; ?>

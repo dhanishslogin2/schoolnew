@@ -144,7 +144,7 @@ class Result_model extends CI_Model {
 
         // 1. Calculate Class-Wise Ranks
         $this->db
-            ->select('result_id, student_id, class_id, section_id, ' . $sort_field . ' as score, pass_status')
+            ->select('result_id, student_id, class_id, division_id, ' . $sort_field . ' as score, pass_status')
             ->from($this->table)
             ->where('exam_id', $exam_id)
             ->order_by('class_id', 'ASC')
@@ -186,7 +186,7 @@ class Result_model extends CI_Model {
 
         // 2. Calculate Section-Wise Ranks
         $this->db
-            ->select('result_id, section_id, ' . $sort_field . ' as score, pass_status')
+            ->select('result_id, division_id, ' . $sort_field . ' as score, pass_status')
             ->from($this->table)
             ->where('exam_id', $exam_id)
             ->order_by('division_id', 'ASC')
@@ -198,7 +198,7 @@ class Result_model extends CI_Model {
         $sec_results = $this->db->get()->result();
         $by_section = [];
         foreach ($sec_results as $r) {
-            $by_section[$r->section_id][] = $r;
+            $by_section[$r->division_id][] = $r;
         }
 
         foreach ($by_section as $s_id => $rows) {
@@ -231,12 +231,12 @@ class Result_model extends CI_Model {
     {
         $this->db
             ->select('r.*, e.exam_name, e.status as exam_status, st.admission_number, st.roll_number, st.first_name, st.last_name, st.photo,
-                c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
+                c.class_name, d.division_name as division_name, y.year_name')
             ->from('tbl_student_results r')
             ->join('tbl_exams e', 'e.exam_id = r.exam_id', 'left')
             ->join('tbl_students st', 'st.student_id = r.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = r.class_id', 'left')
-            ->join('tbl_divisions div', 'div.division_id = r.division_id', 'left')
+            ->join('tbl_divisions d', 'd.division_id = r.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = r.academic_year_id', 'left')
             ->order_by('r.percentage', 'DESC')
             ->order_by('CAST(st.roll_number AS UNSIGNED)', 'ASC');
@@ -288,13 +288,13 @@ class Result_model extends CI_Model {
             ->select('r.*, e.exam_name, e.start_date as exam_start_date, e.end_date as exam_end_date, t.type_name as exam_type,
                 st.admission_number, st.roll_number, st.first_name, st.last_name, st.gender, st.date_of_birth, st.photo,
                 st.guardian_name, st.guardian_phone,
-                c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
+                c.class_name, d.division_name as division_name, y.year_name')
             ->from('tbl_student_results r')
             ->join('tbl_exams e', 'e.exam_id = r.exam_id', 'left')
             ->join('tbl_exam_types t', 't.exam_type_id = e.exam_type_id', 'left')
             ->join('tbl_students st', 'st.student_id = r.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = r.class_id', 'left')
-            ->join('tbl_divisions div', 'div.division_id = r.division_id', 'left')
+            ->join('tbl_divisions d', 'd.division_id = r.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = r.academic_year_id', 'left')
             ->where('r.result_id', $result_id)
             ->get()
@@ -364,10 +364,10 @@ class Result_model extends CI_Model {
     public function get_student_progress_report($student_id, $academic_year_id = NULL)
     {
         $student = $this->db
-            ->select('st.*, c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
+            ->select('st.*, c.class_name, d.division_name as division_name, y.year_name')
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
-            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
+            ->join('tbl_divisions d', 'd.division_id = st.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = st.academic_year_id', 'left')
             ->where('st.student_id', $student_id)
             ->get()

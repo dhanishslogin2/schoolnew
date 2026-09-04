@@ -56,7 +56,7 @@
       <span class="text-xs text-slate-500 font-medium">Filter current students to promote</span>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
       
       <!-- Source Academic Year -->
       <div>
@@ -71,6 +71,17 @@
         </select>
       </div>
 
+      <!-- Source Academic Group -->
+      <div>
+        <label for="src_group" class="block text-xs font-bold text-slate-700 mb-1.5">Source Academic Group</label>
+        <select id="src_group" onchange="onSourceGroupChanged(this.value)" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 cursor-pointer">
+          <option value="">All Groups</option>
+          <?php if (!empty($groups)): foreach ($groups as $grp): ?>
+            <option value="<?php echo $grp->academic_group_id; ?>"><?php echo html_escape($grp->group_name); ?></option>
+          <?php endforeach; endif; ?>
+        </select>
+      </div>
+
       <!-- Source Class -->
       <div>
         <label for="src_class" class="block text-xs font-bold text-slate-700 mb-1.5">Source Class / Grade</label>
@@ -79,7 +90,7 @@
             <option value="">No classes found for this year</option>
           <?php else: ?>
             <?php foreach ($classes as $cls): ?>
-              <option value="<?php echo $cls->class_id; ?>" <?php echo ($from_class == $cls->class_id) ? 'selected' : ''; ?>>
+              <option value="<?php echo $cls->class_id; ?>" data-group="<?php echo (int)($cls->academic_group_id ?? 0); ?>" <?php echo ($from_class == $cls->class_id) ? 'selected' : ''; ?>>
                 <?php echo html_escape($cls->class_name); ?>
               </option>
             <?php endforeach; ?>
@@ -87,14 +98,14 @@
         </select>
       </div>
 
-      <!-- Source Section (Class-Dependent) -->
+      <!-- Source Division (Class-Dependent) -->
       <div>
-        <label for="src_section" class="block text-xs font-bold text-slate-700 mb-1.5">Source Division</label>
+        <label for="src_division" class="block text-xs font-bold text-slate-700 mb-1.5">Source Division</label>
         <select id="src_division" onchange="onSourceDivisionChanged(this.value)" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 cursor-pointer">
           <option value="">All Divisions</option>
           <?php foreach ($source_sections as $sec): ?>
-            <option value="<?php echo $sec->section_id; ?>" <?php echo ($from_sec !== NULL && $from_sec == $sec->section_id) ? 'selected' : ''; ?>>
-              <?php echo html_escape($sec->section_name); ?>
+            <option value="<?php echo ($sec->division_id ?? $sec->section_id); ?>" <?php echo ($from_sec !== NULL && $from_sec == ($sec->division_id ?? $sec->section_id)) ? 'selected' : ''; ?>>
+              Division <?php echo html_escape(($sec->division_name ?? $sec->section_name)); ?>
             </option>
           <?php endforeach; ?>
         </select>
@@ -123,7 +134,7 @@
         <span class="text-xs text-slate-500 font-medium">Destination class and session for promoted students</span>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         
         <!-- Target Academic Year -->
         <div>
@@ -138,6 +149,17 @@
           </select>
         </div>
 
+        <!-- Target Academic Group -->
+        <div>
+          <label for="to_academic_group_id" class="block text-xs font-bold text-slate-700 mb-1.5">Target Academic Group</label>
+          <select id="to_academic_group_id" onchange="onTargetGroupChanged(this.value)" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 cursor-pointer">
+            <option value="">All Groups</option>
+            <?php if (!empty($groups)): foreach ($groups as $grp): ?>
+              <option value="<?php echo $grp->academic_group_id; ?>"><?php echo html_escape($grp->group_name); ?></option>
+            <?php endforeach; endif; ?>
+          </select>
+        </div>
+
         <!-- Target Class -->
         <div>
           <label for="to_class_id" class="block text-xs font-bold text-slate-700 mb-1.5">Target Class *</label>
@@ -146,7 +168,7 @@
               <option value="">No target classes available</option>
             <?php else: ?>
               <?php foreach ($classes as $cls): ?>
-                <option value="<?php echo $cls->class_id; ?>" <?php echo ($cls->class_id == $from_class) ? 'selected' : ''; ?>>
+                <option value="<?php echo $cls->class_id; ?>" data-group="<?php echo (int)($cls->academic_group_id ?? 0); ?>" <?php echo ($cls->class_id == $from_class) ? 'selected' : ''; ?>>
                   <?php echo html_escape($cls->class_name); ?>
                 </option>
               <?php endforeach; ?>
@@ -156,7 +178,7 @@
 
         <!-- Target Division (Dynamically Loaded via AJAX based on Target Class) -->
         <div>
-          <label for="to_section_id" class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+          <label for="to_division_id" class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
             <span>Target Division *</span>
             <span id="target-section-spinner" class="text-[10px] text-emerald-700 hidden flex items-center gap-1 font-normal">
               <span class="material-symbols-outlined text-[13px] animate-spin">progress_activity</span> Loading...
@@ -353,6 +375,49 @@
     }
   });
 
+  // Source Group Changed
+  function onSourceGroupChanged(groupId) {
+    if (!groupId) {
+      $('#src_class option').show();
+      return;
+    }
+    let firstVisibleClass = null;
+    $('#src_class option').each(function () {
+      const cGroup = $(this).attr('data-group');
+      if (cGroup == groupId) {
+        $(this).show();
+        if (!firstVisibleClass) firstVisibleClass = $(this).val();
+      } else {
+        $(this).hide();
+      }
+    });
+    if (firstVisibleClass) {
+      onSourceClassChanged(firstVisibleClass);
+    }
+  }
+
+  // Target Group Changed
+  function onTargetGroupChanged(groupId) {
+    if (!groupId) {
+      $('#to_class_id option').show();
+      return;
+    }
+    let firstVisibleClass = null;
+    $('#to_class_id option').each(function () {
+      const cGroup = $(this).attr('data-group');
+      if (cGroup == groupId) {
+        $(this).show();
+        if (!firstVisibleClass) firstVisibleClass = $(this).val();
+      } else {
+        $(this).hide();
+      }
+    });
+    if (firstVisibleClass) {
+      $('#to_class_id').val(firstVisibleClass);
+      onTargetClassChanged(firstVisibleClass);
+    }
+  }
+
   // Source Academic Year Changed
   function onSourceYearChanged(yearId) {
     window.location.href = '<?php echo site_url('students/promotion'); ?>?from_year=' + encodeURIComponent(yearId);
@@ -376,7 +441,7 @@
     if (!yearId) return;
 
     $('#to_class_id').html('<option value="">Loading classes...</option>').prop('disabled', true);
-    $('#to_section_id').html('<option value="">Select class first</option>').prop('disabled', true);
+    $('#to_division_id, #to_section_id').html('<option value="">Select class first</option>').prop('disabled', true);
 
     $.ajax({
       url: '<?php echo site_url('students/get_classes_ajax'); ?>',
@@ -392,10 +457,10 @@
         let classHtml = '';
         if (res && res.classes && res.classes.length > 0) {
           res.classes.forEach(function (c) {
-            classHtml += '<option value="' + c.class_id + '">' + $('<div>').text(c.class_name).html() + '</option>';
+            classHtml += '<option value="' + c.class_id + '" data-group="' + (c.academic_group_id || 0) + '">' + $('<div>').text(c.class_name).html() + '</option>';
           });
           $('#to_class_id').html(classHtml).prop('disabled', false);
-          // Load sections for first class
+          // Load divisions for first class
           loadTargetDivisions(res.classes[0].class_id);
         } else {
           $('#to_class_id').html('<option value="">No classes found for this year</option>').prop('disabled', true);
@@ -407,14 +472,14 @@
     });
   }
 
-  // Target Class Changed -> Dynamically Fetch and Populate Sections
+  // Target Class Changed -> Dynamically Fetch and Populate Divisions
   function onTargetClassChanged(classId) {
     loadTargetDivisions(classId);
   }
 
   function loadTargetDivisions(classId) {
     if (!classId) {
-      $('#to_section_id').html('<option value="12" selected>A</option>').prop('disabled', false);
+      $('#to_division_id, #to_section_id').html('<option value="12" selected>Division A</option>').prop('disabled', false);
       return;
     }
 
@@ -439,18 +504,17 @@
           }
           (res.divisions || res.sections).forEach(function (sec, idx) {
             const isAutoSelected = ((res.divisions || res.sections).length === 1 || idx === 0) ? 'selected' : '';
-            secHtml += '<option value="' + (sec.division_id || sec.section_id) + '" ' + isAutoSelected + '>' + $('<div>').text((sec.division_name || sec.section_name)).html() + '</option>';
+            secHtml += '<option value="' + (sec.division_id || sec.section_id) + '" ' + isAutoSelected + '>Division ' + $('<div>').text((sec.division_name || sec.section_name)).html() + '</option>';
           });
-          $('#to_section_id').html(secHtml).prop('disabled', false);
+          $('#to_division_id, #to_section_id').html(secHtml).prop('disabled', false);
         } else {
           // Fallback to default Division 'A'
-          $('#to_section_id').html('<option value="12" selected>A</option>').prop('disabled', false);
+          $('#to_division_id, #to_section_id').html('<option value="12" selected>Division A</option>').prop('disabled', false);
         }
       },
       error: function () {
         $('#target-section-spinner').addClass('hidden');
-        // On error, supply default Division 'A'
-        $('#to_section_id').html('<option value="12" selected>A</option>').prop('disabled', false);
+        $('#to_division_id, #to_section_id').html('<option value="12" selected>Division A</option>').prop('disabled', false);
       }
     });
   }

@@ -21,8 +21,8 @@
         <p class="text-body-md font-body-md text-on-surface-variant mt-1">Design and schedule class periods in real time with automated teacher collision and class clash prevention.</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap shrink-0">
-        <a href="<?php echo site_url('timetable/classes?academic_year_id=' . $selected_year . '&class_id=' . $selected_class . '&section_id=' . $selected_section); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors">
-          <span class="material-symbols-outlined text-[18px]">visibility</span>View Class Matrix
+        <a href="<?php echo site_url('timetable/classes?academic_year_id=' . $selected_year . '&class_id=' . $selected_class . '&division_id=' . ($selected_division ?? $selected_section)); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors">
+          <span class="material-symbols-outlined text-[18px]">view_timeline</span>View Timetable
         </a>
       </div>
     </div>
@@ -55,9 +55,9 @@
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Target Division</label>
           <select name="division_id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
-            <?php foreach ($sections as $s): ?>
-              <option value="<?php echo $s->section_id; ?>" <?php echo ($selected_section == $s->section_id) ? 'selected' : ''; ?>>
-                <?php echo html_escape($s->section_name); ?>
+            <?php foreach ($divisions as $s): ?>
+              <option value="<?php echo $s->division_id; ?>" <?php echo (($selected_division ?? $selected_section) == $s->division_id) ? 'selected' : ''; ?>>
+                <?php echo html_escape($s->division_name); ?>
               </option>
             <?php endforeach; ?>
           </select>
@@ -143,7 +143,7 @@
           </button>
         </div>
 
-        <?php echo form_open('timetable/builder?academic_year_id=' . $selected_year . '&class_id=' . $selected_class . '&section_id=' . $selected_section, array('class' => 'space-y-4')); ?>
+        <?php echo form_open('timetable/builder?academic_year_id=' . $selected_year . '&class_id=' . $selected_class . '&division_id=' . ($selected_division ?? $selected_section), array('class' => 'space-y-4')); ?>
           <input type="hidden" name="timetable_id" id="b-tt-id" value="0"/>
           <input type="hidden" name="day" id="b-tt-day" value=""/>
           <input type="hidden" name="period_id" id="b-tt-period" value=""/>
@@ -172,7 +172,7 @@
               <p class="mt-1 text-[12px] text-error flex items-center gap-1">
                 <span class="material-symbols-outlined text-[14px]">warning</span>
                 No subjects allocated for this class. Go to
-                <a href="<?php echo site_url('timetable/allocations?academic_year_id=' . $selected_year . '&class_id=' . $selected_class . '&section_id=' . $selected_section); ?>" class="underline text-primary ml-1">Subject Allocation</a> first.
+                <a href="<?php echo site_url('timetable/allocations?academic_year_id=' . $selected_year . '&class_id=' . $selected_class . '&division_id=' . ($selected_division ?? $selected_section)); ?>" class="underline text-primary ml-1">Subject Allocation</a> first.
               </p>
             <?php endif; ?>
           </div>

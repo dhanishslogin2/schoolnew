@@ -171,4 +171,9 @@ class Settings extends MY_Controller {
 
         redirect('settings/staff_documents');
     }
+
+    public function academic_groups()
+    {
+        redirect('academics/academic_groups');
+    }
 }

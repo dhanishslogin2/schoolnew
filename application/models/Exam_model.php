@@ -162,11 +162,11 @@ class Exam_model extends CI_Model {
         $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
         $today = date('Y-m-d');
         $this->db
-            ->select('s.*, e.exam_name, c.class_name, div.division_name as division_name, div.division_name as section_name, sub.subject_name, st.full_name as teacher_name')
+            ->select('s.*, e.exam_name, c.class_name, d.division_name as division_name, sub.subject_name, st.full_name as teacher_name')
             ->from('tbl_exam_schedules s')
             ->join('tbl_exams e', 'e.exam_id = s.exam_id', 'inner')
             ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
-            ->join('tbl_divisions div', 'div.division_id = s.section_id', 'left')
+            ->join('tbl_divisions d', 'd.division_id = s.division_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = s.subject_id', 'left')
             ->join('tbl_staff st', 'st.staff_id = s.teacher_id', 'left')
             ->where('s.exam_date >=', $today)
@@ -204,7 +204,7 @@ class Exam_model extends CI_Model {
         $year_id = $year_id ? (int)$year_id : get_current_academic_year_id();
 
         $this->db
-            ->select('s.schedule_id, s.exam_id, e.exam_name, c.class_id, c.class_name, div.division_id, div.division_name as division_name, div.division_name as section_name, sub.subject_name,
+            ->select('s.schedule_id, s.exam_id, e.exam_name, c.class_id, c.class_name, d.division_id, d.division_name as division_name, sub.subject_name,
                 COUNT(st.student_id) as total_students,
                 COUNT(m.mark_id) as entered_marks_count,
                 SUM(CASE WHEN m.status = "Approved" THEN 1 ELSE 0 END) as approved_count,
@@ -213,14 +213,14 @@ class Exam_model extends CI_Model {
             ->from('tbl_exam_schedules s')
             ->join('tbl_exams e', 'e.exam_id = s.exam_id', 'inner')
             ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
-            ->join('tbl_divisions div', 'div.division_id = s.section_id', 'left')
+            ->join('tbl_divisions d', 'd.division_id = s.division_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = s.subject_id', 'left')
-            ->join('tbl_students st', 'st.class_id = s.class_id AND st.division_id = s.section_id AND st.status = 1 AND st.academic_year_id = ' . (int)$year_id, 'left')
+            ->join('tbl_students st', 'st.class_id = s.class_id AND st.division_id = s.division_id AND st.status = 1 AND st.academic_year_id = ' . (int)$year_id, 'left')
             ->join('tbl_exam_marks m', 'm.schedule_id = s.schedule_id AND m.student_id = st.student_id', 'left')
             ->where('s.academic_year_id', $year_id)
             ->group_by('s.schedule_id')
             ->order_by('c.class_id', 'ASC')
-            ->order_by('div.division_id', 'ASC')
+            ->order_by('d.division_id', 'ASC')
             ->order_by('sub.subject_name', 'ASC');
 
         if ($exam_id) $this->db->where('s.exam_id', $exam_id);

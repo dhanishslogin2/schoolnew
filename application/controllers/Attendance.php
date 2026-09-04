@@ -10,6 +10,7 @@ class Attendance extends MY_Controller {
         $this->load->model('Period_model');
         $this->load->model('Attendance_notification_model');
         $this->load->model('Attendance_setting_model');
+        $this->load->model('Academic_group_model');
         $this->load->model('Class_model');
         $this->load->model('Division_model');
         $this->load->model('Section_model');
@@ -73,133 +74,12 @@ class Attendance extends MY_Controller {
     }
 
     /* =========================================================================
-       3. Period Management
+       3. Period Setup (Relocated to Timetable Module)
        ========================================================================= */
     public function periods($action = NULL, $id = NULL)
     {
-        if ($this->input->method() === 'post') {
-            $this->require_permission('attendance.mark');
-            $post_action = $this->input->post('action') ?: $action;
-
-            if ($post_action === 'add') {
-                $period_name   = trim($this->input->post('period_name', TRUE));
-                $period_number = (int)$this->input->post('period_number');
-                $start_time    = trim($this->input->post('start_time', TRUE));
-                $end_time      = trim($this->input->post('end_time', TRUE));
-                $status        = (int)$this->input->post('status');
-
-                // Validation
-                if (empty($period_name) || empty($period_number) || empty($start_time) || empty($end_time)) {
-                    $this->session->set_flashdata('error', 'All fields (Period Name, Period Number, Start Time, End Time) are required.');
-                    redirect('attendance/periods');
-                    return;
-                }
-
-                if (strtotime($end_time) <= strtotime($start_time)) {
-                    $this->session->set_flashdata('error', 'End Time must be later than Start Time.');
-                    redirect('attendance/periods');
-                    return;
-                }
-
-                if ($this->Period_model->check_number_exists($period_number)) {
-                    $this->session->set_flashdata('error', "Period number {$period_number} already exists. Period numbers must be unique.");
-                    redirect('attendance/periods');
-                    return;
-                }
-
-                $overlap = $this->Period_model->check_overlap($start_time, $end_time);
-                if ($overlap) {
-                    $this->session->set_flashdata('error', "Time range {$start_time} - {$end_time} overlaps with {$overlap->period_name} ({$overlap->start_time} - {$overlap->end_time}).");
-                    redirect('attendance/periods');
-                    return;
-                }
-
-                $this->Period_model->insert(array(
-                    'period_name'   => $period_name,
-                    'period_number' => $period_number,
-                    'start_time'    => $start_time,
-                    'end_time'      => $end_time,
-                    'period_order'  => $period_number,
-                    'status'        => $status,
-                ));
-
-                $this->session->set_flashdata('success', "Period '{$period_name}' created successfully.");
-                redirect('attendance/periods');
-                return;
-            }
-
-            if ($post_action === 'edit') {
-                $period_id     = (int)$this->input->post('period_id');
-                $period_name   = trim($this->input->post('period_name', TRUE));
-                $period_number = (int)$this->input->post('period_number');
-                $start_time    = trim($this->input->post('start_time', TRUE));
-                $end_time      = trim($this->input->post('end_time', TRUE));
-                $status        = (int)$this->input->post('status');
-
-                if (empty($period_name) || empty($period_number) || empty($start_time) || empty($end_time)) {
-                    $this->session->set_flashdata('error', 'All fields are required.');
-                    redirect('attendance/periods');
-                    return;
-                }
-
-                if (strtotime($end_time) <= strtotime($start_time)) {
-                    $this->session->set_flashdata('error', 'End Time must be later than Start Time.');
-                    redirect('attendance/periods');
-                    return;
-                }
-
-                if ($this->Period_model->check_number_exists($period_number, $period_id)) {
-                    $this->session->set_flashdata('error', "Period number {$period_number} is already in use by another period.");
-                    redirect('attendance/periods');
-                    return;
-                }
-
-                $overlap = $this->Period_model->check_overlap($start_time, $end_time, $period_id);
-                if ($overlap) {
-                    $this->session->set_flashdata('error', "Time range {$start_time} - {$end_time} overlaps with {$overlap->period_name} ({$overlap->start_time} - {$overlap->end_time}).");
-                    redirect('attendance/periods');
-                    return;
-                }
-
-                $this->Period_model->update($period_id, array(
-                    'period_name'   => $period_name,
-                    'period_number' => $period_number,
-                    'start_time'    => $start_time,
-                    'end_time'      => $end_time,
-                    'period_order'  => $period_number,
-                    'status'        => $status,
-                ));
-
-                $this->session->set_flashdata('success', "Period '{$period_name}' updated successfully.");
-                redirect('attendance/periods');
-                return;
-            }
-
-            if ($post_action === 'toggle_status') {
-                $period_id = (int)$this->input->post('period_id');
-                $this->Period_model->toggle_status($period_id);
-                $this->session->set_flashdata('success', 'Period status updated.');
-                redirect('attendance/periods');
-                return;
-            }
-
-            if ($post_action === 'delete') {
-                $period_id = (int)$this->input->post('period_id');
-                $this->Period_model->delete($period_id);
-                $this->session->set_flashdata('success', 'Period deleted successfully.');
-                redirect('attendance/periods');
-                return;
-            }
-        }
-
-        $periods = $this->Period_model->get_all(FALSE);
-
-        $this->render('pages/attendance/periods', array(
-            'title'      => 'Period Management',
-            'page_key'   => 'attendance-periods',
-            'breadcrumb' => array('Attendance', 'Period Management'),
-            'periods'    => $periods,
-        ));
+        // Period setup is now centralized under Timetable -> Period Setup
+        redirect('timetable/period_setup');
     }
 
     /* =========================================================================
@@ -291,7 +171,7 @@ class Attendance extends MY_Controller {
 
         $current_year = get_academic_year_record($year_id);
         $sections = $class_id ? $this->Division_model->get_by_class($class_id) : array();
-        $periods  = $this->Period_model->get_all(TRUE);
+        $periods  = $class_id ? $this->Period_model->get_by_class($class_id, TRUE, 'Period') : $this->Period_model->get_all(TRUE, 'Period');
         $years    = $this->Academic_year_model->get_all();
         $settings = $this->Attendance_setting_model->get_settings();
 
@@ -380,7 +260,7 @@ class Attendance extends MY_Controller {
 
         if ($is_higher_sec) {
             $subjects = $this->Subject_model->get_dropdown($class_id);
-            $periods  = $this->Period_model->get_all(TRUE);
+            $periods  = $this->Period_model->get_by_class($class_id, TRUE, 'Period');
         }
 
         // Handle POST submission for attendance marking/updating
@@ -459,6 +339,8 @@ class Attendance extends MY_Controller {
             'title'             => 'Mark Student Attendance',
             'page_key'          => 'attendance-mark',
             'breadcrumb'        => array('Attendance', 'Mark Attendance'),
+            'groups'            => $this->Academic_group_model->get_all(),
+            'selected_group_id' => $selected_class ? (int)$selected_class->academic_group_id : NULL,
             'classes'           => $classes,
             'years'             => $years,
             'divisions'         => $sections,
@@ -524,6 +406,8 @@ class Attendance extends MY_Controller {
             'title'             => 'Class Attendance',
             'page_key'          => 'attendance-class',
             'breadcrumb'        => array('Attendance', 'Class Attendance'),
+            'groups'            => $this->Academic_group_model->get_all(),
+            'selected_group_id' => $selected_class ? (int)$selected_class->academic_group_id : NULL,
             'classes'           => $classes,
             'years'             => $years,
             'divisions'         => $sections,
@@ -597,6 +481,8 @@ class Attendance extends MY_Controller {
             'title'            => 'View Attendance',
             'page_key'         => 'attendance-class',
             'breadcrumb'       => array('Attendance', 'Class Attendance', 'View Attendance'),
+            'groups'           => $this->Academic_group_model->get_all(),
+            'selected_group_id' => $selected_class ? (int)$selected_class->academic_group_id : NULL,
             'years'            => $years,
             'classes'          => $classes,
             'divisions'        => $sections,

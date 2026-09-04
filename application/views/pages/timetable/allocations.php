@@ -57,9 +57,9 @@
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Filter Division</label>
           <select name="division_id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <option value="">All Divisions</option>
-            <?php foreach ($sections as $s): ?>
-              <option value="<?php echo $s->section_id; ?>" <?php echo ($selected_section == $s->section_id) ? 'selected' : ''; ?>>
-                <?php echo html_escape($s->section_name); ?>
+            <?php foreach ($divisions as $d): ?>
+              <option value="<?php echo $d->division_id; ?>" <?php echo (($selected_division ?? $selected_section) == $d->division_id) ? 'selected' : ''; ?>>
+                <?php echo html_escape(($selected_class ? '' : ($d->class_name . ' - ')) . $d->division_name); ?>
               </option>
             <?php endforeach; ?>
           </select>
@@ -97,7 +97,7 @@
                 ?>
                 <tr class="hover:bg-surface-container-low transition-colors">
                   <td class="px-4 py-3 font-bold text-on-surface whitespace-nowrap">
-                    <?php echo html_escape($a->class_name . ' ' . $a->section_name); ?>
+                    <?php echo html_escape($a->class_name . ' ' . ($a->division_name ?: '')); ?>
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap">
                     <strong class="text-primary"><?php echo html_escape($a->subject_name); ?></strong>
@@ -160,7 +160,7 @@
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Class *</label>
-              <select name="class_id" id="modal-alloc-class" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+              <select name="class_id" id="modal-alloc-class" onchange="loadModalDivisions(this.value)" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
                 <?php foreach ($classes as $c): ?>
                   <option value="<?php echo $c->class_id; ?>"><?php echo html_escape($c->class_name); ?></option>
                 <?php endforeach; ?>
@@ -168,9 +168,8 @@
             </div>
             <div>
               <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Division *</label>
-              <select name="division_id" id="modal-alloc-sec" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                <option value="1">A</option>
-                <option value="2">B</option>
+              <select name="division_id" id="modal-alloc-div" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                <option value="">-- Select Division --</option>
               </select>
             </div>
           </div>
@@ -213,10 +212,42 @@
     </div>
 
     <script>
+      function loadModalDivisions(classId, selectedDivId) {
+        var divSelect = document.getElementById('modal-alloc-div');
+        if (!classId) {
+          divSelect.innerHTML = '<option value="">-- Select Division --</option>';
+          return;
+        }
+        fetch('<?php echo site_url("timetable/ajax_get_divisions"); ?>?class_id=' + classId)
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            var html = '<option value="">-- Select Division --</option>';
+            if (data && data.length > 0) {
+              data.forEach(function(d) {
+                var id = d.division_id || d.section_id;
+                var name = d.division_name || d.section_name;
+                var sel = (selectedDivId && selectedDivId == id) ? 'selected' : '';
+                html += '<option value="' + id + '" ' + sel + '>' + name + '</option>';
+              });
+            } else {
+              html = '<option value="">No divisions available</option>';
+            }
+            divSelect.innerHTML = html;
+          })
+          .catch(function(err) {
+            console.error("Error loading divisions:", err);
+          });
+      }
+
       function openAllocModal() {
         document.getElementById('modal-alloc-id').value = '0';
         document.getElementById('modal-alloc-title').textContent = 'Set Subject Weekly Quota';
         document.getElementById('modal-alloc-target').value = '6';
+
+        var classSelect = document.getElementById('modal-alloc-class');
+        if (classSelect && classSelect.value) {
+          loadModalDivisions(classSelect.value, null);
+        }
 
         var modal = document.getElementById('alloc-modal');
         modal.classList.remove('hidden');
@@ -227,7 +258,8 @@
         document.getElementById('modal-alloc-id').value = a.allocation_id;
         document.getElementById('modal-alloc-title').textContent = 'Edit Subject Weekly Quota';
         document.getElementById('modal-alloc-class').value = a.class_id;
-        document.getElementById('modal-alloc-sec').value = a.section_id;
+        var divId = a.division_id || a.section_id;
+        loadModalDivisions(a.class_id, divId);
         document.getElementById('modal-alloc-sub').value = a.subject_id;
         document.getElementById('modal-alloc-teacher').value = a.teacher_id || '';
         document.getElementById('modal-alloc-target').value = a.weekly_periods_target;

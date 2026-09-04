@@ -220,7 +220,7 @@ class Examinations extends MY_Controller {
             $exam_id          = (int)$this->input->post('exam_id');
             $academic_year_id = (int)($this->input->post('academic_year_id') ?: $this->academic_year_id);
             $class_id         = (int)$this->input->post('class_id');
-            $section_id       = (int)$this->input->post('division_id');
+            $division_id      = (int)($this->input->post('division_id') ?: $this->input->post('section_id'));
             $subject_id       = (int)$this->input->post('subject_id');
             $teacher_id       = $this->input->post('teacher_id') ? (int)$this->input->post('teacher_id') : NULL;
             $exam_date        = $this->input->post('exam_date');
@@ -231,7 +231,7 @@ class Examinations extends MY_Controller {
             $room_no          = trim($this->input->post('room_no'));
             $instructions     = trim($this->input->post('instructions'));
 
-            if (empty($exam_id) || empty($class_id) || empty($section_id) || empty($subject_id) || empty($exam_date)) {
+            if (empty($exam_id) || empty($class_id) || empty($division_id) || empty($subject_id) || empty($exam_date)) {
                 $this->session->set_flashdata('error', 'Please fill all required schedule fields.');
                 redirect('examinations/schedules');
             }
@@ -246,8 +246,8 @@ class Examinations extends MY_Controller {
                 redirect('examinations/schedules');
             }
 
-            if ($this->Exam_schedule_model->check_duplicate_schedule($exam_id, $class_id, $section_id, $subject_id, $schedule_id)) {
-                $this->session->set_flashdata('error', 'A schedule for this exam, class, section, and subject already exists.');
+            if ($this->Exam_schedule_model->check_duplicate_schedule($exam_id, $class_id, $division_id, $subject_id, $schedule_id)) {
+                $this->session->set_flashdata('error', 'A schedule for this exam, class, division, and subject already exists.');
                 redirect('examinations/schedules');
             }
 
@@ -262,7 +262,7 @@ class Examinations extends MY_Controller {
                 'exam_id'          => $exam_id,
                 'academic_year_id' => $academic_year_id,
                 'class_id'         => $class_id,
-                'division_id'       => $section_id,
+                'division_id'      => $division_id,
                 'subject_id'       => $subject_id,
                 'teacher_id'       => $teacher_id,
                 'exam_date'        => $exam_date,
@@ -323,7 +323,7 @@ class Examinations extends MY_Controller {
             $exam_id          = (int)$this->input->post('exam_id');
             $academic_year_id = (int)($this->input->post('academic_year_id') ?: $this->academic_year_id);
             $class_id         = (int)$this->input->post('class_id');
-            $section_id       = (int)$this->input->post('division_id');
+            $division_id      = (int)($this->input->post('division_id') ?: $this->input->post('section_id'));
             $subjects         = $this->input->post('subjects') ?: [];
 
             $saved_count = 0;
@@ -335,7 +335,7 @@ class Examinations extends MY_Controller {
                     'exam_id'          => $exam_id,
                     'academic_year_id' => $academic_year_id,
                     'class_id'         => $class_id,
-                    'division_id'       => $section_id,
+                    'division_id'      => $division_id,
                     'subject_id'       => (int)$sub_id,
                     'teacher_id'       => !empty($row['teacher_id']) ? (int)$row['teacher_id'] : NULL,
                     'exam_date'        => $row['exam_date'] ?: date('Y-m-d'),
@@ -350,7 +350,7 @@ class Examinations extends MY_Controller {
                 $existing = $this->db
                     ->where('exam_id', $exam_id)
                     ->where('class_id', $class_id)
-                    ->where('division_id', $section_id)
+                    ->where('division_id', $division_id)
                     ->where('subject_id', $sub_id)
                     ->get('tbl_exam_schedules')
                     ->row();
@@ -364,19 +364,19 @@ class Examinations extends MY_Controller {
             }
 
             $this->session->set_flashdata('success', "Allocated and updated {$saved_count} subjects for this exam.");
-            redirect("examinations/allocations?exam_id={$exam_id}&class_id={$class_id}&section_id={$section_id}");
+            redirect("examinations/allocations?exam_id={$exam_id}&class_id={$class_id}&division_id={$division_id}");
         }
 
-        $exam_id    = $this->input->get('exam_id');
-        $class_id   = $this->input->get('class_id');
-        $section_id = $this->input->get('division_id');
+        $exam_id     = $this->input->get('exam_id');
+        $class_id    = $this->input->get('class_id');
+        $division_id = $this->input->get('division_id') ?: $this->input->get('section_id');
 
         $allocated_map = [];
-        if ($exam_id && $class_id && $section_id) {
+        if ($exam_id && $class_id && $division_id) {
             $schedules = $this->Exam_schedule_model->get_all([
-                'exam_id'    => $exam_id,
-                'class_id'   => $class_id,
-                'division_id' => $section_id
+                'exam_id'     => $exam_id,
+                'class_id'    => $class_id,
+                'division_id' => $division_id
             ]);
             foreach ($schedules as $s) {
                 $allocated_map[$s->subject_id] = $s;
@@ -384,18 +384,19 @@ class Examinations extends MY_Controller {
         }
 
         $data = [
-            'title'          => 'Subject Allocation',
-            'page_key'       => 'exam-allocations',
-            'exams'          => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
-            'classes'        => $this->Class_model->get_all($this->academic_year_id),
-            'divisions'      => $this->Division_model->get_all(),
-            'sections'       => $this->Division_model->get_all(),
-            'subjects'       => $this->Subject_model->get_all(),
-            'teachers'       => $this->Staff_model->get_teachers(),
-            'allocated_map'  => $allocated_map,
-            'selected_exam'  => $exam_id,
-            'selected_class' => $class_id,
-            'selected_section' => $section_id
+            'title'             => 'Subject Allocation',
+            'page_key'          => 'exam-allocations',
+            'exams'             => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
+            'classes'           => $this->Class_model->get_all($this->academic_year_id),
+            'divisions'         => $this->Division_model->get_all(),
+            'sections'          => $this->Division_model->get_all(),
+            'subjects'          => $this->Subject_model->get_all(),
+            'teachers'          => $this->Staff_model->get_teachers(),
+            'allocated_map'     => $allocated_map,
+            'selected_exam'     => $exam_id,
+            'selected_class'    => $class_id,
+            'selected_division' => $division_id,
+            'selected_section'  => $division_id
         ];
 
         $this->render('pages/examinations/allocations', $data);
@@ -424,17 +425,17 @@ class Examinations extends MY_Controller {
             redirect('examinations/marks_entry?schedule_id=' . $schedule_id);
         }
 
-        // If schedule_id is not provided, look up by exam + class + section + subject
-        $exam_id    = $this->input->get('exam_id');
-        $class_id   = $this->input->get('class_id');
-        $section_id = $this->input->get('division_id');
-        $subject_id = $this->input->get('subject_id');
+        // If schedule_id is not provided, look up by exam + class + division + subject
+        $exam_id     = $this->input->get('exam_id');
+        $class_id    = $this->input->get('class_id');
+        $division_id = $this->input->get('division_id') ?: $this->input->get('section_id');
+        $subject_id  = $this->input->get('subject_id');
 
-        if (!$schedule_id && $exam_id && $class_id && $section_id && $subject_id) {
+        if (!$schedule_id && $exam_id && $class_id && $division_id && $subject_id) {
             $sched = $this->db
                 ->where('exam_id', $exam_id)
                 ->where('class_id', $class_id)
-                ->where('division_id', $section_id)
+                ->where('division_id', $division_id)
                 ->where('subject_id', $subject_id)
                 ->get('tbl_exam_schedules')
                 ->row();
@@ -444,19 +445,20 @@ class Examinations extends MY_Controller {
         $marksheet = $schedule_id ? $this->Exam_mark_model->get_marks_sheet($schedule_id) : NULL;
 
         $data = [
-            'title'          => 'Marks Entry',
-            'page_key'       => 'marks-entry',
-            'marksheet'      => $marksheet,
-            'schedule_id'    => $schedule_id,
-            'exams'          => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
-            'classes'        => $this->Class_model->get_all($this->academic_year_id),
-            'divisions'      => $this->Division_model->get_all(),
-            'sections'       => $this->Division_model->get_all(),
-            'subjects'       => $this->Subject_model->get_all(),
-            'selected_exam'  => $exam_id,
-            'selected_class' => $class_id,
-            'selected_section' => $section_id,
-            'selected_subject' => $subject_id
+            'title'             => 'Marks Entry',
+            'page_key'          => 'marks-entry',
+            'marksheet'         => $marksheet,
+            'schedule_id'       => $schedule_id,
+            'exams'             => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
+            'classes'           => $this->Class_model->get_all($this->academic_year_id),
+            'divisions'         => $this->Division_model->get_all(),
+            'sections'          => $this->Division_model->get_all(),
+            'subjects'          => $this->Subject_model->get_all(),
+            'selected_exam'     => $exam_id,
+            'selected_class'    => $class_id,
+            'selected_division' => $division_id,
+            'selected_section'  => $division_id,
+            'selected_subject'  => $subject_id
         ];
 
         $this->render('pages/examinations/marks_entry', $data);
@@ -855,14 +857,14 @@ class Examinations extends MY_Controller {
             header('Content-Type: text/csv');
             header('Content-Disposition: attachment; filename="examination_report_' . date('Ymd_His') . '.csv"');
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Roll No', 'Admission No', 'Student', 'Class', 'Section', 'Total Marks', 'Max Marks', 'Percentage', 'Grade', 'Status', 'Rank']);
+            fputcsv($out, ['Roll No', 'Admission No', 'Student', 'Class', 'Division', 'Total Marks', 'Max Marks', 'Percentage', 'Grade', 'Status', 'Rank']);
             foreach ($results as $r) {
                 fputcsv($out, [
                     $r->roll_number,
                     $r->admission_number,
                     $r->first_name . ' ' . $r->last_name,
                     $r->class_name,
-                    $r->section_name,
+                    $r->division_name,
                     $r->total_marks,
                     $r->max_marks,
                     $r->percentage . '%',
