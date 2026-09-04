@@ -331,14 +331,15 @@ class Staff_model extends CI_Model {
         // 2. Workload (Only for teachers)
         if ($staff->staff_type === 'teacher') {
             $staff->workload = $this->db
-                ->select('w.*, sub.subject_name, c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
+                ->select('w.*, sub.subject_name, c.class_name, div.division_name, y.year_name')
                 ->from('tbl_teacher_workload w')
                 ->join('tbl_subjects sub', 'sub.subject_id = w.subject_id', 'left')
                 ->join('tbl_classes c', 'c.class_id = w.class_id', 'left')
-                ->join('tbl_divisions div', 'div.division_id = w.section_id', 'left')
+                ->join('tbl_divisions div', 'div.division_id = w.division_id', 'left')
                 ->join('tbl_academic_years y', 'y.academic_year_id = w.academic_year_id', 'left')
                 ->where('w.staff_id', $id)
                 ->where('w.status', 1)
+                ->where('w.is_deleted', 'n')
                 ->order_by('w.workload_id', 'DESC')
                 ->get()
                 ->result();
@@ -474,14 +475,15 @@ class Staff_model extends CI_Model {
     public function get_workloads($filters = array())
     {
         $this->db
-            ->select('w.*, s.full_name, s.employee_code, sub.subject_name, c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
+            ->select('w.*, s.full_name, s.employee_code, sub.subject_name, c.class_name, div.division_name, y.year_name')
             ->from('tbl_teacher_workload w')
             ->join('tbl_staff s', 's.staff_id = w.staff_id', 'left')
             ->join('tbl_subjects sub', 'sub.subject_id = w.subject_id', 'left')
             ->join('tbl_classes c', 'c.class_id = w.class_id', 'left')
-            ->join('tbl_divisions div', 'div.division_id = w.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = w.division_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = w.academic_year_id', 'left')
             ->where('w.status', 1)
+            ->where('w.is_deleted', 'n')
             ->where('s.staff_type', 'teacher')
             ->order_by('w.workload_id', 'DESC');
 
@@ -494,11 +496,30 @@ class Staff_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('w.class_id', $filters['class_id']);
         }
+        if (!empty($filters['division_id'])) {
+            $this->db->where('w.division_id', $filters['division_id']);
+        }
         if (!empty($filters['subject_id'])) {
             $this->db->where('w.subject_id', $filters['subject_id']);
         }
 
         return $this->db->get()->result();
+    }
+
+    public function get_workload_by_id($id)
+    {
+        return $this->db
+            ->select('w.*, s.full_name, s.employee_code, sub.subject_name, c.class_name, div.division_name, y.year_name')
+            ->from('tbl_teacher_workload w')
+            ->join('tbl_staff s', 's.staff_id = w.staff_id', 'left')
+            ->join('tbl_subjects sub', 'sub.subject_id = w.subject_id', 'left')
+            ->join('tbl_classes c', 'c.class_id = w.class_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = w.division_id', 'left')
+            ->join('tbl_academic_years y', 'y.academic_year_id = w.academic_year_id', 'left')
+            ->where('w.workload_id', (int)$id)
+            ->where('w.is_deleted', 'n')
+            ->get()
+            ->row();
     }
 
     public function add_workload($data)
@@ -507,9 +528,19 @@ class Staff_model extends CI_Model {
         return $this->db->insert_id();
     }
 
+    public function update_workload($id, $data)
+    {
+        $data['updated_at'] = date('Y-m-d H:i:s');
+        return $this->db->where('workload_id', (int)$id)->update('tbl_teacher_workload', $data);
+    }
+
     public function delete_workload($id)
     {
-        return $this->db->where('workload_id', $id)->update('tbl_teacher_workload', ['is_deleted' => 'y', 'status' => 0]);
+        return $this->db->where('workload_id', (int)$id)->update('tbl_teacher_workload', [
+            'is_deleted' => 'y',
+            'status'     => 0,
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
     }
 
     /* =========================================================================

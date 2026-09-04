@@ -956,19 +956,27 @@ class Staff extends MY_Controller {
             // Ensure selected staff is a teacher
             $staffMember = $this->Staff_model->get_by_id($staff_id);
             if ($staffMember && $staffMember->staff_type === 'teacher') {
-                $this->Staff_model->add_workload(array(
+                $workload_id = $this->input->post('workload_id');
+                $workload_data = array(
                     'staff_id'         => $staff_id,
                     'academic_year_id' => $this->input->post('academic_year_id') ?: 1,
                     'subject_id'       => $this->input->post('subject_id'),
                     'class_id'         => $this->input->post('class_id'),
-                    'division_id'       => $this->input->post('division_id') ?: NULL,
+                    'division_id'      => $this->input->post('division_id') ?: ($this->input->post('section_id') ?: NULL),
                     'periods'          => $this->input->post('periods') ? intval($this->input->post('periods')) : 5,
                     'working_days'     => $this->input->post('working_days') ?: 'Mon,Tue,Wed,Thu,Fri',
                     'remarks'          => $this->input->post('remarks'),
                     'status'           => 1,
-                    'created_at'       => date('Y-m-d H:i:s')
-                ));
-                $this->session->set_flashdata('success', 'Teacher workload assigned successfully!');
+                );
+
+                if (!empty($workload_id)) {
+                    $this->Staff_model->update_workload($workload_id, $workload_data);
+                    $this->session->set_flashdata('success', 'Teacher workload updated successfully!');
+                } else {
+                    $workload_data['created_at'] = date('Y-m-d H:i:s');
+                    $this->Staff_model->add_workload($workload_data);
+                    $this->session->set_flashdata('success', 'Teacher workload assigned successfully!');
+                }
             } else {
                 $this->session->set_flashdata('error', 'Workload can only be assigned to teaching staff.');
             }
@@ -979,6 +987,7 @@ class Staff extends MY_Controller {
             'staff_id'         => $this->input->get('staff_id'),
             'academic_year_id' => $this->input->get('academic_year_id'),
             'class_id'         => $this->input->get('class_id'),
+            'division_id'      => $this->input->get('division_id') ?: $this->input->get('section_id'),
             'subject_id'       => $this->input->get('subject_id'),
         );
 
@@ -986,7 +995,7 @@ class Staff extends MY_Controller {
         $teachers  = $this->Staff_model->get_teachers();
         $years     = $this->Academic_year_model->get_all();
         $classes   = $this->Class_model->get_all();
-        $sections  = $this->Division_model->get_all();
+        $divisions = $this->Division_model->get_all();
         $subjects  = $this->Subject_model->get_all();
 
         $this->render('pages/staff/workload', array(
@@ -997,8 +1006,8 @@ class Staff extends MY_Controller {
             'teachers'    => $teachers,
             'years'       => $years,
             'classes'     => $classes,
-            'divisions'    => $this->Division_model->get_all(),
-            'sections'    => $sections,
+            'divisions'   => $divisions,
+            'sections'    => $divisions,
             'subjects'    => $subjects,
         ));
     }

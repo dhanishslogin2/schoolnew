@@ -88,7 +88,9 @@ class Subject_model extends CI_Model {
             ->where('sa.academic_year_id', (int)$year_id)
             ->where('sa.class_id', (int)$class_id)
             ->where('sa.status', 1)
+            ->where('sa.is_deleted', 'n')
             ->where('sub.status', 1)
+            ->where('sub.is_deleted', 'n')
             ->order_by('sub.subject_name', 'ASC');
 
         if ($section_id) {
@@ -98,20 +100,36 @@ class Subject_model extends CI_Model {
         $via_allocations = $this->db->get()->result();
 
         if (!empty($via_allocations)) {
-            return $via_allocations;
+            // Avoid duplicate subjects if allocated across multiple divisions/sections
+            $unique_subjects = [];
+            foreach ($via_allocations as $sub) {
+                if (!isset($unique_subjects[$sub->subject_id])) {
+                    $unique_subjects[$sub->subject_id] = $sub;
+                }
+            }
+            return array_values($unique_subjects);
         }
 
         // Fallback: subjects linked directly to class in tbl_subjects
-        return $this->db
+        $fallback = $this->db
             ->select('sub.*, c.class_name, s.full_name as teacher_name')
             ->from('tbl_subjects sub')
             ->join('tbl_classes c', 'c.class_id = sub.class_id', 'left')
             ->join('tbl_staff s', 's.staff_id = sub.teacher_id', 'left')
             ->where('sub.class_id', (int)$class_id)
             ->where('sub.status', 1)
+            ->where('sub.is_deleted', 'n')
             ->order_by('sub.subject_name', 'ASC')
             ->get()
             ->result();
+
+        $unique_fallback = [];
+        foreach ($fallback as $sub) {
+            if (!isset($unique_fallback[$sub->subject_id])) {
+                $unique_fallback[$sub->subject_id] = $sub;
+            }
+        }
+        return array_values($unique_fallback);
     }
 
     public function get_by_id($id)

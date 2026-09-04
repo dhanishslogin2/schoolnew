@@ -39,7 +39,7 @@ const PAGE_URLS = {
   "teachers": "staff/teachers",
   "non-teaching-staff": "staff/non_teaching",
   "departments-designations": "staff/departments_designations",
-  "departments": "staff/departments",
+  // "departments": "staff/departments",
   "designations": "staff/designations",
   "staff-documents": "staff/documents",
   "teacher-workload": "staff/workload",
@@ -359,7 +359,7 @@ const NAV = [
       {
         label: "Organization",
         items: [
-          { key: "departments", label: "Departments" },
+          // { key: "departments", label: "Departments" },
           { key: "designations", label: "Designations" },
         ],
       },

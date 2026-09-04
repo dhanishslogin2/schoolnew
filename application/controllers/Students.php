@@ -52,12 +52,18 @@ class Students extends MY_Controller {
             $selected_year = (int)$years[0]->academic_year_id;
         }
 
-        $classes_with_counts = $this->Student_model->get_classes_with_student_count($selected_year, 1);
-        $selected_class = $this->input->get('class_id') ? (int)$this->input->get('class_id') : NULL;
+        $status_param = $this->input->get('status');
+        $status_for_counts = ($status_param === 'All') ? 'All' : (($status_param !== NULL && $status_param !== '') ? (int)$status_param : 1);
 
-        // If no class is explicitly selected in URL, choose the first class with students or first available class
-        if ($selected_class === NULL && !empty($classes_with_counts)) {
-            $selected_class = (int)$classes_with_counts[0]->class_id;
+        $classes_with_counts = $this->Student_model->get_classes_with_student_count($selected_year, $status_for_counts);
+
+        $raw_class = $this->input->get('class_id');
+        if ($raw_class === 'all' || $raw_class === '0' || $raw_class === '') {
+            $selected_class = NULL;
+        } elseif ($raw_class !== NULL) {
+            $selected_class = (int)$raw_class;
+        } else {
+            $selected_class = NULL;
         }
 
         $sections = $this->Division_model->get_all();
@@ -148,6 +154,9 @@ class Students extends MY_Controller {
         $status_raw = $this->input->post('status');
         $status = ($status_raw !== NULL && $status_raw !== '' && $status_raw !== 'All' && is_numeric($status_raw)) ? (int)$status_raw : NULL;
 
+        $gender_raw = $this->input->post('gender') ?: $this->input->get('gender');
+        $gender = (!empty($gender_raw) && in_array($gender_raw, array('Male', 'Female', 'Other'))) ? $gender_raw : NULL;
+
         $custom_search = $this->input->post('custom_search');
         $effective_search = !empty($custom_search) ? trim($custom_search) : $search_val;
 
@@ -156,6 +165,7 @@ class Students extends MY_Controller {
             'class_id'         => $class_id,
             'section_id'       => $section_id,
             'status'           => $status,
+            'gender'           => $gender,
             'search'           => $effective_search,
         );
 
@@ -163,6 +173,7 @@ class Students extends MY_Controller {
             'academic_year_id' => $academic_year_id,
             'class_id'         => $class_id,
             'status'           => $status,
+            'gender'           => $gender,
         );
 
         $records_total    = $this->Student_model->count_all_students($total_filters);
@@ -2657,10 +2668,12 @@ class Students extends MY_Controller {
             $student_ids  = $this->input->post('student_ids');
             $from_year    = (int)$this->input->post('from_academic_year_id');
             $from_class   = (int)$this->input->post('from_class_id');
-            $from_sec     = $this->input->post('from_section_id') ? (int)$this->input->post('from_section_id') : NULL;
+            $from_sec     = ($this->input->post('from_division_id') !== NULL && $this->input->post('from_division_id') !== '')
+                ? (int)$this->input->post('from_division_id')
+                : ($this->input->post('from_section_id') ? (int)$this->input->post('from_section_id') : NULL);
             $to_year      = (int)$this->input->post('to_academic_year_id');
             $to_class     = (int)$this->input->post('to_class_id');
-            $to_sec_raw   = $this->input->post('to_section_id');
+            $to_sec_raw   = $this->input->post('to_division_id') ?: $this->input->post('to_section_id');
 
             // Default Division A fallback if empty
             if (empty($to_sec_raw)) {
@@ -2675,14 +2688,14 @@ class Students extends MY_Controller {
             if (!empty($student_ids) && is_array($student_ids)) {
                 if (empty($to_class)) {
                     $this->session->set_flashdata('error', 'Please select a valid Target Class.');
-                    redirect('students/promotion?from_year=' . $from_year . '&from_class=' . $from_class . ($from_sec ? '&from_section=' . $from_sec : ''));
+                    redirect('students/promotion?from_year=' . $from_year . '&from_class=' . $from_class . ($from_sec ? '&from_division=' . $from_sec : ''));
                     return;
                 }
 
                 $result = $this->Student_model->promote_students($student_ids, $from_year, $from_class, $from_sec, $to_year, $to_class, $to_sec, $promo_type, $remarks);
                 if ($result) {
                     $this->session->set_flashdata('success', count($student_ids) . ' student(s) ' . strtolower($promo_type) . ' successfully.');
-                    redirect('students/promotion?from_year=' . $to_year . '&from_class=' . $to_class . '&from_section=' . $to_sec);
+                    redirect('students/promotion?from_year=' . $to_year . '&from_class=' . $to_class . '&from_division=' . $to_sec);
                     return;
                 }
             } else {
@@ -2704,9 +2717,11 @@ class Students extends MY_Controller {
             $from_class = !empty($classes) ? (int)$classes[0]->class_id : NULL;
         }
 
-        $from_sec = ($this->input->get('from_section') !== NULL && $this->input->get('from_section') !== '' && is_numeric($this->input->get('from_section'))) ? (int)$this->input->get('from_section') : NULL;
+        $from_sec = ($this->input->get('from_division') !== NULL && $this->input->get('from_division') !== '' && is_numeric($this->input->get('from_division')))
+            ? (int)$this->input->get('from_division')
+            : (($this->input->get('from_section') !== NULL && $this->input->get('from_section') !== '' && is_numeric($this->input->get('from_section'))) ? (int)$this->input->get('from_section') : NULL);
 
-        // Fetch students strictly for selected academic year + class (+ section if specified)
+        // Fetch students strictly for selected academic year + class (+ division if specified)
         $students = [];
         if ($from_class) {
             $filters = array(
@@ -2715,7 +2730,8 @@ class Students extends MY_Controller {
                 'status'           => 1
             );
             if ($from_sec !== NULL) {
-                $filters['section_id'] = $from_sec;
+                $filters['division_id'] = $from_sec;
+                $filters['section_id']  = $from_sec;
             }
             $students = $this->Student_model->get_all($filters);
         }

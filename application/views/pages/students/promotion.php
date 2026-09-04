@@ -121,6 +121,7 @@
     <input type="hidden" name="from_academic_year_id" value="<?php echo (int)$from_year; ?>"/>
     <input type="hidden" name="from_class_id" value="<?php echo (int)$from_class; ?>"/>
     <input type="hidden" name="from_division_id" value="<?php echo ($from_sec !== NULL) ? (int)$from_sec : ''; ?>"/>
+    <input type="hidden" name="from_section_id" value="<?php echo ($from_sec !== NULL) ? (int)$from_sec : ''; ?>"/>
 
     <!-- =========================================================================
          STEP 2: TARGET CLASS, DIVISION & ACTION
@@ -340,7 +341,7 @@
                   <div class="text-[11px] font-mono text-emerald-800"><?php echo html_escape($ph->admission_number); ?></div>
                 </td>
                 <td class="p-3 align-middle text-slate-700">
-                  <span class="font-bold"><?php echo html_escape($ph->from_class . (!empty($ph->from_division) ? ' - ' . $ph->from_division : '')); ?></span>
+                  <span class="font-bold"><?php echo html_escape($ph->from_class . (!empty(($ph->from_division ?? $ph->from_section)) ? ' - ' . ($ph->from_division ?? $ph->from_section) : '')); ?></span>
                   <span class="text-[11px] text-slate-500 block">[<?php echo html_escape($ph->from_year); ?>]</span>
                 </td>
                 <td class="p-3 align-middle text-slate-900">

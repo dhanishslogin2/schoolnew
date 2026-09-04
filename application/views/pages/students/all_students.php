@@ -256,6 +256,13 @@
   let allStudentsDataTable  = null;
 
   document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('status')) {
+      const s = urlParams.get('status');
+      if (s !== null && s !== '') {
+        $('#all-students-status-filter').val(s);
+      }
+    }
     initAllStudentsDataTable();
   });
 
@@ -275,8 +282,8 @@
           d.academic_year_id = currentAcademicYearId;
           d.class_id         = (currentClassId !== null && currentClassId !== '' && currentClassId > 0) ? currentClassId : '';
           d.division_id = $('#all-students-division-filter').val() || '';
-            d.section_id  = d.division_id;
-          d.status           = $('#all-students-status-filter').val() || '';
+          d.status           = $('#all-students-status-filter').val() || (new URLSearchParams(window.location.search)).get('status') || '';
+          d.gender           = (new URLSearchParams(window.location.search)).get('gender') || '';
           d.custom_search    = $('#all-students-search-input').val() || '';
           if (window.CSRF_TOKEN_NAME && window.CSRF_HASH) {
             d[window.CSRF_TOKEN_NAME] = window.CSRF_HASH;

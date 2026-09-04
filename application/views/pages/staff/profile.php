@@ -135,7 +135,7 @@
                   <?php foreach ($staff->workload as $wl): ?>
                     <tr>
                       <td class="px-3.5 py-2 font-medium text-on-surface"><?php echo html_escape($wl->subject_name); ?></td>
-                      <td class="px-3.5 py-2 text-on-surface"><?php echo html_escape($wl->class_name . ' ' . $wl->section_name); ?></td>
+                      <td class="px-3.5 py-2 text-on-surface"><?php echo html_escape($wl->class_name . (!empty($wl->division_name) ? ' ' . $wl->division_name : '')); ?></td>
                       <td class="px-3.5 py-2 font-mono font-semibold text-primary"><?php echo $wl->periods; ?></td>
                       <td class="px-3.5 py-2 text-on-surface-variant text-[12px]"><?php echo html_escape($wl->working_days); ?></td>
                     </tr>
@@ -283,7 +283,7 @@
                 <?php foreach ($staff->workload as $wl): ?>
                   <tr>
                     <td class="px-4 py-3 font-semibold text-on-surface"><?php echo html_escape($wl->subject_name); ?></td>
-                    <td class="px-4 py-3 text-on-surface"><?php echo html_escape($wl->class_name . ' ' . $wl->section_name); ?></td>
+                    <td class="px-4 py-3 text-on-surface"><?php echo html_escape($wl->class_name . (!empty($wl->division_name) ? ' ' . $wl->division_name : '')); ?></td>
                     <td class="px-4 py-3 font-mono font-bold text-primary"><?php echo $wl->periods; ?> periods</td>
                     <td class="px-4 py-3 text-on-surface-variant text-[13px]"><?php echo html_escape($wl->working_days); ?></td>
                     <td class="px-4 py-3 text-on-surface-variant text-[13px]"><?php echo html_escape($wl->remarks ?: '—'); ?></td>

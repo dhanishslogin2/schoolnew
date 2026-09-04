@@ -325,7 +325,7 @@ class Examinations extends MY_Controller {
             'classes'        => $this->Class_model->get_all($filters['academic_year_id']),
             'divisions'      => $divisions,
             'sections'       => $divisions,
-            'subjects'       => $this->Subject_model->get_all(),
+            'subjects'       => !empty($class_id) ? $this->Subject_model->get_for_class($filters['academic_year_id'], (int)$class_id) : $this->Subject_model->get_all(),
             'teachers'       => $this->Staff_model->get_teachers(),
             'filters'        => $filters
         ];
@@ -349,91 +349,198 @@ class Examinations extends MY_Controller {
             $exam_id          = (int)$this->input->post('exam_id');
             $academic_year_id = (int)($this->input->post('academic_year_id') ?: $this->academic_year_id);
             $class_id         = (int)$this->input->post('class_id');
-            $division_id      = (int)($this->input->post('division_id') ?: $this->input->post('section_id'));
+            $raw_div          = $this->input->post('division_id') !== NULL ? $this->input->post('division_id') : $this->input->post('section_id');
             $subjects         = $this->input->post('subjects') ?: [];
 
-            $saved_count = 0;
+            if (empty($exam_id) || empty($class_id) || empty($raw_div)) {
+                $this->session->set_flashdata('error', 'Please select Exam, Class, and Division.');
+                redirect('examinations/allocations');
+            }
+
+            // Check that at least one subject is selected
+            $has_selected_subject = false;
+            foreach ($subjects as $row) {
+                if (!empty($row['selected'])) {
+                    $has_selected_subject = true;
+                    break;
+                }
+            }
+
+            if (!$has_selected_subject) {
+                $this->session->set_flashdata('error', 'Please select at least one subject to schedule.');
+                redirect("examinations/allocations?exam_id={$exam_id}&class_id={$class_id}&division_id={$raw_div}");
+            }
+
+            // Determine target divisions based on division selection
+            if ($raw_div === 'all') {
+                $target_divisions = $this->Division_model->get_all($class_id);
+                if (empty($target_divisions)) {
+                    $this->session->set_flashdata('error', 'No divisions found for the selected class.');
+                    redirect("examinations/allocations?exam_id={$exam_id}&class_id={$class_id}");
+                }
+            } else {
+                $div_id = (int)$raw_div;
+                if (!$this->Division_model->is_valid_division_for_class($div_id, $class_id)) {
+                    $this->session->set_flashdata('error', 'The selected division does not belong to the selected class.');
+                    redirect("examinations/allocations?exam_id={$exam_id}&class_id={$class_id}");
+                }
+                $target_divisions = [(object)['division_id' => $div_id]];
+            }
+
+            // Begin database transaction for atomicity
+            $this->db->trans_start();
+
+            // Validate that submitted subjects belong to the selected class
+            $valid_class_subjects = $this->Subject_model->get_for_class($academic_year_id, (int)$class_id);
+            $valid_subject_ids = array_map(function($s) { return (int)$s->subject_id; }, $valid_class_subjects);
+
+            $saved_count    = 0;
+            $division_count = count($target_divisions);
+            $subject_count  = 0;
 
             foreach ($subjects as $sub_id => $row) {
                 if (empty($row['selected'])) continue;
-
-                $save_data = [
-                    'exam_id'          => $exam_id,
-                    'academic_year_id' => $academic_year_id,
-                    'class_id'         => $class_id,
-                    'division_id'      => $division_id,
-                    'subject_id'       => (int)$sub_id,
-                    'teacher_id'       => !empty($row['teacher_id']) ? (int)$row['teacher_id'] : NULL,
-                    'exam_date'        => $row['exam_date'] ?: date('Y-m-d'),
-                    'start_time'       => $row['start_time'] ?: '09:00:00',
-                    'end_time'         => $row['end_time'] ?: '12:00:00',
-                    'max_marks'        => (float)($row['max_marks'] ?: 100.00),
-                    'passing_marks'    => (float)($row['passing_marks'] ?: 35.00),
-                    'room_no'          => $row['room_no'] ?: 'Hall 1'
-                ];
-
-                // Upsert
-                $existing = $this->db
-                    ->where('exam_id', $exam_id)
-                    ->where('class_id', $class_id)
-                    ->where('division_id', $division_id)
-                    ->where('subject_id', $sub_id)
-                    ->get('tbl_exam_schedules')
-                    ->row();
-
-                if ($existing) {
-                    $this->Exam_schedule_model->update($existing->schedule_id, $save_data);
-                } else {
-                    $this->Exam_schedule_model->insert($save_data);
+                if (!in_array((int)$sub_id, $valid_subject_ids, true)) {
+                    continue; // Skip any subject not belonging to this class
                 }
-                $saved_count++;
+                $subject_count++;
+
+                $exam_date     = $row['exam_date'] ?: date('Y-m-d');
+                $start_time    = $row['start_time'] ?: '09:00:00';
+                $end_time      = $row['end_time'] ?: '12:00:00';
+                $max_marks     = (float)($row['max_marks'] ?: 100.00);
+                $passing_marks = (float)($row['passing_marks'] ?: 35.00);
+                $room_no       = trim($row['room_no'] ?? 'Hall 1');
+                $teacher_id    = !empty($row['teacher_id']) ? (int)$row['teacher_id'] : NULL;
+
+                foreach ($target_divisions as $div) {
+                    $cur_div_id = (int)$div->division_id;
+
+                    $save_data = [
+                        'exam_id'          => $exam_id,
+                        'academic_year_id' => $academic_year_id,
+                        'class_id'         => $class_id,
+                        'division_id'      => $cur_div_id,
+                        'subject_id'       => (int)$sub_id,
+                        'teacher_id'       => $teacher_id,
+                        'exam_date'        => $exam_date,
+                        'start_time'       => $start_time,
+                        'end_time'         => $end_time,
+                        'max_marks'        => $max_marks,
+                        'passing_marks'    => $passing_marks,
+                        'room_no'          => $room_no
+                    ];
+
+                    // Upsert per division and subject
+                    $existing = $this->db
+                        ->where('exam_id', $exam_id)
+                        ->where('class_id', $class_id)
+                        ->where('division_id', $cur_div_id)
+                        ->where('subject_id', (int)$sub_id)
+                        ->get('tbl_exam_schedules')
+                        ->row();
+
+                    if ($existing) {
+                        $this->Exam_schedule_model->update($existing->schedule_id, $save_data);
+                    } else {
+                        $this->Exam_schedule_model->insert($save_data);
+                    }
+                    $saved_count++;
+                }
             }
 
-            $this->session->set_flashdata('success', "Saved schedule for {$saved_count} subjects for this exam.");
-            redirect("examinations/allocations?exam_id={$exam_id}&class_id={$class_id}&division_id={$division_id}");
+            $this->db->trans_complete();
+
+            if ($this->db->trans_status() === FALSE) {
+                $this->session->set_flashdata('error', 'Database error occurred while saving schedules. All changes rolled back.');
+                redirect("examinations/allocations?exam_id={$exam_id}&class_id={$class_id}&division_id={$raw_div}");
+            }
+
+            // Accurate success message based on scope
+            if ($raw_div === 'all') {
+                if ($subject_count > 1) {
+                    $success_msg = "{$saved_count} exam schedules created successfully for {$division_count} divisions and {$subject_count} subjects.";
+                } else {
+                    $success_msg = "{$saved_count} exam schedules created successfully for {$division_count} divisions.";
+                }
+            } else {
+                $success_msg = "Saved schedule for {$saved_count} subjects for this exam.";
+            }
+
+            $this->session->set_flashdata('success', $success_msg);
+            redirect("examinations/allocations?exam_id={$exam_id}&class_id={$class_id}&division_id={$raw_div}");
         }
 
         $exam_id     = $this->input->get('exam_id');
         $class_id    = $this->input->get('class_id');
-        $raw_div     = $this->input->get('division_id') ?: $this->input->get('section_id');
-        $division_id = (!empty($raw_div) && $raw_div !== 'all') ? $raw_div : NULL;
+        $raw_div     = $this->input->get('division_id') !== NULL ? $this->input->get('division_id') : $this->input->get('section_id');
 
-        if (!empty($class_id) && !empty($division_id)) {
-            if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
-                $division_id = NULL;
+        $divisions = !empty($class_id) ? $this->Division_model->get_all($class_id) : [];
+
+        $division_id = NULL;
+        if (!empty($raw_div)) {
+            if ($raw_div === 'all') {
+                $division_id = !empty($divisions) ? 'all' : NULL;
+            } else {
+                $division_id = (!empty($class_id) && $this->Division_model->is_valid_division_for_class((int)$raw_div, $class_id)) ? (int)$raw_div : NULL;
             }
-        } elseif (empty($class_id)) {
-            $division_id = NULL;
         }
 
         $allocated_map = [];
         if ($exam_id && $class_id && $division_id) {
-            $schedules = $this->Exam_schedule_model->get_all([
-                'exam_id'     => $exam_id,
-                'class_id'    => $class_id,
-                'division_id' => $division_id
-            ]);
-            foreach ($schedules as $s) {
-                $allocated_map[$s->subject_id] = $s;
+            if ($division_id === 'all') {
+                $schedules = $this->Exam_schedule_model->get_all([
+                    'exam_id'  => $exam_id,
+                    'class_id' => $class_id
+                ]);
+                foreach ($schedules as $s) {
+                    if (!isset($allocated_map[$s->subject_id])) {
+                        $allocated_map[$s->subject_id] = $s;
+                    }
+                }
+            } else {
+                $schedules = $this->Exam_schedule_model->get_all([
+                    'exam_id'     => $exam_id,
+                    'class_id'    => $class_id,
+                    'division_id' => $division_id
+                ]);
+                foreach ($schedules as $s) {
+                    $allocated_map[$s->subject_id] = $s;
+                }
             }
         }
 
-        $divisions = !empty($class_id) ? $this->Division_model->get_all($class_id) : [];
+        $classes = $this->Class_model->get_all($this->academic_year_id);
+        $selected_class_name = '';
+        foreach ($classes as $c) {
+            if ($c->class_id == $class_id) {
+                $selected_class_name = $c->class_name;
+                break;
+            }
+        }
+
+        // Fetch subjects assigned to this class only
+        $subjects = [];
+        if (!empty($class_id)) {
+            $subjects = $this->Subject_model->get_for_class($this->academic_year_id, (int)$class_id);
+        }
 
         $data = [
-            'title'             => 'Add Schedule',
-            'page_key'          => 'exam-allocations',
-            'exams'             => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
-            'classes'           => $this->Class_model->get_all($this->academic_year_id),
-            'divisions'         => $divisions,
-            'sections'          => $divisions,
-            'subjects'          => $this->Subject_model->get_all(),
-            'teachers'          => $this->Staff_model->get_teachers(),
-            'allocated_map'     => $allocated_map,
-            'selected_exam'     => $exam_id,
-            'selected_class'    => $class_id,
-            'selected_division' => $division_id,
-            'selected_section'  => $division_id
+            'title'               => 'Add Schedule',
+            'page_key'            => 'exam-allocations',
+            'exams'               => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
+            'classes'             => $classes,
+            'divisions'           => $divisions,
+            'sections'            => $divisions,
+            'subjects'            => $subjects,
+            'teachers'            => $this->Staff_model->get_teachers(),
+            'allocated_map'       => $allocated_map,
+            'selected_exam'       => $exam_id,
+            'selected_class'      => $class_id,
+            'selected_class_name' => $selected_class_name,
+            'selected_division'   => $division_id,
+            'selected_section'    => $division_id,
+            'academic_year_id'    => $this->academic_year_id
         ];
 
         $this->render('pages/examinations/allocations', $data);
