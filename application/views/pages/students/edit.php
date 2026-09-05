@@ -112,7 +112,8 @@
           
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1.5">Date of Birth</label>
-          <input type="date" name="date_of_birth" value="<?php echo html_escape($student->date_of_birth); ?>" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
+          <input type="date" id="date_of_birth" name="date_of_birth" max="<?php echo date('Y-m-d'); ?>" value="<?php echo html_escape($student->date_of_birth); ?>" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary placeholder-on-surface-variant/50"/>
+          <p class="field-error text-error text-[11px] mt-1 hidden" id="err-date_of_birth"></p>
         </div>
           
         <div>
@@ -258,6 +259,7 @@
 (function ($) {
     'use strict';
 
+    var SERVER_TODAY = "<?php echo date('Y-m-d'); ?>";
     var cropperInstance = null;
     var $fileInput      = $('#student_image_file');
     var $chooseBtn      = $('#btn-choose-photo');
@@ -531,6 +533,29 @@
                 $('#edit_division_id').html('<option value="12" selected>Division A</option>');
             }
         });
+    });
+
+    $('#date_of_birth').on('change input', function () {
+        var dob = $(this).val();
+        if (dob && dob > SERVER_TODAY) {
+            $('#err-date_of_birth').text('Date of Birth cannot be a future date.').removeClass('hidden');
+            $(this).addClass('!border-error');
+        } else {
+            $('#err-date_of_birth').addClass('hidden').text('');
+            $(this).removeClass('!border-error');
+        }
+    });
+
+    $('#student-edit-form').on('submit', function (e) {
+        var dob = $('#date_of_birth').val();
+        if (dob && dob > SERVER_TODAY) {
+            e.preventDefault();
+            $('#err-date_of_birth').text('Date of Birth cannot be a future date.').removeClass('hidden');
+            $('#date_of_birth').addClass('!border-error');
+            $('#date_of_birth').focus();
+            alert('Date of Birth cannot be a future date.');
+            return false;
+        }
     });
 
 })(jQuery);

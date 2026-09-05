@@ -699,6 +699,7 @@ class Students extends MY_Controller {
 
         $this->form_validation->set_rules('admission_number', 'Admission Number', 'required|trim');
         $this->form_validation->set_rules('first_name',       'First Name',        'required|trim');
+        $this->form_validation->set_rules('date_of_birth',    'Date of Birth',     'trim|callback_validate_dob');
 
         if ($this->form_validation->run() !== TRUE) {
             $this->output
@@ -1094,6 +1095,17 @@ class Students extends MY_Controller {
             return;
         }
 
+        $sd = isset($wizard['student_details']) ? $wizard['student_details'] : array();
+        if (!empty($sd['date_of_birth']) && $sd['date_of_birth'] > date('Y-m-d')) {
+            $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode(array(
+                    'success' => FALSE,
+                    'errors'  => array('date_of_birth' => 'Date of Birth cannot be a future date.'),
+                )));
+            return;
+        }
+
         // Mark submitted immediately to prevent duplicate concurrent posts
         $wizard['submitted'] = TRUE;
         $this->session->set_userdata('student_registration_wizard', $wizard);
@@ -1330,6 +1342,31 @@ class Students extends MY_Controller {
         return $errors;
     }
 
+    /* ─────────────────────────────────────────────────────────────────────────
+       Validation Callback: Date of Birth cannot be a future date
+    ───────────────────────────────────────────────────────────────────────── */
+    public function validate_dob($dob)
+    {
+        $dob = trim((string)$dob);
+        if ($dob === '') {
+            return TRUE;
+        }
+
+        $d = DateTime::createFromFormat('Y-m-d', $dob);
+        if (!$d || $d->format('Y-m-d') !== $dob) {
+            $this->form_validation->set_message('validate_dob', 'Please enter a valid Date of Birth.');
+            return FALSE;
+        }
+
+        $today = date('Y-m-d');
+        if ($dob > $today) {
+            $this->form_validation->set_message('validate_dob', 'Date of Birth cannot be a future date.');
+            return FALSE;
+        }
+
+        return TRUE;
+    }
+
 
     /* =========================================================================
        3. Student Edit
@@ -1355,6 +1392,7 @@ class Students extends MY_Controller {
         if ($this->input->method() === 'post') {
             $this->form_validation->set_rules('first_name', 'First Name', 'required|trim');
             $this->form_validation->set_rules('admission_number', 'Admission Number', 'required|trim');
+            $this->form_validation->set_rules('date_of_birth', 'Date of Birth', 'trim|callback_validate_dob');
 
             if ($this->form_validation->run() === TRUE) {
                 $photo_result = $this->process_student_photo($student_id);

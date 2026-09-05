@@ -96,8 +96,9 @@
         </div>
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1.5">Date of Birth</label>
-          <input type="date" name="date_of_birth" value="<?php echo wval($sd, 'date_of_birth', '2012-06-15'); ?>"
+          <input type="date" id="date_of_birth" name="date_of_birth" max="<?php echo date('Y-m-d'); ?>" value="<?php echo wval($sd, 'date_of_birth', '2012-06-15'); ?>"
                  class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary"/>
+          <p class="field-error text-error text-[11px] mt-1 hidden" id="err-date_of_birth"></p>
         </div>
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1.5">Blood Group</label>
@@ -636,6 +637,7 @@
     var CSRF_NAME = window.CSRF_TOKEN_NAME || 'csrf_token';
     var CSRF_HASH = window.CSRF_HASH || '';
     var CURRENT_YEAR = <?php echo date('Y'); ?>;
+    var SERVER_TODAY = "<?php echo date('Y-m-d'); ?>";
 
     function refreshCsrf(data) {
         if (data && data.csrf_token_name && data.csrf_hash) {
@@ -930,11 +932,52 @@
             $('#err-student_image').addClass('hidden').text('');
         });
 
+        function validateStep1() {
+            var ok = true;
+            clearErrors();
+
+            if (!$.trim($('#admission_number').val())) {
+                $('#err-admission_number').text('Admission Number is required.').removeClass('hidden');
+                $('#admission_number').addClass('!border-error');
+                ok = false;
+            }
+
+            if (!$.trim($('#first_name').val())) {
+                $('#err-first_name').text('First Name is required.').removeClass('hidden');
+                $('#first_name').addClass('!border-error');
+                ok = false;
+            }
+
+            var dob = $('#date_of_birth').val();
+            if (dob && dob > SERVER_TODAY) {
+                $('#err-date_of_birth').text('Date of Birth cannot be a future date.').removeClass('hidden');
+                $('#date_of_birth').addClass('!border-error');
+                ok = false;
+            }
+
+            return ok;
+        }
+
+        $('#date_of_birth').on('change input', function () {
+            var dob = $(this).val();
+            if (dob && dob > SERVER_TODAY) {
+                $('#err-date_of_birth').text('Date of Birth cannot be a future date.').removeClass('hidden');
+                $(this).addClass('!border-error');
+            } else {
+                $('#err-date_of_birth').addClass('hidden').text('');
+                $(this).removeClass('!border-error');
+            }
+        });
+
         $s1.on('submit', function (e) {
             e.preventDefault();
+            if (!validateStep1()) {
+                showAlert('error', 'Please fix the errors below.');
+                return;
+            }
             var $btn = $('#btn-step1-next').prop('disabled', true)
                          .html('<span class="material-symbols-outlined text-[18px] animate-spin">autorenew</span>Saving…');
-            clearErrors(); $('#wizard-alert').addClass('hidden');
+            $('#wizard-alert').addClass('hidden');
             $.ajax({ url: BASE_URL + 'students/wizard_step1', method: 'POST', data: formDataWithCsrf($s1), dataType: 'json',
                 success: function (r) {
                     refreshCsrf(r);
