@@ -284,7 +284,7 @@ class Fee_model extends CI_Model {
             'student_id'        => $student_id,
             'academic_year_id'  => $academic_year_id,
             'class_id'          => $student->class_id,
-            'division_id'        => $student->section_id,
+            'division_id'       => $student->division_id ?? ($student->section_id ?? null),
             'fee_structure_id'  => $fee_structure_id,
             'original_amount'   => $orig,
             'discount_amount'   => $disc,
@@ -309,12 +309,179 @@ class Fee_model extends CI_Model {
         return $id;
     }
 
+    /**
+     * Get active students for a class and division in an academic year,
+     * along with their fee assignment status for a given fee structure.
+     *
+     * @param int $academic_year_id
+     * @param int $class_id
+     * @param int $division_id
+     * @param int|null $fee_structure_id
+     * @return array
+     */
+    public function get_students_for_bulk_assignment($academic_year_id, $class_id, $division_id, $fee_structure_id = null)
+    {
+        $academic_year_id = (int)$academic_year_id;
+        $class_id = (int)$class_id;
+        $division_id = (int)$division_id;
+        $fee_structure_id = $fee_structure_id ? (int)$fee_structure_id : null;
+
+        if ($class_id <= 0 || $division_id <= 0) {
+            return array();
+        }
+
+        $this->db
+            ->select('st.student_id, st.admission_number, st.roll_number, st.first_name, st.last_name, st.class_id, st.division_id, st.academic_year_id')
+            ->from('tbl_students st')
+            ->where('st.class_id', $class_id)
+            ->where('st.division_id', $division_id)
+            ->where('st.status', 1)
+            ->where('st.is_deleted', 'n');
+
+        if ($academic_year_id > 0) {
+            $this->db->where('st.academic_year_id', $academic_year_id);
+        }
+
+        $students = $this->db
+            ->order_by('CAST(st.roll_number AS UNSIGNED)', 'ASC')
+            ->order_by('st.student_id', 'ASC')
+            ->get()
+            ->result();
+
+        if (empty($students)) {
+            return array();
+        }
+
+        // Check already assigned students if fee_structure_id is provided
+        $assigned_map = array();
+        if ($fee_structure_id && $fee_structure_id > 0) {
+            $student_ids = array_map(function($s) { return (int)$s->student_id; }, $students);
+            if (!empty($student_ids)) {
+                $assigned_rows = $this->db
+                    ->select('student_id')
+                    ->from('tbl_student_fees')
+                    ->where('fee_structure_id', $fee_structure_id)
+                    ->where_in('student_id', $student_ids)
+                    ->where('status', 1)
+                    ->where('is_deleted', 'n')
+                    ->get()
+                    ->result();
+
+                foreach ($assigned_rows as $row) {
+                    $assigned_map[(int)$row->student_id] = true;
+                }
+            }
+        }
+
+        foreach ($students as &$s) {
+            $s->student_name = trim($s->first_name . ' ' . $s->last_name);
+            $s->already_assigned = isset($assigned_map[(int)$s->student_id]);
+        }
+
+        return $students;
+    }
+
+    /**
+     * Assign fee structure to specific user-selected students.
+     * Verifies that each student belongs to the specified academic year, class, and division,
+     * is active, and does not already have this fee structure assigned.
+     *
+     * @param array $student_ids
+     * @param int $fee_structure_id
+     * @param int $academic_year_id
+     * @param int $class_id
+     * @param int $division_id
+     * @return array ['assigned_count' => int, 'skipped_count' => int]
+     */
+    public function bulk_assign_selected_students($student_ids, $fee_structure_id, $academic_year_id, $class_id, $division_id)
+    {
+        $fs = $this->db->get_where('tbl_fee_structures', array('fee_structure_id' => (int)$fee_structure_id))->row();
+        if (!$fs) {
+            return array('assigned_count' => 0, 'skipped_count' => 0);
+        }
+
+        if (!is_array($student_ids) || empty($student_ids)) {
+            return array('assigned_count' => 0, 'skipped_count' => 0);
+        }
+
+        // Sanitize and filter student IDs
+        $clean_ids = array_values(array_filter(array_map('intval', $student_ids), function($id) { return $id > 0; }));
+        if (empty($clean_ids)) {
+            return array('assigned_count' => 0, 'skipped_count' => 0);
+        }
+
+        // Verify valid students belonging to this academic year, class, and division
+        $this->db
+            ->select('student_id')
+            ->from('tbl_students')
+            ->where_in('student_id', $clean_ids)
+            ->where('class_id', (int)$class_id)
+            ->where('division_id', (int)$division_id)
+            ->where('status', 1)
+            ->where('is_deleted', 'n');
+
+        if ($academic_year_id > 0) {
+            $this->db->where('academic_year_id', (int)$academic_year_id);
+        }
+
+        $valid_students = $this->db->get()->result();
+        if (empty($valid_students)) {
+            return array('assigned_count' => 0, 'skipped_count' => count($clean_ids));
+        }
+
+        $valid_student_ids = array_map(function($s) { return (int)$s->student_id; }, $valid_students);
+
+        // Check which ones are already assigned
+        $already_assigned_rows = $this->db
+            ->select('student_id')
+            ->from('tbl_student_fees')
+            ->where('fee_structure_id', (int)$fee_structure_id)
+            ->where_in('student_id', $valid_student_ids)
+            ->where('status', 1)
+            ->where('is_deleted', 'n')
+            ->get()
+            ->result();
+
+        $already_assigned_map = array();
+        foreach ($already_assigned_rows as $row) {
+            $already_assigned_map[(int)$row->student_id] = true;
+        }
+
+        $assigned_count = 0;
+        $skipped_count = 0;
+
+        foreach ($clean_ids as $sid) {
+            // If student is not in valid class/division/academic_year list
+            if (!in_array($sid, $valid_student_ids, true)) {
+                $skipped_count++;
+                continue;
+            }
+
+            // If student already has this fee structure
+            if (isset($already_assigned_map[$sid])) {
+                $skipped_count++;
+                continue;
+            }
+
+            // Assign fee
+            $assigned_id = $this->assign_student_fee($sid, (int)$fee_structure_id, $fs->amount, $fs->due_date);
+            if ($assigned_id) {
+                $assigned_count++;
+                $already_assigned_map[$sid] = true; // prevent duplicate within same run
+            } else {
+                $skipped_count++;
+            }
+        }
+
+        return array('assigned_count' => $assigned_count, 'skipped_count' => $skipped_count);
+    }
+
     public function bulk_assign_fee_structure($class_id, $section_id, $fee_structure_id, $academic_year_id)
     {
         $fs = $this->db->get_where('tbl_fee_structures', array('fee_structure_id' => $fee_structure_id))->row();
         if (!$fs) return 0;
 
-        $this->db->select('student_id, class_id, section_id')->from('tbl_students')->where('status', 1);
+        $this->db->select('student_id, class_id, division_id')->from('tbl_students')->where('status', 1);
         if ($class_id > 0) {
             $this->db->where('class_id', $class_id);
         }

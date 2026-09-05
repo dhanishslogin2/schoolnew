@@ -233,20 +233,59 @@ class Fees extends MY_Controller {
                 redirect('fees/student_fees');
             } elseif ($assignment_type === 'bulk') {
                 $class_id = (int)$this->input->post('class_id');
-                $section_id = (int)$this->input->post('division_id');
+                $division_id = (int)$this->input->post('division_id');
                 $fee_structure_id = (int)$this->input->post('fee_structure_id');
                 $academic_year_id = (int)($this->input->post('academic_year_id') ?: $this->academic_year_id);
+                $student_ids = $this->input->post('student_ids');
 
-                if ($class_id <= 0 || $fee_structure_id <= 0) {
-                    $this->session->set_flashdata('error', 'Class and Fee Structure are required for bulk assignment.');
+                if ($class_id <= 0 || $academic_year_id <= 0) {
+                    $this->session->set_flashdata('error', 'Academic Year and Class are required for bulk assignment.');
                     redirect('fees/assignments');
                 }
 
-                $assigned_count = $this->Fee_model->bulk_assign_fee_structure($class_id, $section_id, $fee_structure_id, $academic_year_id);
-                $this->Finance_audit_model->log('FEE_ASSIGNED_BULK', 'tbl_student_fees', $fee_structure_id, "Bulk assigned fee structure {$fee_structure_id} to {$assigned_count} students in Class {$class_id}");
+                if ($division_id <= 0) {
+                    $this->session->set_flashdata('error', 'Please select a target division.');
+                    redirect('fees/assignments');
+                }
 
-                $this->session->set_flashdata('success', "Fee structure assigned to {$assigned_count} students successfully.");
-                redirect('fees/student_fees');
+                if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
+                    $this->session->set_flashdata('error', 'The selected division does not belong to the selected class.');
+                    redirect('fees/assignments');
+                }
+
+                if ($fee_structure_id <= 0) {
+                    $this->session->set_flashdata('error', 'Fee Structure is required for bulk assignment.');
+                    redirect('fees/assignments');
+                }
+
+                if (empty($student_ids) || !is_array($student_ids)) {
+                    $this->session->set_flashdata('error', 'Please select at least one student.');
+                    redirect('fees/assignments');
+                }
+
+                $clean_student_ids = array_values(array_filter(array_map('intval', $student_ids), function($id) { return $id > 0; }));
+                if (empty($clean_student_ids)) {
+                    $this->session->set_flashdata('error', 'Please select at least one student.');
+                    redirect('fees/assignments');
+                }
+
+                $result = $this->Fee_model->bulk_assign_selected_students($clean_student_ids, $fee_structure_id, $academic_year_id, $class_id, $division_id);
+                $assigned_count = $result['assigned_count'];
+                $skipped_count = $result['skipped_count'];
+
+                $this->Finance_audit_model->log('FEE_ASSIGNED_BULK', 'tbl_student_fees', $fee_structure_id, "Bulk assigned fee structure {$fee_structure_id} to {$assigned_count} students in Class {$class_id}, Division {$division_id}");
+
+                if ($assigned_count > 0) {
+                    $msg = "Fee structure assigned to {$assigned_count} student(s) successfully.";
+                    if ($skipped_count > 0) {
+                        $msg .= " ({$skipped_count} skipped as already assigned or ineligible).";
+                    }
+                    $this->session->set_flashdata('success', $msg);
+                    redirect('fees/student_fees');
+                } else {
+                    $this->session->set_flashdata('error', 'No eligible students were assigned. The selected students may already have this fee structure.');
+                    redirect('fees/assignments');
+                }
             }
         }
 
@@ -846,4 +885,68 @@ class Fees extends MY_Controller {
             'audit_logs' => $audit_logs,
         ));
     }
+
+    /**
+     * AJAX endpoint: Get divisions for a selected class in Fee Assignment.
+     *
+     * @param int|null $class_id
+     */
+    public function ajax_get_divisions($class_id = NULL)
+    {
+        header('Content-Type: application/json');
+        if (empty($class_id)) {
+            $class_id = $this->input->get('class_id');
+        }
+        if (empty($class_id)) {
+            echo json_encode(array());
+            return;
+        }
+        $divisions = $this->Division_model->get_all((int)$class_id);
+        echo json_encode($divisions);
+    }
+
+    /**
+     * AJAX endpoint: Get students for bulk fee assignment filtered by class, division, and academic year.
+     * Also checks and flags already assigned status if fee_structure_id is provided.
+     */
+    public function ajax_get_students()
+    {
+        header('Content-Type: application/json');
+        $academic_year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+        $class_id = (int)$this->input->get('class_id');
+        $division_id = (int)$this->input->get('division_id');
+        $fee_structure_id = (int)$this->input->get('fee_structure_id');
+
+        if ($class_id <= 0 || $division_id <= 0) {
+            echo json_encode(array(
+                'status'   => true,
+                'students' => array(),
+                'total'    => 0,
+                'eligible' => 0,
+                'assigned' => 0
+            ));
+            return;
+        }
+
+        $students = $this->Fee_model->get_students_for_bulk_assignment($academic_year_id, $class_id, $division_id, $fee_structure_id);
+
+        $total = count($students);
+        $assigned = 0;
+        foreach ($students as $s) {
+            if (!empty($s->already_assigned)) {
+                $assigned++;
+            }
+        }
+        $eligible = $total - $assigned;
+
+        echo json_encode(array(
+            'status'   => true,
+            'students' => $students,
+            'total'    => $total,
+            'eligible' => $eligible,
+            'assigned' => $assigned
+        ));
+    }
 }
+
+
