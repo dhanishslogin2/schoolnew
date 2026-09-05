@@ -157,6 +157,17 @@
             </div>
 
             <div class="rounded-xl border border-outline-variant/60 bg-surface-container-low/40 overflow-hidden">
+              <!-- Search Bar -->
+              <div class="p-2.5 bg-surface-container-lowest border-b border-outline-variant/50">
+                <div class="relative flex items-center">
+                  <span class="material-symbols-outlined absolute left-3 text-[18px] text-on-surface-variant pointer-events-none">search</span>
+                  <input type="text" id="bulk-student-search" oninput="filterBulkStudents(this.value)" placeholder="Search student by name, Admission No., or Roll No." disabled class="w-full pl-9 pr-8 py-2 text-xs rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/70 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors" />
+                  <button type="button" id="bulk-student-search-clear" onclick="clearBulkStudentSearch()" class="absolute right-2.5 p-1 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high hidden cursor-pointer" title="Clear search">
+                    <span class="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </div>
+              </div>
+
               <!-- Toolbar -->
               <div class="px-3.5 py-2 bg-surface-container-high/50 border-b border-outline-variant/50 flex items-center justify-between gap-3 text-body-md">
                 <div class="flex items-center gap-2">
@@ -321,6 +332,8 @@
         var summary = document.getElementById('bulk-selected-summary');
         var btnSelectAll = document.getElementById('btn-select-all');
         var btnUnselectAll = document.getElementById('btn-unselect-all');
+        var searchInput = document.getElementById('bulk-student-search');
+        var searchClear = document.getElementById('bulk-student-search-clear');
 
         if (container) {
           container.innerHTML = '<div id="bulk-students-placeholder" class="p-6 text-center text-on-surface-variant text-body-md">' +
@@ -331,6 +344,13 @@
         if (summary) summary.textContent = '0 selected';
         if (btnSelectAll) btnSelectAll.disabled = true;
         if (btnUnselectAll) btnUnselectAll.disabled = true;
+        if (searchInput) {
+          searchInput.value = '';
+          searchInput.disabled = true;
+        }
+        if (searchClear) {
+          searchClear.classList.add('hidden');
+        }
       }
 
       function loadBulkStudents(preserveChecked) {
@@ -343,6 +363,7 @@
         var summary = document.getElementById('bulk-selected-summary');
         var btnSelectAll = document.getElementById('btn-select-all');
         var btnUnselectAll = document.getElementById('btn-unselect-all');
+        var searchInput = document.getElementById('bulk-student-search');
 
         if (!container || !classSelect || !divSelect) return;
 
@@ -371,6 +392,7 @@
 
         if (btnSelectAll) btnSelectAll.disabled = true;
         if (btnUnselectAll) btnUnselectAll.disabled = true;
+        if (searchInput) searchInput.disabled = true;
 
         var url = ajaxStudentsUrl + '?class_id=' + encodeURIComponent(classId) +
           '&division_id=' + encodeURIComponent(divId) +
@@ -391,6 +413,12 @@
               if (summary) summary.textContent = '0 selected';
               if (btnSelectAll) btnSelectAll.disabled = true;
               if (btnUnselectAll) btnUnselectAll.disabled = true;
+              if (searchInput) {
+                searchInput.value = '';
+                searchInput.disabled = true;
+              }
+              var searchClear = document.getElementById('bulk-student-search-clear');
+              if (searchClear) searchClear.classList.add('hidden');
               return;
             }
 
@@ -405,9 +433,15 @@
                 eligibleCount++;
               }
 
+              var studentName = s.student_name || ((s.first_name || '') + ' ' + (s.last_name || '')).trim();
+              var admNo = s.admission_number || '';
+              var rollNo = (s.roll_number !== null && s.roll_number !== undefined) ? String(s.roll_number) : '';
+              var searchKey = (studentName + ' ' + admNo + ' ' + rollNo).toLowerCase();
+
               var row = document.createElement('label');
-              row.className = 'px-3.5 py-2.5 flex items-center justify-between gap-3 hover:bg-surface-container-low/60 transition-colors cursor-pointer ' +
+              row.className = 'bulk-student-row px-3.5 py-2.5 flex items-center justify-between gap-3 hover:bg-surface-container-low/60 transition-colors cursor-pointer ' +
                 (s.already_assigned ? 'opacity-65 bg-surface-container-low/30 cursor-not-allowed' : '');
+              row.setAttribute('data-search', searchKey);
 
               var left = document.createElement('div');
               left.className = 'flex items-center gap-3 min-w-0';
@@ -437,16 +471,16 @@
 
               var nameSpan = document.createElement('span');
               nameSpan.className = 'font-semibold text-body-md text-on-surface block truncate';
-              nameSpan.textContent = s.student_name || ((s.first_name || '') + ' ' + (s.last_name || '')).trim();
+              nameSpan.textContent = studentName;
 
               var metaSpan = document.createElement('span');
               metaSpan.className = 'text-xs text-on-surface-variant flex items-center gap-2 mt-0.5';
               var metaHtml = '';
-              if (s.admission_number) {
-                metaHtml += '<span>Adm: ' + escapeHtml(s.admission_number) + '</span>';
+              if (admNo) {
+                metaHtml += '<span>Adm: ' + escapeHtml(admNo) + '</span>';
               }
-              if (s.roll_number) {
-                metaHtml += (metaHtml ? '<span>•</span>' : '') + '<span>Roll No: ' + escapeHtml(s.roll_number) + '</span>';
+              if (rollNo) {
+                metaHtml += (metaHtml ? '<span>•</span>' : '') + '<span>Roll No: ' + escapeHtml(rollNo) + '</span>';
               }
               metaSpan.innerHTML = metaHtml;
 
@@ -476,8 +510,18 @@
               }
             }
 
-            if (btnSelectAll) btnSelectAll.disabled = (eligibleCount === 0);
-            if (btnUnselectAll) btnUnselectAll.disabled = (eligibleCount === 0);
+            if (searchInput) {
+              searchInput.disabled = false;
+              if (searchInput.value) {
+                filterBulkStudents(searchInput.value);
+              } else {
+                if (btnSelectAll) btnSelectAll.disabled = (eligibleCount === 0);
+                if (btnUnselectAll) btnUnselectAll.disabled = (eligibleCount === 0);
+              }
+            } else {
+              if (btnSelectAll) btnSelectAll.disabled = (eligibleCount === 0);
+              if (btnUnselectAll) btnUnselectAll.disabled = (eligibleCount === 0);
+            }
 
             updateStudentSelectionState();
           })
@@ -488,21 +532,92 @@
               '<span>Unable to load students. Please try again.</span></div>';
             if (btnSelectAll) btnSelectAll.disabled = true;
             if (btnUnselectAll) btnUnselectAll.disabled = true;
+            if (searchInput) searchInput.disabled = true;
           });
       }
 
+      function filterBulkStudents(query) {
+        var q = (query || '').trim().toLowerCase();
+        var clearBtn = document.getElementById('bulk-student-search-clear');
+        if (clearBtn) {
+          if (q.length > 0) {
+            clearBtn.classList.remove('hidden');
+          } else {
+            clearBtn.classList.add('hidden');
+          }
+        }
+
+        var container = document.getElementById('bulk-students-container');
+        if (!container) return;
+
+        var rows = container.querySelectorAll('.bulk-student-row');
+        var matchCount = 0;
+        var visibleEligibleCount = 0;
+
+        rows.forEach(function(row) {
+          var searchKey = row.getAttribute('data-search') || '';
+          if (!q || searchKey.indexOf(q) !== -1) {
+            row.style.display = '';
+            matchCount++;
+            var cb = row.querySelector('.bulk-student-checkbox:not(:disabled)');
+            if (cb) visibleEligibleCount++;
+          } else {
+            row.style.display = 'none';
+          }
+        });
+
+        var noMatchEl = document.getElementById('bulk-students-no-match');
+        if (matchCount === 0 && rows.length > 0) {
+          if (!noMatchEl) {
+            noMatchEl = document.createElement('div');
+            noMatchEl.id = 'bulk-students-no-match';
+            noMatchEl.className = 'p-6 text-center text-on-surface-variant text-body-md';
+            noMatchEl.innerHTML = '<span class="material-symbols-outlined text-[32px] text-outline mb-1 block">search_off</span><span>No students match your search.</span>';
+            container.appendChild(noMatchEl);
+          } else {
+            noMatchEl.style.display = '';
+          }
+        } else if (noMatchEl) {
+          noMatchEl.style.display = 'none';
+        }
+
+        var btnSelectAll = document.getElementById('btn-select-all');
+        var btnUnselectAll = document.getElementById('btn-unselect-all');
+        if (btnSelectAll) btnSelectAll.disabled = (visibleEligibleCount === 0);
+        if (btnUnselectAll) btnUnselectAll.disabled = (visibleEligibleCount === 0);
+      }
+
+      function clearBulkStudentSearch() {
+        var input = document.getElementById('bulk-student-search');
+        if (input) {
+          input.value = '';
+          filterBulkStudents('');
+          input.focus();
+        }
+      }
+
       function selectAllStudents() {
-        var checkboxes = document.querySelectorAll('.bulk-student-checkbox:not(:disabled)');
-        checkboxes.forEach(function(cb) {
-          cb.checked = true;
+        var rows = document.querySelectorAll('.bulk-student-row');
+        rows.forEach(function(row) {
+          if (row.style.display !== 'none') {
+            var cb = row.querySelector('.bulk-student-checkbox:not(:disabled)');
+            if (cb) {
+              cb.checked = true;
+            }
+          }
         });
         updateStudentSelectionState();
       }
 
       function unselectAllStudents() {
-        var checkboxes = document.querySelectorAll('.bulk-student-checkbox:not(:disabled)');
-        checkboxes.forEach(function(cb) {
-          cb.checked = false;
+        var rows = document.querySelectorAll('.bulk-student-row');
+        rows.forEach(function(row) {
+          if (row.style.display !== 'none') {
+            var cb = row.querySelector('.bulk-student-checkbox:not(:disabled)');
+            if (cb) {
+              cb.checked = false;
+            }
+          }
         });
         updateStudentSelectionState();
       }
