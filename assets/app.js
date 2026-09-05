@@ -326,7 +326,7 @@ const NAV = [
         label: "Admissions",
         items: [
           { key: "student-registration", label: "Student Registration" },
-          { key: "admissions", label: "Admission Management" },
+          // { key: "admissions", label: "Admission Management" },
         ],
       },
       {

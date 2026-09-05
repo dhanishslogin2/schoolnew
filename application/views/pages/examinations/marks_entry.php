@@ -29,10 +29,10 @@
 
     <!-- Filter Bar -->
     <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-4 mb-6">
-      <form method="get" action="<?php echo site_url('examinations/marks_entry'); ?>" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <form id="marks-filter-form" method="get" action="<?php echo site_url('examinations/marks_entry'); ?>" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Exam *</label>
-          <select name="exam_id" onchange="this.form.submit()" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+          <select name="exam_id" id="filter-exam-id" onchange="checkAndSubmitFilters()" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <option value="">-- Select Exam --</option>
             <?php foreach ($exams as $e): ?>
               <option value="<?php echo $e->exam_id; ?>" <?php echo ($selected_exam == $e->exam_id) ? 'selected' : ''; ?>>
@@ -44,7 +44,7 @@
 
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Class *</label>
-          <select name="class_id" onchange="if(this.form.querySelector('[name=division_id]')) this.form.querySelector('[name=division_id]').value=''; this.form.submit();" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+          <select name="class_id" id="filter-class-id" onchange="onFilterClassChange(this.value)" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <option value="">-- Select Class --</option>
             <?php foreach ($classes as $c): ?>
               <option value="<?php echo $c->class_id; ?>" <?php echo ($selected_class == $c->class_id) ? 'selected' : ''; ?>>
@@ -56,7 +56,7 @@
 
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Division *</label>
-          <select name="division_id" onchange="this.form.submit()" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+          <select name="division_id" id="filter-division-id" onchange="checkAndSubmitFilters()" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary" <?php echo empty($selected_class) ? 'disabled' : ''; ?>>
             <option value="">-- Select Division --</option>
             <?php foreach ($divisions as $s): ?>
               <?php if (!$selected_class || $s->class_id == $selected_class): ?>
@@ -70,20 +70,35 @@
 
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Subject *</label>
-          <select name="subject_id" onchange="this.form.submit()" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
-            <option value="">-- Select Subject --</option>
-            <?php foreach ($subjects as $sub): ?>
-              <option value="<?php echo $sub->subject_id; ?>" <?php echo ($selected_subject == $sub->subject_id) ? 'selected' : ''; ?>>
-                <?php echo html_escape($sub->subject_name); ?>
-              </option>
-            <?php endforeach; ?>
+          <select name="subject_id" id="filter-subject-id" onchange="checkAndSubmitFilters()" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary" <?php echo empty($selected_class) ? 'disabled' : ''; ?>>
+            <?php if (empty($selected_class)): ?>
+              <option value="" disabled selected>-- Select Class First --</option>
+            <?php elseif (empty($subjects)): ?>
+              <option value="" disabled selected>No subjects are assigned to this class.</option>
+            <?php else: ?>
+              <option value="">-- Select Subject --</option>
+              <?php foreach ($subjects as $sub): ?>
+                <option value="<?php echo $sub->subject_id; ?>" <?php echo ($selected_subject == $sub->subject_id) ? 'selected' : ''; ?>>
+                  <?php echo html_escape($sub->subject_name); ?>
+                </option>
+              <?php endforeach; ?>
+            <?php endif; ?>
           </select>
         </div>
       </form>
     </div>
 
+    <?php if (!empty($schedule_not_found)): ?>
+      <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-amber-300 p-8 text-center text-on-surface-variant mb-6">
+        <span class="material-symbols-outlined text-[48px] text-amber-500 mb-2">event_busy</span>
+        <h3 class="font-headline-md text-title-lg font-bold text-on-surface">No Exam Schedule Found</h3>
+        <p class="text-body-md mt-1 max-w-lg mx-auto">An exam schedule has not yet been created for this Exam, Class, Division, and Subject. Please add this subject to the exam schedule under <a href="<?php echo site_url('examinations/allocations'); ?>" class="text-primary font-semibold hover:underline">Add Schedule</a> or <a href="<?php echo site_url('examinations/schedules'); ?>" class="text-primary font-semibold hover:underline">Exam Schedules</a>.</p>
+      </div>
+    <?php endif; ?>
+
     <!-- Marks Entry Sheet -->
     <?php if ($marksheet): ?>
+      <div id="marksheet-container">
       <?php
         $totalStudents = count($marksheet->students);
         $completedStudents = 0;
@@ -290,10 +305,108 @@
           document.getElementById('marks-entry-form').submit();
         }
       </script>
+      </div><!-- /#marksheet-container -->
     <?php else: ?>
-      <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-12 text-center text-on-surface-variant">
+      <div id="empty-placeholder" class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-12 text-center text-on-surface-variant">
         <span class="material-symbols-outlined text-[48px] text-primary mb-3">fact_check</span>
         <h3 class="font-headline-md text-title-lg font-bold text-on-surface">Select Exam, Class, Division & Subject</h3>
         <p class="text-body-md mt-1 max-w-md mx-auto">Please choose an exam, class, division, and subject from the dropdown filters above to load the student marksheet.</p>
       </div>
     <?php endif; ?>
+
+    <script>
+      var ajaxDivisionsUrl = "<?php echo site_url('examinations/ajax_get_divisions'); ?>";
+      var ajaxSubjectsUrl  = "<?php echo site_url('examinations/ajax_get_subjects'); ?>";
+
+      function onFilterClassChange(classId) {
+        var form = document.getElementById('marks-filter-form');
+        var divSelect = document.getElementById('filter-division-id');
+        var subSelect = document.getElementById('filter-subject-id');
+        var marksheetBox = document.getElementById('marksheet-container');
+        var placeholderBox = document.getElementById('empty-placeholder');
+
+        // Hide stale marksheet view immediately
+        if (marksheetBox) marksheetBox.style.display = 'none';
+        if (placeholderBox) placeholderBox.style.display = 'block';
+
+        // Clear existing options completely
+        divSelect.innerHTML = '';
+        subSelect.innerHTML = '';
+
+        if (!classId) {
+          divSelect.innerHTML = '<option value="" disabled selected>-- Select Class First --</option>';
+          divSelect.disabled = true;
+          subSelect.innerHTML = '<option value="" disabled selected>-- Select Class First --</option>';
+          subSelect.disabled = true;
+          return;
+        }
+
+        // Show loading state
+        divSelect.disabled = true;
+        divSelect.innerHTML = '<option value="">Loading divisions...</option>';
+        subSelect.disabled = true;
+        subSelect.innerHTML = '<option value="">Loading subjects...</option>';
+
+        // Fetch divisions for selected class
+        fetch(ajaxDivisionsUrl + '/' + encodeURIComponent(classId))
+          .then(function(res) { return res.json(); })
+          .then(function(divisions) {
+            divSelect.innerHTML = '<option value="">-- Select Division --</option>';
+            if (divisions && divisions.length > 0) {
+              divisions.forEach(function(d) {
+                var opt = document.createElement('option');
+                opt.value = d.division_id;
+                opt.textContent = (d.class_name ? d.class_name + ' ' : '') + d.division_name;
+                divSelect.appendChild(opt);
+              });
+              divSelect.disabled = false;
+            } else {
+              divSelect.innerHTML = '<option value="" disabled selected>No divisions found for this class.</option>';
+            }
+          })
+          .catch(function(err) {
+            console.error('Error fetching divisions:', err);
+            divSelect.innerHTML = '<option value="" disabled selected>Unable to load divisions.</option>';
+          });
+
+        // Fetch allocated subjects for selected class
+        fetch(ajaxSubjectsUrl + '/' + encodeURIComponent(classId))
+          .then(function(res) { return res.json(); })
+          .then(function(subjects) {
+            subSelect.innerHTML = '';
+            if (subjects && subjects.length > 0) {
+              var defaultOpt = document.createElement('option');
+              defaultOpt.value = '';
+              defaultOpt.textContent = '-- Select Subject --';
+              subSelect.appendChild(defaultOpt);
+
+              subjects.forEach(function(s) {
+                var opt = document.createElement('option');
+                opt.value = s.subject_id;
+                opt.textContent = s.subject_name;
+                subSelect.appendChild(opt);
+              });
+              subSelect.disabled = false;
+            } else {
+              subSelect.innerHTML = '<option value="" disabled selected>No subjects are assigned to this class.</option>';
+              subSelect.disabled = true;
+            }
+          })
+          .catch(function(err) {
+            console.error('Error fetching subjects:', err);
+            subSelect.innerHTML = '<option value="" disabled selected>Unable to load subjects. Please try again.</option>';
+            subSelect.disabled = false;
+          });
+      }
+
+      function checkAndSubmitFilters() {
+        var examId = document.getElementById('filter-exam-id').value;
+        var classId = document.getElementById('filter-class-id').value;
+        var divisionId = document.getElementById('filter-division-id').value;
+        var subjectId = document.getElementById('filter-subject-id').value;
+
+        if (examId && classId && divisionId && subjectId) {
+          document.getElementById('marks-filter-form').submit();
+        }
+      }
+    </script>

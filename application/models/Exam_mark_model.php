@@ -95,7 +95,7 @@ class Exam_mark_model extends CI_Model {
                 'student_id'       => $student_id,
                 'academic_year_id' => $schedule->academic_year_id,
                 'class_id'         => $schedule->class_id,
-                'division_id'       => $schedule->section_id,
+                'division_id'      => $schedule->division_id,
                 'subject_id'       => $schedule->subject_id,
                 'marks_obtained'   => $marks_obtained,
                 'is_absent'        => $is_absent,

@@ -560,6 +560,20 @@ class Examinations extends MY_Controller {
             $marks_data    = $this->input->post('marks') ?: [];
             $target_status = ($this->input->post('action') === 'submit') ? 'Submitted' : 'Draft';
 
+            $sched_check = $this->Exam_schedule_model->get_by_id($schedule_id);
+            if (!$sched_check) {
+                $this->session->set_flashdata('error', 'Invalid exam schedule record.');
+                redirect('examinations/marks_entry');
+            }
+
+            // Backend validation: verify the subject belongs to the class
+            $valid_class_subjects = $this->Subject_model->get_for_class($sched_check->academic_year_id, (int)$sched_check->class_id);
+            $valid_subject_ids = array_map(function($s) { return (int)$s->subject_id; }, $valid_class_subjects);
+            if (!in_array((int)$sched_check->subject_id, $valid_subject_ids, true)) {
+                $this->session->set_flashdata('error', 'Selected subject is not allocated to this class.');
+                redirect('examinations/marks_entry');
+            }
+
             $saved = $this->Exam_mark_model->save_marks_batch($schedule_id, $marks_data, $this->current_user->user_id, $target_status);
 
             $this->Exam_audit_model->log($this->current_user->user_id, 'MARKS_' . strtoupper($target_status), 'tbl_exam_schedules', $schedule_id, "Saved {$saved} student marks as {$target_status}");
@@ -569,13 +583,25 @@ class Examinations extends MY_Controller {
             redirect('examinations/marks_entry?schedule_id=' . $schedule_id);
         }
 
-        // If schedule_id is not provided, look up by exam + class + division + subject
+        // Context parameters from GET request
         $exam_id     = $this->input->get('exam_id');
         $class_id    = $this->input->get('class_id');
         $raw_div     = $this->input->get('division_id') ?: $this->input->get('section_id');
         $division_id = (!empty($raw_div) && $raw_div !== 'all') ? $raw_div : NULL;
         $subject_id  = $this->input->get('subject_id');
 
+        // If schedule_id is provided directly, resolve contextual IDs
+        if ($schedule_id > 0) {
+            $sched_record = $this->Exam_schedule_model->get_by_id($schedule_id);
+            if ($sched_record) {
+                if (empty($exam_id))     $exam_id     = $sched_record->exam_id;
+                if (empty($class_id))    $class_id    = $sched_record->class_id;
+                if (empty($division_id)) $division_id = $sched_record->division_id;
+                if (empty($subject_id))  $subject_id  = $sched_record->subject_id;
+            }
+        }
+
+        // Validate division belongs to class
         if (!empty($class_id) && !empty($division_id)) {
             if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
                 $division_id = NULL;
@@ -584,36 +610,73 @@ class Examinations extends MY_Controller {
             $division_id = NULL;
         }
 
-        if (!$schedule_id && $exam_id && $class_id && $division_id && $subject_id) {
-            $sched = $this->db
-                ->where('exam_id', $exam_id)
-                ->where('class_id', $class_id)
-                ->where('division_id', $division_id)
-                ->where('subject_id', $subject_id)
-                ->get('tbl_exam_schedules')
-                ->row();
-            if ($sched) $schedule_id = $sched->schedule_id;
+        // Fetch subjects allocated ONLY to the selected class for active academic year
+        $subjects = !empty($class_id) 
+            ? $this->Subject_model->get_for_class($this->academic_year_id, (int)$class_id) 
+            : [];
+        $valid_subject_ids = array_map(function($s) { return (int)$s->subject_id; }, $subjects);
+
+        // Backend validation: ensure selected subject belongs to selected class
+        if (!empty($subject_id)) {
+            if (!in_array((int)$subject_id, $valid_subject_ids, true)) {
+                $subject_id = NULL;
+                $schedule_id = 0;
+                $this->session->set_flashdata('error', 'The selected subject is not allocated to this class.');
+            }
         }
 
-        $marksheet = $schedule_id ? $this->Exam_mark_model->get_marks_sheet($schedule_id) : NULL;
+        // Resolve schedule_id from exam + class + division + subject if not provided
+        $schedule_not_found = false;
+        if (!$schedule_id && $exam_id && $class_id && $division_id && $subject_id) {
+            // First attempt: exact match with division
+            $sched = $this->db
+                ->where('exam_id', (int)$exam_id)
+                ->where('class_id', (int)$class_id)
+                ->where('division_id', (int)$division_id)
+                ->where('subject_id', (int)$subject_id)
+                ->where('is_deleted', 'n')
+                ->get('tbl_exam_schedules')
+                ->row();
+
+            // Fallback attempt: schedule applies to all divisions of this class (division_id IS NULL)
+            if (!$sched) {
+                $sched = $this->db
+                    ->where('exam_id', (int)$exam_id)
+                    ->where('class_id', (int)$class_id)
+                    ->where('division_id IS NULL', NULL, FALSE)
+                    ->where('subject_id', (int)$subject_id)
+                    ->where('is_deleted', 'n')
+                    ->get('tbl_exam_schedules')
+                    ->row();
+            }
+
+            if ($sched) {
+                $schedule_id = (int)$sched->schedule_id;
+            } else {
+                $schedule_not_found = true;
+            }
+        }
+
+        $marksheet = ($schedule_id > 0) ? $this->Exam_mark_model->get_marks_sheet($schedule_id) : NULL;
 
         $divisions = !empty($class_id) ? $this->Division_model->get_all($class_id) : [];
 
         $data = [
-            'title'             => 'Marks Entry',
-            'page_key'          => 'marks-entry',
-            'marksheet'         => $marksheet,
-            'schedule_id'       => $schedule_id,
-            'exams'             => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
-            'classes'           => $this->Class_model->get_all($this->academic_year_id),
-            'divisions'         => $divisions,
-            'sections'          => $divisions,
-            'subjects'          => $this->Subject_model->get_all(),
-            'selected_exam'     => $exam_id,
-            'selected_class'    => $class_id,
-            'selected_division' => $division_id,
-            'selected_section'  => $division_id,
-            'selected_subject'  => $subject_id
+            'title'               => 'Marks Entry',
+            'page_key'            => 'marks-entry',
+            'marksheet'           => $marksheet,
+            'schedule_id'         => $schedule_id,
+            'schedule_not_found'  => $schedule_not_found,
+            'exams'               => $this->Exam_model->get_all(['academic_year_id' => $this->academic_year_id]),
+            'classes'             => $this->Class_model->get_all($this->academic_year_id),
+            'divisions'           => $divisions,
+            'sections'            => $divisions,
+            'subjects'            => $subjects,
+            'selected_exam'       => $exam_id,
+            'selected_class'      => $class_id,
+            'selected_division'   => $division_id,
+            'selected_section'    => $division_id,
+            'selected_subject'    => $subject_id
         ];
 
         $this->render('pages/examinations/marks_entry', $data);
@@ -1182,11 +1245,28 @@ class Examinations extends MY_Controller {
     {
         header('Content-Type: application/json');
         if (empty($class_id)) {
+            $class_id = $this->input->get('class_id');
+        }
+        if (empty($class_id)) {
             echo json_encode([]);
             return;
         }
         $divisions = $this->Division_model->get_all((int)$class_id);
         echo json_encode($divisions);
+    }
+
+    public function ajax_get_subjects($class_id = NULL)
+    {
+        header('Content-Type: application/json');
+        if (empty($class_id)) {
+            $class_id = $this->input->get('class_id');
+        }
+        if (empty($class_id)) {
+            echo json_encode([]);
+            return;
+        }
+        $subjects = $this->Subject_model->get_for_class($this->academic_year_id, (int)$class_id);
+        echo json_encode($subjects);
     }
 }
 

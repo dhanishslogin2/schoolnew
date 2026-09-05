@@ -198,6 +198,11 @@ $route['examinations/progress_report/(:num)']= 'examinations/progress_report/$1'
 $route['examinations/publishing']           = 'examinations/publishing';
 $route['examinations/reports']              = 'examinations/reports';
 $route['examinations/settings']             = 'examinations/settings';
+$route['examinations/ajax_get_divisions']   = 'examinations/ajax_get_divisions';
+$route['examinations/ajax_get_divisions/(:num)'] = 'examinations/ajax_get_divisions/$1';
+$route['examinations/ajax_get_subjects']    = 'examinations/ajax_get_subjects';
+$route['examinations/ajax_get_subjects/(:num)']  = 'examinations/ajax_get_subjects/$1';
+
 
 $route['fees']                          = 'fees/index';
 $route['fees/dashboard']                = 'fees/index';
