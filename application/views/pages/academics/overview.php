@@ -12,7 +12,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
         <h2 class="font-headline-md text-headline-md text-on-surface">Academic Management Overview</h2>
-        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Curriculum structure, active school calendar, classes, sections, and faculty allocations.</p>
+        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Curriculum structure, active school calendar, classes, divisions, and faculty allocations.</p>
       </div>
       <div class="flex items-center gap-2.5 flex-wrap shrink-0">
         <a href="<?php echo site_url('academics/classes'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
@@ -38,15 +38,15 @@
         </div>
       </div>
 
-      <!-- Classes & Sections -->
+      <!-- Classes & Divisions -->
       <div class="p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 space-y-2">
         <div class="flex items-center justify-between text-on-surface-variant">
-          <span class="text-label-md font-semibold uppercase tracking-wider text-xs">Classes & Sections</span>
+          <span class="text-label-md font-semibold uppercase tracking-wider text-xs">Classes & Divisions</span>
           <span class="material-symbols-outlined text-secondary text-[22px]">class</span>
         </div>
         <div class="text-headline-md font-bold text-secondary"><?php echo (int)$total_classes; ?> Classes</div>
         <div class="text-xs text-on-surface-variant">
-          <span><?php echo (int)$total_sections; ?> active sections</span>
+          <span><?php echo (int)($total_divisions ?? $total_sections); ?> active divisions</span>
         </div>
       </div>
 
@@ -82,7 +82,7 @@
           <span class="material-symbols-outlined text-[20px]">class</span>
         </div>
         <div class="min-w-0">
-          <div class="text-xs font-bold text-on-surface group-hover:text-primary">Classes & Sections</div>
+          <div class="text-xs font-bold text-on-surface group-hover:text-primary">Classes & Divisions</div>
           <div class="text-[11px] text-on-surface-variant truncate">Configure grades & divisions</div>
         </div>
       </a>
@@ -132,11 +132,11 @@
               <div class="p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/30 flex items-center justify-between">
                 <div>
                   <h4 class="font-bold text-xs text-on-surface"><?php echo html_escape($c->class_name); ?></h4>
-                  <p class="text-[11px] text-on-surface-variant mt-0.5"><?php echo (int)($c->section_count ?? 0); ?> Sections • <?php echo (int)($c->student_count ?? 0); ?> Students</p>
+                  <p class="text-[11px] text-on-surface-variant mt-0.5"><?php echo (int)($c->division_count ?? $c->section_count ?? 0); ?> Divisions • <?php echo (int)($c->student_count ?? 0); ?> Students</p>
                 </div>
                 <div class="text-right">
                   <a href="<?php echo site_url('academics/divisions?class_id=' . $c->class_id); ?>" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-surface-container-high text-on-surface hover:bg-surface-container-highest">
-                    Sections
+                    Divisions
                   </a>
                 </div>
               </div>

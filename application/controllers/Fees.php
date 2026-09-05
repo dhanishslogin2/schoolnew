@@ -19,7 +19,8 @@ class Fees extends MY_Controller {
             'Class_model',
             'Division_model',
             'Section_model',
-            'Academic_year_model'
+            'Academic_year_model',
+            'Academic_group_model'
         ));
     }
 
@@ -133,7 +134,6 @@ class Fees extends MY_Controller {
             $struct_id = (int)$this->input->post('fee_structure_id');
             $fee_head_id = (int)$this->input->post('fee_head_id');
             $academic_year_id = (int)($this->input->post('academic_year_id') ?: $this->academic_year_id);
-            $class_id = (int)$this->input->post('class_id');
             $amount = (float)$this->input->post('amount');
             $frequency = trim($this->input->post('frequency') ?: 'Yearly');
             $due_date = trim($this->input->post('due_date'));
@@ -152,8 +152,140 @@ class Fees extends MY_Controller {
                 redirect('fees/structures');
             }
 
-            if ($this->Fee_structure_model->is_duplicate($fee_head_id, $academic_year_id, $class_id, $struct_id)) {
-                $this->session->set_flashdata('error', 'A fee structure for this Category, Class, and Academic Year already exists.');
+            if ($fee_head_id <= 0) {
+                $this->session->set_flashdata('error', 'Please select a fee category.');
+                redirect('fees/structures');
+            }
+
+            // --- ADD MODE: Bulk generation across Session / Class / Division ---
+            if ($struct_id === 0) {
+                $academic_group_id = (int)$this->input->post('academic_group_id');
+                $raw_class_id = trim($this->input->post('class_id'));
+                $raw_division_id = trim($this->input->post('division_id'));
+
+                if ($academic_group_id <= 0) {
+                    $this->session->set_flashdata('error', 'Please select a session/group.');
+                    redirect('fees/structures');
+                }
+
+                $group = $this->Academic_group_model->get_by_id($academic_group_id);
+                if (!$group) {
+                    $this->session->set_flashdata('error', 'Invalid session/group selected.');
+                    redirect('fees/structures');
+                }
+
+                if ($raw_class_id === '') {
+                    $this->session->set_flashdata('error', 'Please select a class.');
+                    redirect('fees/structures');
+                }
+
+                if ($raw_division_id === '') {
+                    $this->session->set_flashdata('error', 'Please select a division.');
+                    redirect('fees/structures');
+                }
+
+                // 1. Resolve target classes
+                $target_classes = array();
+                if ($raw_class_id === 'all') {
+                    $target_classes = $this->Class_model->get_by_group($academic_group_id, $academic_year_id);
+                    if (empty($target_classes)) {
+                        $this->session->set_flashdata('error', 'No active classes found for the selected session/group.');
+                        redirect('fees/structures');
+                    }
+                } else {
+                    $cls = $this->Class_model->get_by_id((int)$raw_class_id);
+                    if (!$cls || (int)$cls->academic_group_id !== $academic_group_id) {
+                        $this->session->set_flashdata('error', 'The selected class does not belong to the selected session/group.');
+                        redirect('fees/structures');
+                    }
+                    $target_classes = array($cls);
+                }
+
+                // 2. Resolve combinations of (class_id, division_id)
+                $combinations = array();
+                foreach ($target_classes as $c) {
+                    $cid = (int)$c->class_id;
+                    $divs = $this->Division_model->get_all($cid);
+
+                    if ($raw_division_id === 'all') {
+                        if (empty($divs)) {
+                            $combinations[] = array('class_id' => $cid, 'division_id' => NULL);
+                        } else {
+                            foreach ($divs as $d) {
+                                $combinations[] = array('class_id' => $cid, 'division_id' => (int)$d->division_id);
+                            }
+                        }
+                    } elseif (strpos($raw_division_id, 'name:') === 0) {
+                        $target_div_name = trim(substr($raw_division_id, 5));
+                        foreach ($divs as $d) {
+                            if (strcasecmp(trim($d->division_name), $target_div_name) === 0) {
+                                $combinations[] = array('class_id' => $cid, 'division_id' => (int)$d->division_id);
+                                break;
+                            }
+                        }
+                    } else {
+                        $target_div_id = (int)$raw_division_id;
+                        $found = false;
+                        foreach ($divs as $d) {
+                            if ((int)$d->division_id === $target_div_id) {
+                                $combinations[] = array('class_id' => $cid, 'division_id' => $target_div_id);
+                                $found = true;
+                                break;
+                            }
+                        }
+                        if (!$found && count($target_classes) === 1) {
+                            $this->session->set_flashdata('error', 'The selected division does not belong to the selected class.');
+                            redirect('fees/structures');
+                        }
+                    }
+                }
+
+                if (empty($combinations)) {
+                    $this->session->set_flashdata('error', 'No matching class and division combinations could be determined.');
+                    redirect('fees/structures');
+                }
+
+                $base_data = array(
+                    'fee_head_id'      => $fee_head_id,
+                    'academic_year_id' => $academic_year_id,
+                    'amount'           => $amount,
+                    'frequency'        => $frequency,
+                    'due_date'         => $due_date,
+                    'applicable_from'  => $applicable_from,
+                    'applicable_to'    => $applicable_to,
+                    'is_optional'      => $is_optional,
+                    'status'           => $status,
+                );
+
+                $result = $this->Fee_structure_model->bulk_create_structures($base_data, $combinations);
+                $created = $result['created'];
+                $skipped = $result['skipped'];
+
+                if ($created > 0) {
+                    $this->Finance_audit_model->log(
+                        'FEE_STRUCTURE_CREATED',
+                        'tbl_fee_structures',
+                        0,
+                        "Bulk created {$created} fee structure(s), skipped {$skipped} existing."
+                    );
+                    $msg = "Fee structures processed successfully. Created: {$created}";
+                    if ($skipped > 0) {
+                        $msg .= ", Skipped: {$skipped} (already existing).";
+                    }
+                    $this->session->set_flashdata('success', $msg);
+                } else {
+                    $this->session->set_flashdata('warning', "No new fee structures were created. All {$skipped} combination(s) already exist.");
+                }
+                redirect('fees/structures');
+            }
+
+            // --- EDIT MODE: Single structure update ---
+            $class_id = (int)$this->input->post('class_id');
+            $raw_division_id = $this->input->post('division_id');
+            $division_id = ($raw_division_id !== '' && $raw_division_id !== 'all' && $raw_division_id !== null) ? (int)$raw_division_id : null;
+
+            if ($this->Fee_structure_model->is_duplicate($fee_head_id, $academic_year_id, $class_id, $division_id, $struct_id)) {
+                $this->session->set_flashdata('error', 'A fee structure for this Category, Class, Division, and Academic Year already exists.');
                 redirect('fees/structures');
             }
 
@@ -161,6 +293,7 @@ class Fees extends MY_Controller {
                 'fee_head_id'      => $fee_head_id,
                 'academic_year_id' => $academic_year_id,
                 'class_id'         => $class_id,
+                'division_id'      => $division_id,
                 'amount'           => $amount,
                 'frequency'        => $frequency,
                 'due_date'         => $due_date,
@@ -170,15 +303,15 @@ class Fees extends MY_Controller {
                 'status'           => $status,
             );
 
-            $id = $this->Fee_structure_model->save($data, $struct_id);
+            $this->Fee_structure_model->save($data, $struct_id);
             $this->Finance_audit_model->log(
-                ($struct_id > 0) ? 'FEE_STRUCTURE_UPDATED' : 'FEE_STRUCTURE_CREATED',
+                'FEE_STRUCTURE_UPDATED',
                 'tbl_fee_structures',
-                $id,
-                "Saved fee structure for Class ID {$class_id}, Amount ₹{$amount}"
+                $struct_id,
+                "Updated fee structure ID {$struct_id} for Class ID {$class_id}, Amount ₹{$amount}"
             );
 
-            $this->session->set_flashdata('success', 'Fee structure saved successfully.');
+            $this->session->set_flashdata('success', 'Fee structure updated successfully.');
             redirect('fees/structures');
         }
 
@@ -192,15 +325,17 @@ class Fees extends MY_Controller {
         $categories = $this->Fee_category_model->get_all(true);
         $classes = $this->Class_model->get_all($filters['academic_year_id']);
         $academic_years = $this->Academic_year_model->get_all();
+        $academic_groups = $this->Academic_group_model->get_all();
 
         $this->render('pages/fees/structures', array(
-            'title'          => 'Fee Structure Management',
-            'page_key'       => 'fee-structures',
-            'structures'     => $structures,
-            'categories'     => $categories,
-            'classes'        => $classes,
-            'academic_years' => $academic_years,
-            'filters'        => $filters,
+            'title'           => 'Fee Structure Management',
+            'page_key'        => 'fee-structures',
+            'structures'      => $structures,
+            'categories'      => $categories,
+            'classes'         => $classes,
+            'academic_years'  => $academic_years,
+            'academic_groups' => $academic_groups,
+            'filters'         => $filters,
         ));
     }
 
@@ -945,6 +1080,91 @@ class Fees extends MY_Controller {
             'total'    => $total,
             'eligible' => $eligible,
             'assigned' => $assigned
+        ));
+    }
+
+    /**
+     * AJAX endpoint: Get classes for a selected Academic Group (Session/Group).
+     *
+     * @param int|null $group_id
+     */
+    public function ajax_get_classes_by_group($group_id = NULL)
+    {
+        header('Content-Type: application/json');
+        if (empty($group_id)) {
+            $group_id = $this->input->get('academic_group_id') ?: $this->input->get('group_id');
+        }
+        $academic_year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+
+        if (empty($group_id)) {
+            echo json_encode(array('status' => false, 'classes' => array()));
+            return;
+        }
+
+        $classes = $this->Class_model->get_by_group((int)$group_id, $academic_year_id);
+        echo json_encode(array('status' => true, 'classes' => $classes));
+    }
+
+    /**
+     * AJAX endpoint: Get divisions for Fee Structure modal based on group & class selection.
+     */
+    public function ajax_get_divisions_for_structure()
+    {
+        header('Content-Type: application/json');
+        $academic_group_id = (int)($this->input->get('academic_group_id') ?: $this->input->post('academic_group_id'));
+        $class_id = trim($this->input->get('class_id') ?: $this->input->post('class_id'));
+        $academic_year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
+
+        if (empty($class_id) || empty($academic_group_id)) {
+            echo json_encode(array('status' => false, 'divisions' => array()));
+            return;
+        }
+
+        if ($class_id === 'all') {
+            // Find distinct divisions across all classes in this group
+            $classes = $this->Class_model->get_by_group($academic_group_id, $academic_year_id);
+            $div_names = array();
+            foreach ($classes as $c) {
+                $divs = $this->Division_model->get_all((int)$c->class_id);
+                foreach ($divs as $d) {
+                    $name = trim($d->division_name);
+                    if ($name !== '' && !in_array($name, $div_names)) {
+                        $div_names[] = $name;
+                    }
+                }
+            }
+            sort($div_names);
+
+            $divisions = array();
+            foreach ($div_names as $name) {
+                $divisions[] = array(
+                    'division_id'   => 'name:' . $name,
+                    'division_name' => 'Division ' . $name
+                );
+            }
+
+            echo json_encode(array(
+                'status'    => true,
+                'mode'      => 'all_classes',
+                'divisions' => $divisions
+            ));
+            return;
+        }
+
+        // Specific class
+        $divs = $this->Division_model->get_all((int)$class_id);
+        $divisions = array();
+        foreach ($divs as $d) {
+            $divisions[] = array(
+                'division_id'   => $d->division_id,
+                'division_name' => $d->division_name
+            );
+        }
+
+        echo json_encode(array(
+            'status'    => true,
+            'mode'      => 'single_class',
+            'divisions' => $divisions
         ));
     }
 }

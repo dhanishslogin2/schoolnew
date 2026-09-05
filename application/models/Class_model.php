@@ -15,7 +15,7 @@ class Class_model extends CI_Model {
         }
 
         $this->db
-            ->select('c.*, ag.group_name, y.year_name, s.full_name as class_teacher_name, (SELECT COUNT(student_id) FROM tbl_students WHERE class_id = c.class_id AND status = 1 AND is_deleted = \'n\') as student_count')
+            ->select('c.*, ag.group_name, y.year_name, s.full_name as class_teacher_name, (SELECT COUNT(division_id) FROM tbl_divisions WHERE class_id = c.class_id AND status = 1 AND is_deleted = \'n\') as division_count, (SELECT COUNT(student_id) FROM tbl_students WHERE class_id = c.class_id AND status = 1 AND is_deleted = \'n\') as student_count')
             ->from('tbl_classes c')
             ->join('tbl_academic_groups ag', 'ag.academic_group_id = c.academic_group_id', 'left')
             ->join('tbl_academic_years y', 'y.academic_year_id = c.academic_year_id', 'left')

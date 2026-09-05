@@ -36,21 +36,26 @@ class Academics extends MY_Controller {
         $active_year = $this->Academic_year_model->get_active();
         $year_id     = $active_year ? (int)$active_year->academic_year_id : NULL;
 
-        $total_classes  = $this->db->where('status', 1)->count_all_results('tbl_classes');
-        $total_divisions = $this->db->where('status', 1)->count_all_results('tbl_divisions');
-        $total_sections = $total_divisions;
-        $total_subjects = $this->db->where('status', 1)->count_all_results('tbl_subjects');
-        $assigned_teachers = $this->db->where('class_teacher_id IS NOT NULL', NULL, FALSE)->where('status', 1)->count_all_results('tbl_divisions');
+        $total_classes     = $this->db->where('status', 1)->where('is_deleted', 'n')->count_all_results('tbl_classes');
+        $total_divisions   = $this->db->where('status', 1)->where('is_deleted', 'n')->count_all_results('tbl_divisions');
+        $total_sections    = $total_divisions;
+        $total_subjects    = $this->db->where('status', 1)->where('is_deleted', 'n')->count_all_results('tbl_subjects');
+        $assigned_teachers = $this->db->where('class_teacher_id IS NOT NULL', NULL, FALSE)->where('status', 1)->where('is_deleted', 'n')->count_all_results('tbl_divisions');
 
-        // Classes summary with sections and students
+        // Classes summary with divisions and students
         $classes_summary = $this->db->query("
             SELECT c.class_id, c.class_name, 
-                   (SELECT COUNT(*) FROM tbl_divisions div WHERE div.class_id = c.class_id AND sec.status = 1) as division_count, (SELECT COUNT(*) FROM tbl_divisions div WHERE div.class_id = c.class_id AND div.status = 1) as section_count,
-                   (SELECT COUNT(*) FROM tbl_students st WHERE st.class_id = c.class_id AND st.status = 1) as student_count
+                   (SELECT COUNT(*) FROM tbl_divisions d WHERE d.class_id = c.class_id AND d.status = 1 AND d.is_deleted = 'n') AS division_count,
+                   (SELECT COUNT(*) FROM tbl_students st WHERE st.class_id = c.class_id AND st.status = 1 AND st.is_deleted = 'n') AS student_count
             FROM tbl_classes c
-            WHERE c.status = 1
+            WHERE c.status = 1 AND c.is_deleted = 'n'
             ORDER BY c.class_id ASC
         ")->result();
+
+        // Maintain backward compatibility for any views or helpers
+        foreach ($classes_summary as &$cs) {
+            $cs->section_count = $cs->division_count;
+        }
 
         // Calendar Highlights
         $calendar_events = $this->db->where('status', 1)->order_by('start_date', 'ASC')->limit(6)->get('tbl_academic_calendar')->result();
@@ -61,6 +66,7 @@ class Academics extends MY_Controller {
             'breadcrumb'        => array('Academic Management', 'Overview'),
             'active_year'       => $active_year,
             'total_classes'     => $total_classes,
+            'total_divisions'   => $total_divisions,
             'total_sections'    => $total_sections,
             'total_subjects'    => $total_subjects,
             'assigned_teachers' => $assigned_teachers,
