@@ -47,7 +47,6 @@
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Code</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Applicable Class</th>
               <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Subject Type</th>
-              <th class="text-left px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Assigned Teacher</th>
               <th class="text-right px-4 py-3 text-label-md text-on-surface-variant uppercase whitespace-nowrap">Actions</th>
             </tr>
           </thead>
@@ -77,13 +76,6 @@
                 <td class="px-4 py-3 text-on-surface whitespace-nowrap"><?php echo html_escape($sub->class_name ?: 'General / All Classes'); ?></td>
                 <td class="px-4 py-3 whitespace-nowrap">
                   <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] <?php echo $badge; ?>"><?php echo html_escape($sub->subject_type); ?></span>
-                </td>
-                <td class="px-4 py-3 text-on-surface whitespace-nowrap">
-                  <?php if ($sub->teacher_name): ?>
-                    <span class="inline-flex items-center gap-1 font-medium text-secondary"><span class="material-symbols-outlined text-[16px]">person</span><?php echo html_escape($sub->teacher_name); ?></span>
-                  <?php else: ?>
-                    <a href="<?php echo site_url('academics/subject_teachers?subject_id=' . $sub->subject_id); ?>" class="text-[12px] text-primary hover:underline">+ Assign Teacher</a>
-                  <?php endif; ?>
                 </td>
                 <td class="px-4 py-3 text-right whitespace-nowrap">
                   <div class="flex items-center justify-end gap-1.5">
