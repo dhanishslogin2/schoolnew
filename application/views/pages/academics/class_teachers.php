@@ -1,4 +1,13 @@
-<?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+$selected_year_id     = isset($selected_year_id) ? $selected_year_id : ($this->input->get('academic_year_id') ?: '');
+$selected_class_id    = isset($selected_class_id) ? $selected_class_id : ($this->input->get('class_id') ?: '');
+$selected_division_id = isset($selected_division_id) ? $selected_division_id : (($this->input->get('division_id') ?: $this->input->get('section_id')) ?: '');
+$selected_staff_id    = isset($selected_staff_id) ? $selected_staff_id : (($this->input->get('staff_id') ?: $this->input->get('teacher_id')) ?: '');
+$selected_teacher_id  = $selected_staff_id;
+$filter_divisions     = isset($filter_divisions) ? $filter_divisions : (!empty($selected_class_id) ? $this->Division_model->get_all($selected_class_id) : array());
+?>
 
     <!-- Flash Messages -->
     <?php if ($this->session->flashdata('success')): ?>
@@ -28,22 +37,35 @@
 
     <!-- Filters Bar -->
     <div class="flex flex-col md:flex-row gap-3 mb-4 flex-wrap">
-      <select onchange="applyFilter('academic_year_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
+      <select id="filter_academic_year_id" onchange="onYearFilterChange(this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
         <option value="">All Academic Years</option>
         <?php foreach ($years as $yr): ?>
-          <option value="<?php echo $yr->academic_year_id; ?>" <?php echo ($this->input->get('academic_year_id') == $yr->academic_year_id) ? 'selected' : ''; ?>><?php echo html_escape($yr->year_name); ?></option>
+          <option value="<?php echo $yr->academic_year_id; ?>" <?php echo ((string)$selected_year_id === (string)$yr->academic_year_id) ? 'selected' : ''; ?>><?php echo html_escape($yr->year_name); ?></option>
         <?php endforeach; ?>
       </select>
-      <select onchange="applyFilter('class_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
+      <select id="filter_class_id" onchange="onClassFilterChange(this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
         <option value="">All Classes</option>
         <?php foreach ($classes as $cls): ?>
-          <option value="<?php echo $cls->class_id; ?>" <?php echo ($this->input->get('class_id') == $cls->class_id) ? 'selected' : ''; ?>><?php echo html_escape($cls->class_name); ?></option>
+          <option value="<?php echo $cls->class_id; ?>" <?php echo ((string)$selected_class_id === (string)$cls->class_id) ? 'selected' : ''; ?>><?php echo html_escape($cls->class_name); ?></option>
         <?php endforeach; ?>
       </select>
-      <select onchange="applyFilter('staff_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
+      <select id="filter_division_id" onchange="onDivisionFilterChange(this.value)" <?php echo empty($selected_class_id) ? 'disabled' : ''; ?> class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant <?php echo empty($selected_class_id) ? 'opacity-60 cursor-not-allowed' : ''; ?>">
+        <?php if (empty($selected_class_id)): ?>
+          <option value="">All Divisions</option>
+        <?php elseif (empty($filter_divisions)): ?>
+          <option value="">No divisions found</option>
+        <?php else: ?>
+          <option value="">All Divisions</option>
+          <?php foreach ($filter_divisions as $div): ?>
+            <?php $d_id = $div->division_id ?: $div->section_id; ?>
+            <option value="<?php echo $d_id; ?>" <?php echo ((string)$selected_division_id === (string)$d_id) ? 'selected' : ''; ?>>Division <?php echo html_escape($div->division_name ?: $div->section_name); ?></option>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </select>
+      <select id="filter_staff_id" onchange="onTeacherFilterChange(this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
         <option value="">All Teachers</option>
         <?php foreach ($teachers as $t): ?>
-          <option value="<?php echo $t->staff_id; ?>" <?php echo ($this->input->get('staff_id') == $t->staff_id) ? 'selected' : ''; ?>><?php echo html_escape($t->full_name); ?></option>
+          <option value="<?php echo $t->staff_id; ?>" <?php echo ((string)$selected_staff_id === (string)$t->staff_id) ? 'selected' : ''; ?>><?php echo html_escape($t->full_name); ?></option>
         <?php endforeach; ?>
       </select>
       <a href="<?php echo site_url('academics/class_teachers'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[18px]">restart_alt</span>Reset</a>
@@ -151,6 +173,57 @@
       function applyFilter(key, val) {
         var url = new URL(window.location.href);
         if (val) { url.searchParams.set(key, val); } else { url.searchParams.delete(key); }
+        url.searchParams.delete('open_assign');
+        window.location.href = url.toString();
+      }
+
+      function onYearFilterChange(yearId) {
+        var url = new URL(window.location.href);
+        if (yearId !== '') {
+          url.searchParams.set('academic_year_id', yearId);
+        } else {
+          url.searchParams.set('academic_year_id', '');
+        }
+        // Changing academic year clears stale class and division selections
+        url.searchParams.delete('division_id');
+        url.searchParams.delete('section_id');
+        url.searchParams.delete('open_assign');
+        window.location.href = url.toString();
+      }
+
+      function onClassFilterChange(classId) {
+        var url = new URL(window.location.href);
+        if (classId) {
+          url.searchParams.set('class_id', classId);
+        } else {
+          url.searchParams.delete('class_id');
+        }
+        // Changing class clears dependent division selections
+        url.searchParams.delete('division_id');
+        url.searchParams.delete('section_id');
+        url.searchParams.delete('open_assign');
+        window.location.href = url.toString();
+      }
+
+      function onDivisionFilterChange(divisionId) {
+        var url = new URL(window.location.href);
+        if (divisionId) {
+          url.searchParams.set('division_id', divisionId);
+        } else {
+          url.searchParams.delete('division_id');
+        }
+        url.searchParams.delete('section_id');
+        url.searchParams.delete('open_assign');
+        window.location.href = url.toString();
+      }
+
+      function onTeacherFilterChange(staffId) {
+        var url = new URL(window.location.href);
+        if (staffId) {
+          url.searchParams.set('staff_id', staffId);
+        } else {
+          url.searchParams.delete('staff_id');
+        }
         url.searchParams.delete('open_assign');
         window.location.href = url.toString();
       }

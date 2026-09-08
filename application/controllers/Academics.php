@@ -811,43 +811,80 @@ class Academics extends MY_Controller {
             }
         }
 
+        $selected_year_id     = $this->input->get('academic_year_id') ?: '';
+        $selected_class_id    = $this->input->get('class_id') ?: '';
+        $selected_division_id = ($this->input->get('division_id') ?: $this->input->get('section_id')) ?: '';
+        $selected_staff_id    = ($this->input->get('staff_id') ?: $this->input->get('teacher_id')) ?: '';
+
+        // Validate that class belongs to academic year if both are specified
+        if (!empty($selected_year_id) && !empty($selected_class_id)) {
+            $chk_cls = $this->Class_model->get_by_id($selected_class_id);
+            if (!$chk_cls || (int)$chk_cls->academic_year_id !== (int)$selected_year_id) {
+                // Class does not belong to the selected academic year: reset dependent filters
+                $selected_class_id = '';
+                $selected_division_id = '';
+            }
+        }
+
+        // Backend validation of division filter
+        if (!empty($selected_division_id) && !empty($selected_class_id)) {
+            $chk_div = $this->Division_model->get_by_id($selected_division_id);
+            if (!$chk_div || (int)$chk_div->class_id !== (int)$selected_class_id || $chk_div->status != 1 || $chk_div->is_deleted !== 'n') {
+                // Invalid or mismatched division: neutralize to prevent leaking cross-division records
+                $selected_division_id = -1;
+            }
+        } elseif (!empty($selected_division_id) && empty($selected_class_id)) {
+            $chk_div = $this->Division_model->get_by_id($selected_division_id);
+            if (!$chk_div || $chk_div->status != 1 || $chk_div->is_deleted !== 'n') {
+                $selected_division_id = -1;
+            }
+        }
+
         if ($open_assign) {
             $filters = array(
                 'academic_year_id' => $req_year_id,
                 'class_id'         => $req_class_id,
             );
         } else {
-            $div_filter = $this->input->get('division_id') ?: $this->input->get('section_id');
             $filters = array(
-                'academic_year_id' => $this->input->get('academic_year_id'),
-                'class_id'         => $this->input->get('class_id'),
-                'division_id'      => $div_filter,
-                'section_id'       => $div_filter,
-                'staff_id'         => $this->input->get('staff_id'),
+                'academic_year_id' => $selected_year_id,
+                'class_id'         => $selected_class_id,
+                'division_id'      => $selected_division_id,
+                'section_id'       => $selected_division_id,
+                'staff_id'         => $selected_staff_id,
             );
         }
 
         $assignments = $this->Class_teacher_model->get_all($filters);
         $years       = $this->Academic_year_model->get_all();
-        $classes     = $this->Class_model->get_all();
+        $classes     = $this->Class_model->get_all(!empty($selected_year_id) ? (int)$selected_year_id : 'all');
         $divisions   = $this->Division_model->get_all();
         $teachers    = $this->Staff_model->get_teachers();
 
+        // If a class is selected, divisions in the filter dropdown must correspond strictly to that class
+        $filter_divisions = !empty($selected_class_id) ? $this->Division_model->get_all($selected_class_id) : array();
+
         $this->render('pages/academics/class_teachers', array(
-            'title'             => 'Class Teachers',
-            'page_key'          => 'class-teachers',
-            'breadcrumb'        => array('Academic Management', 'Class Teachers'),
-            'assignments'       => $assignments,
-            'years'             => $years,
-            'classes'           => $classes,
-            'divisions'         => $divisions,
-            'sections'          => $divisions,
-            'teachers'          => $teachers,
-            'modal_open'        => $modal_open,
-            'modal_year_id'     => $req_year_id,
-            'modal_class_id'    => $req_class_id,
-            'modal_division_id' => $req_div_id,
-            'modal_divisions'   => $modal_divisions,
+            'title'                => 'Class Teachers',
+            'page_key'             => 'class-teachers',
+            'breadcrumb'           => array('Academic Management', 'Class Teachers'),
+            'assignments'          => $assignments,
+            'years'                => $years,
+            'classes'              => $classes,
+            'divisions'            => $divisions,
+            'filter_divisions'     => $filter_divisions,
+            'sections'             => $divisions,
+            'teachers'             => $teachers,
+            'selected_year_id'     => $selected_year_id,
+            'selected_class_id'    => $selected_class_id,
+            'selected_division_id' => ($selected_division_id == -1 ? '' : $selected_division_id),
+            'selected_staff_id'    => $selected_staff_id,
+            'selected_teacher_id'  => $selected_staff_id,
+            'modal_open'           => $modal_open,
+            'modal_year_id'        => $req_year_id,
+            'modal_class_id'       => $req_class_id,
+            'modal_division_id'    => $req_div_id,
+            'modal_divisions'      => $modal_divisions,
         ));
     }
 
@@ -1368,6 +1405,9 @@ class Academics extends MY_Controller {
     public function ajax_get_divisions($class_id = NULL)
     {
         header('Content-Type: application/json');
+        if (empty($class_id)) {
+            $class_id = $this->input->get('class_id');
+        }
         if (empty($class_id)) {
             echo json_encode(array());
             return;
