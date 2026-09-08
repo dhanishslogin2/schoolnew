@@ -184,6 +184,103 @@ class Academic_year_model extends CI_Model {
         return $res;
     }
 
+    /**
+     * Get all dependent records referencing an academic year.
+     * Returns an associative array of [label => count] for each table with records > 0.
+     *
+     * @param int $id
+     * @return array
+     */
+    public function get_dependencies($id)
+    {
+        $id = (int)$id;
+        $dependencies = [];
+
+        $tables = [
+            'tbl_students'                       => ['col' => 'academic_year_id', 'label' => 'Students'],
+            'tbl_classes'                        => ['col' => 'academic_year_id', 'label' => 'Classes'],
+            'tbl_attendance'                     => ['col' => 'academic_year_id', 'label' => 'Attendance Records'],
+            'tbl_fee_structures'                => ['col' => 'academic_year_id', 'label' => 'Fee Structures'],
+            'tbl_student_fees'                   => ['col' => 'academic_year_id', 'label' => 'Student Fees'],
+            'tbl_exams'                          => ['col' => 'academic_year_id', 'label' => 'Examinations'],
+            'tbl_exam_schedules'                 => ['col' => 'academic_year_id', 'label' => 'Exam Schedules'],
+            'tbl_exam_marks'                     => ['col' => 'academic_year_id', 'label' => 'Exam Marks'],
+            'tbl_timetable'                      => ['col' => 'academic_year_id', 'label' => 'Timetable Entries'],
+            'tbl_subject_allocations'            => ['col' => 'academic_year_id', 'label' => 'Subject Allocations'],
+            'tbl_class_teachers'                 => ['col' => 'academic_year_id', 'label' => 'Class Teachers'],
+            'tbl_subject_teachers'               => ['col' => 'academic_year_id', 'label' => 'Subject Teachers'],
+            'tbl_academic_calendar'              => ['col' => 'academic_year_id', 'label' => 'Academic Calendar'],
+            'tbl_student_promotions'             => ['col' => 'from_academic_year_id', 'label' => 'Student Promotions'],
+            'tbl_student_results'                => ['col' => 'academic_year_id', 'label' => 'Student Results'],
+            'tbl_admissions'                     => ['col' => 'academic_year_id', 'label' => 'Admissions'],
+            'tbl_assignments'                    => ['col' => 'academic_year_id', 'label' => 'Assignments'],
+            'tbl_certificates'                   => ['col' => 'academic_year_id', 'label' => 'Certificates'],
+            'tbl_student_id_cards'               => ['col' => 'academic_year_id', 'label' => 'ID Cards'],
+            'tbl_student_transfers'              => ['col' => 'academic_year_id', 'label' => 'Transfers'],
+            'tbl_teacher_workload'               => ['col' => 'academic_year_id', 'label' => 'Teacher Workload'],
+        ];
+
+        foreach ($tables as $tbl => $cfg) {
+            if ($this->db->table_exists($tbl)) {
+                $count = $this->db
+                    ->where($cfg['col'], $id)
+                    ->count_all_results($tbl);
+                if ($count > 0) {
+                    $dependencies[$cfg['label']] = $count;
+                }
+            }
+        }
+
+        // Also check tbl_student_promotions to_academic_year_id
+        if ($this->db->table_exists('tbl_student_promotions')) {
+            $to_count = $this->db
+                ->where('to_academic_year_id', $id)
+                ->count_all_results('tbl_student_promotions');
+            if ($to_count > 0) {
+                $dependencies['Student Promotions (Target)'] = $to_count;
+            }
+        }
+
+        return $dependencies;
+    }
+
+    /**
+     * Permanently delete an academic year record from tbl_academic_years.
+     * Uses database transaction and defensively catches foreign key violations.
+     *
+     * @param int $id
+     * @return bool
+     */
+    public function permanent_delete($id)
+    {
+        $id = (int)$id;
+
+        $saved_debug = $this->db->db_debug;
+        $this->db->db_debug = FALSE;
+
+        $this->db->trans_start();
+        $this->db->where($this->primaryKey, $id)->delete($this->table);
+        $this->db->trans_complete();
+
+        $status = $this->db->trans_status();
+        $err = $this->db->error();
+
+        $this->db->db_debug = $saved_debug;
+
+        if (!$status) {
+            if (isset($err['code']) && (int)$err['code'] === 1451) {
+                log_message('error', 'Foreign key constraint prevents deleting academic year ID: ' . $id);
+                return false;
+            }
+            if ($saved_debug && !empty($err['message'])) {
+                $this->db->display_error($err['message']);
+            }
+            return false;
+        }
+
+        return true;
+    }
+
     public function soft_delete($id)
     {
         return $this->db

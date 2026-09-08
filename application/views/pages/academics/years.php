@@ -65,7 +65,7 @@
                       <a href="<?php echo site_url('academics/set_active_year/' . $yr->academic_year_id); ?>" class="px-3 py-1 rounded-lg bg-surface-container-high text-primary text-label-md hover:bg-surface-container-highest transition-colors inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">check_circle</span>Set Active</a>
                     <?php endif; ?>
                     <button onclick="openEditYearModal(<?php echo $yr->academic_year_id; ?>, '<?php echo html_escape(addslashes($yr->year_name)); ?>', '<?php echo $yr->start_date; ?>', '<?php echo $yr->end_date; ?>', <?php echo $yr->is_active; ?>)" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer" title="Edit"><span class="material-symbols-outlined text-[18px]">edit</span></button>
-                    <a href="<?php echo site_url('academics/delete_year/' . $yr->academic_year_id); ?>" onclick="return confirm('Deactivate academic year record?')" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-error-container/20 hover:text-error transition-colors" title="Deactivate"><span class="material-symbols-outlined text-[18px]">delete</span></a>
+                    <a href="<?php echo site_url('academics/delete_year/' . $yr->academic_year_id); ?>" onclick="return confirm('Permanently delete this academic year record?')" class="p-1.5 rounded-lg text-on-surface-variant hover:bg-error-container/20 hover:text-error transition-colors" title="Delete"><span class="material-symbols-outlined text-[18px]">delete</span></a>
                   </div>
                 </td>
               </tr>
@@ -82,7 +82,7 @@
           <h3 class="font-headline-md text-headline-md text-on-surface" id="modal-year-title">Add Academic Year</h3>
           <button onclick="document.getElementById('modal-year').classList.add('hidden')" class="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container-high"><span class="material-symbols-outlined">close</span></button>
         </div>
-        <?php echo form_open('academics/years', array('class' => 'p-6 space-y-4')); ?>
+        <?php echo form_open('academics/years', array('class' => 'p-6 space-y-4', 'id' => 'academic-year-form')); ?>
           <input type="hidden" name="action" id="year_action" value="add"/>
           <input type="hidden" name="academic_year_id" id="modal_year_id"/>
           <div>
@@ -99,13 +99,17 @@
               <input type="date" name="end_date" id="modal_end_date" required value="<?php echo date('Y-03-31', strtotime('+1 year')); ?>" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest"/>
             </div>
           </div>
+          <div id="date-range-error" class="hidden text-[12px] text-error flex items-center gap-1 -mt-2">
+            <span class="material-symbols-outlined text-[15px]">error</span>
+            <span>End Date must be greater than Start Date.</span>
+          </div>
           <div class="flex items-center gap-2 pt-2">
             <input type="checkbox" name="is_active" id="modal_is_active" value="1" class="rounded text-primary"/>
             <label for="modal_is_active" class="text-body-md text-on-surface">Set as Current Active Academic Year</label>
           </div>
           <div class="flex justify-end gap-2 pt-4 border-t border-outline-variant">
             <button type="button" onclick="document.getElementById('modal-year').classList.add('hidden')" class="px-4 py-2 rounded-lg border border-outline-variant text-on-surface-variant">Cancel</button>
-            <button type="submit" class="px-4 py-2 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant cursor-pointer">Save Session</button>
+            <button type="submit" id="btn-save-session" class="px-4 py-2 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant cursor-pointer">Save Session</button>
           </div>
         <?php echo form_close(); ?>
       </div>
@@ -116,15 +120,36 @@
 
       function resetSubmitButton() {
         isSubmittingYear = false;
-        const form = document.querySelector('#modal-year form');
-        if (form) {
-          const btn = form.querySelector('button[type="submit"]');
-          if (btn) {
-            btn.disabled = false;
-            btn.classList.remove('opacity-70', 'cursor-not-allowed');
-            btn.textContent = 'Save Session';
+        const btn = document.getElementById('btn-save-session');
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-70', 'cursor-not-allowed');
+          btn.textContent = 'Save Session';
+        }
+      }
+
+      function validateAcademicDates() {
+        const startInput = document.getElementById('modal_start_date');
+        const endInput = document.getElementById('modal_end_date');
+        const errorEl = document.getElementById('date-range-error');
+        if (!startInput || !endInput) return true;
+
+        const startVal = startInput.value;
+        const endVal = endInput.value;
+
+        if (startVal && endVal) {
+          if (endVal <= startVal) {
+            endInput.classList.add('border-error');
+            startInput.classList.add('border-error');
+            if (errorEl) errorEl.classList.remove('hidden');
+            return false;
           }
         }
+
+        endInput.classList.remove('border-error');
+        startInput.classList.remove('border-error');
+        if (errorEl) errorEl.classList.add('hidden');
+        return true;
       }
 
       function openAddYearModal() {
@@ -134,6 +159,7 @@
         document.getElementById('modal_year_name').value = '';
         document.getElementById('modal_is_active').checked = false;
         resetSubmitButton();
+        validateAcademicDates();
         document.getElementById('modal-year').classList.remove('hidden');
       }
 
@@ -146,19 +172,37 @@
         document.getElementById('modal_end_date').value = end;
         document.getElementById('modal_is_active').checked = (isActive == 1);
         resetSubmitButton();
+        validateAcademicDates();
         document.getElementById('modal-year').classList.remove('hidden');
       }
 
       document.addEventListener('DOMContentLoaded', function() {
-        const form = document.querySelector('#modal-year form');
+        const startInput = document.getElementById('modal_start_date');
+        const endInput = document.getElementById('modal_end_date');
+
+        if (startInput) {
+          startInput.addEventListener('change', validateAcademicDates);
+          startInput.addEventListener('input', validateAcademicDates);
+        }
+        if (endInput) {
+          endInput.addEventListener('change', validateAcademicDates);
+          endInput.addEventListener('input', validateAcademicDates);
+        }
+
+        const form = document.getElementById('academic-year-form') || document.querySelector('#modal-year form');
         if (form) {
           form.addEventListener('submit', function(e) {
+            if (!validateAcademicDates()) {
+              e.preventDefault();
+              return false;
+            }
+
             if (isSubmittingYear) {
               e.preventDefault();
               return false;
             }
             isSubmittingYear = true;
-            const btn = form.querySelector('button[type="submit"]');
+            const btn = document.getElementById('btn-save-session');
             if (btn) {
               btn.classList.add('opacity-70', 'cursor-not-allowed');
               btn.innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Saving...</span>';

@@ -87,10 +87,19 @@ class Academics extends MY_Controller {
                 $this->require_permission('academics.create');
                 $this->form_validation->set_rules('year_name', 'Year Name', 'required|trim');
                 $this->form_validation->set_rules('start_date', 'Start Date', 'required');
-                $this->form_validation->set_rules('end_date', 'End Date', 'required');
+                $this->form_validation->set_rules('end_date', 'End Date', 'required|callback_validate_academic_dates');
 
                 if ($this->form_validation->run() === TRUE) {
-                    $year_name = trim(preg_replace('/\s+/', ' ', (string)$this->input->post('year_name')));
+                    $year_name  = trim(preg_replace('/\s+/', ' ', (string)$this->input->post('year_name')));
+                    $start_date = $this->input->post('start_date');
+                    $end_date   = $this->input->post('end_date');
+
+                    // Strict date order validation: End Date must be greater than Start Date
+                    if (strtotime($end_date) <= strtotime($start_date)) {
+                        $this->session->set_flashdata('error', 'End Date must be greater than Start Date.');
+                        redirect('academics/years');
+                        return;
+                    }
 
                     // Prevent duplicate academic year creation before INSERT
                     if ($this->Academic_year_model->is_year_name_exists($year_name)) {
@@ -102,8 +111,8 @@ class Academics extends MY_Controller {
                     $isActive = ($this->input->post('is_active') == '1') ? 1 : 0;
                     $insert_id = $this->Academic_year_model->insert(array(
                         'year_name'  => $year_name,
-                        'start_date' => $this->input->post('start_date'),
-                        'end_date'   => $this->input->post('end_date'),
+                        'start_date' => $start_date,
+                        'end_date'   => $end_date,
                         'is_active'  => $isActive,
                         'status'     => 1,
                         'created_at' => date('Y-m-d H:i:s')
@@ -124,10 +133,19 @@ class Academics extends MY_Controller {
                 $this->form_validation->set_rules('academic_year_id', 'Academic Year ID', 'required|integer');
                 $this->form_validation->set_rules('year_name', 'Year Name', 'required|trim');
                 $this->form_validation->set_rules('start_date', 'Start Date', 'required');
-                $this->form_validation->set_rules('end_date', 'End Date', 'required');
+                $this->form_validation->set_rules('end_date', 'End Date', 'required|callback_validate_academic_dates');
 
                 if ($this->form_validation->run() === TRUE) {
-                    $year_name = trim(preg_replace('/\s+/', ' ', (string)$this->input->post('year_name')));
+                    $year_name  = trim(preg_replace('/\s+/', ' ', (string)$this->input->post('year_name')));
+                    $start_date = $this->input->post('start_date');
+                    $end_date   = $this->input->post('end_date');
+
+                    // Strict date order validation: End Date must be greater than Start Date
+                    if (strtotime($end_date) <= strtotime($start_date)) {
+                        $this->session->set_flashdata('error', 'End Date must be greater than Start Date.');
+                        redirect('academics/years');
+                        return;
+                    }
 
                     // Check duplicate for edit (excluding current record)
                     if ($this->Academic_year_model->is_year_name_exists($year_name, $id)) {
@@ -139,8 +157,8 @@ class Academics extends MY_Controller {
                     $isActive = ($this->input->post('is_active') == '1') ? 1 : 0;
                     $updated = $this->Academic_year_model->update($id, array(
                         'year_name'  => $year_name,
-                        'start_date' => $this->input->post('start_date'),
-                        'end_date'   => $this->input->post('end_date'),
+                        'start_date' => $start_date,
+                        'end_date'   => $end_date,
                         'is_active'  => $isActive,
                         'updated_at' => date('Y-m-d H:i:s')
                     ));
@@ -269,11 +287,66 @@ class Academics extends MY_Controller {
     public function delete_year($id = NULL)
     {
         $this->require_permission('academics.delete');
-        if (!empty($id)) {
-            $this->Academic_year_model->soft_delete($id);
-            $this->session->set_flashdata('success', 'Academic Year deactivated.');
+        $id = (int)$id;
+        if ($id <= 0) {
+            $this->session->set_flashdata('error', 'Invalid Academic Year selected.');
+            redirect('academics/years');
+            return;
+        }
+
+        $year = $this->Academic_year_model->get_by_id($id);
+        if (!$year) {
+            $this->session->set_flashdata('error', 'Academic Year not found.');
+            redirect('academics/years');
+            return;
+        }
+
+        // Active Academic Year must NOT be deleted
+        if ((int)$year->is_active === 1) {
+            $this->session->set_flashdata('error', 'Cannot delete the active academic year. Please set another academic year as active first.');
+            redirect('academics/years');
+            return;
+        }
+
+        // Check whether there are dependent records in any child tables
+        $dependencies = $this->Academic_year_model->get_dependencies($id);
+        if (!empty($dependencies)) {
+            $details = [];
+            foreach ($dependencies as $label => $count) {
+                $details[] = "{$label}: {$count}";
+            }
+            $msg = "Cannot delete this academic year because it is being used by existing records (" . implode(', ', $details) . "). Please remove or reassign the dependent records first.";
+            $this->session->set_flashdata('error', $msg);
+            redirect('academics/years');
+            return;
+        }
+
+        // Permanently delete from database when no dependencies exist
+        $deleted = $this->Academic_year_model->permanent_delete($id);
+        if ($deleted) {
+            $this->session->set_flashdata('success', 'Academic Year permanently deleted.');
+        } else {
+            $this->session->set_flashdata('error', 'Cannot delete this academic year because it is being used by existing records. Please remove or reassign the dependent records first.');
         }
         redirect('academics/years');
+    }
+
+    /**
+     * Form validation callback: Verify that End Date is strictly greater than Start Date.
+     *
+     * @param string $end_date
+     * @return bool
+     */
+    public function validate_academic_dates($end_date)
+    {
+        $start_date = $this->input->post('start_date');
+        if (!empty($start_date) && !empty($end_date)) {
+            if (strtotime($end_date) <= strtotime($start_date)) {
+                $this->form_validation->set_message('validate_academic_dates', 'End Date must be greater than Start Date.');
+                return FALSE;
+            }
+        }
+        return TRUE;
     }
 
     /* =========================================================================
