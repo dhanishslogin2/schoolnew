@@ -1,4 +1,13 @@
-<?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+$selected_year_id     = isset($selected_year_id) ? $selected_year_id : (isset($current_academic_year_id) ? $current_academic_year_id : '');
+$selected_class_id    = isset($selected_class_id) ? $selected_class_id : '';
+$selected_division_id = isset($selected_division_id) ? $selected_division_id : '';
+$selected_subject_id  = isset($selected_subject_id) ? $selected_subject_id : '';
+$selected_staff_id    = isset($selected_staff_id) ? $selected_staff_id : (isset($selected_teacher_id) ? $selected_teacher_id : '');
+$selected_teacher_id  = $selected_staff_id;
+?>
 
     <!-- Flash Messages -->
     <?php if ($this->session->flashdata('success')): ?>
@@ -31,7 +40,7 @@
       <select id="filter_academic_year_id" onchange="onYearFilterChange(this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
         <option value="">All Academic Years</option>
         <?php foreach ($years as $yr): ?>
-          <option value="<?php echo $yr->academic_year_id; ?>" <?php echo ($selected_year_id == $yr->academic_year_id) ? 'selected' : ''; ?>><?php echo html_escape($yr->year_name); ?></option>
+          <option value="<?php echo $yr->academic_year_id; ?>" <?php echo (!empty($selected_year_id) && (string)$selected_year_id === (string)$yr->academic_year_id) ? 'selected' : ''; ?>><?php echo html_escape($yr->year_name); ?></option>
         <?php endforeach; ?>
       </select>
       <select id="filter_class_id" onchange="onClassFilterChange(this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
@@ -178,10 +187,10 @@
 
       function onYearFilterChange(yearId) {
         var url = new URL(window.location.href);
-        if (yearId) {
+        if (yearId !== '') {
           url.searchParams.set('academic_year_id', yearId);
         } else {
-          url.searchParams.delete('academic_year_id');
+          url.searchParams.set('academic_year_id', '');
         }
         // Changing academic year clears stale subject selection
         url.searchParams.delete('subject_id');

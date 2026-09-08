@@ -920,11 +920,23 @@ class Academics extends MY_Controller {
             redirect('academics/subject_teachers');
         }
 
-        $selected_year_id     = $this->input->get('academic_year_id');
-        $selected_class_id    = $this->input->get('class_id');
-        $selected_division_id = $this->input->get('division_id') ?: $this->input->get('section_id');
-        $selected_subject_id  = $this->input->get('subject_id');
-        $selected_staff_id    = $this->input->get('staff_id');
+        $raw_year_id = $this->input->get('academic_year_id');
+        if ($raw_year_id !== null && $raw_year_id !== '') {
+            $selected_year_id = (int)$raw_year_id;
+        } elseif ($raw_year_id === '') {
+            // Explicitly requested 'All Academic Years'
+            $selected_year_id = '';
+        } else {
+            // Default when not specified in query params:
+            // Preserve existing default behavior (Active Academic Year)
+            $active_year = $this->Academic_year_model->get_active_year();
+            $selected_year_id = $active_year ? (int)$active_year->academic_year_id : (!empty($this->academic_year_id) ? (int)$this->academic_year_id : '');
+        }
+
+        $selected_class_id    = $this->input->get('class_id') ?: '';
+        $selected_division_id = ($this->input->get('division_id') ?: $this->input->get('section_id')) ?: '';
+        $selected_subject_id  = $this->input->get('subject_id') ?: '';
+        $selected_staff_id    = ($this->input->get('staff_id') ?: $this->input->get('teacher_id')) ?: '';
 
         // Backend validation of division filter
         if (!empty($selected_division_id) && !empty($selected_class_id)) {
@@ -996,6 +1008,7 @@ class Academics extends MY_Controller {
             'selected_division_id' => ($selected_division_id == -1 ? '' : $selected_division_id),
             'selected_subject_id'  => ($selected_subject_id == -1 ? '' : $selected_subject_id),
             'selected_staff_id'    => $selected_staff_id,
+            'selected_teacher_id'  => $selected_staff_id,
         ));
     }
 
