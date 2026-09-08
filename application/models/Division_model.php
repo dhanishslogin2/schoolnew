@@ -16,13 +16,14 @@ class Division_model extends CI_Model {
     public function get_all($class_id = NULL)
     {
         $this->db
-            ->select('div.*, c.class_name, c.academic_group_id, ag.group_name, s.full_name as class_teacher_name, (SELECT COUNT(student_id) FROM tbl_students WHERE division_id = div.division_id AND status = 1 AND is_deleted = \'n\') as student_count')
+            ->select('div.*, c.class_name, c.academic_group_id, c.academic_year_id, ag.group_name, s.full_name as class_teacher_name, (SELECT COUNT(student_id) FROM tbl_students WHERE division_id = div.division_id AND status = 1 AND is_deleted = \'n\') as student_count')
             ->from('tbl_divisions div')
             ->join('tbl_classes c', 'c.class_id = div.class_id', 'left')
             ->join('tbl_academic_groups ag', 'ag.academic_group_id = c.academic_group_id', 'left')
             ->join('tbl_staff s', 's.staff_id = div.class_teacher_id', 'left')
             ->where('div.status', 1)
             ->where('div.is_deleted', 'n')
+            ->where('c.is_deleted', 'n')
             ->order_by('ag.display_order', 'ASC')
             ->order_by('div.class_id', 'ASC')
             ->order_by('div.division_name', 'ASC');
@@ -38,7 +39,7 @@ class Division_model extends CI_Model {
             $default_div_id = $this->get_default_division_id($class_id);
             if ($default_div_id) {
                 $this->db
-                    ->select('div.*, c.class_name, c.academic_group_id, ag.group_name, s.full_name as class_teacher_name, 0 as student_count')
+                    ->select('div.*, c.class_name, c.academic_group_id, c.academic_year_id, ag.group_name, s.full_name as class_teacher_name, 0 as student_count')
                     ->from('tbl_divisions div')
                     ->join('tbl_classes c', 'c.class_id = div.class_id', 'left')
                     ->join('tbl_academic_groups ag', 'ag.academic_group_id = c.academic_group_id', 'left')
@@ -109,7 +110,7 @@ class Division_model extends CI_Model {
     public function get_by_id($id)
     {
         $row = $this->db
-            ->select('div.*, c.class_name, s.full_name as class_teacher_name')
+            ->select('div.*, c.class_name, c.academic_year_id, s.full_name as class_teacher_name')
             ->from('tbl_divisions div')
             ->join('tbl_classes c', 'c.class_id = div.class_id', 'left')
             ->join('tbl_staff s', 's.staff_id = div.class_teacher_id', 'left')

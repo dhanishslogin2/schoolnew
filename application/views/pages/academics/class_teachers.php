@@ -17,7 +17,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
         <h2 class="font-headline-md text-headline-md text-on-surface">Class Teachers</h2>
-        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Assign primary class teachers and mentors to each academic class and section.</p>
+        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Assign primary class teachers and mentors to each academic class and division.</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
         <button onclick="openAssignModal()" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
@@ -92,7 +92,7 @@
     </div>
 
     <!-- Modal: Assign Class Teacher -->
-    <div id="modal-assign-ct" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 hidden">
+    <div id="modal-assign-ct" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 <?php echo (!empty($modal_open)) ? '' : 'hidden'; ?>">
       <div class="elevation-3 rounded-2xl bg-surface-container-lowest border border-outline-variant w-full max-w-md">
         <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant">
           <h3 class="font-headline-md text-headline-md text-on-surface">Assign Class Teacher</h3>
@@ -103,23 +103,31 @@
             <label class="block text-label-md mb-1">Academic Session *</label>
             <select name="academic_year_id" id="modal_ct_year" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
               <?php foreach ($years as $yr): ?>
-                <option value="<?php echo $yr->academic_year_id; ?>"><?php echo html_escape($yr->year_name); ?></option>
+                <option value="<?php echo $yr->academic_year_id; ?>" <?php echo (!empty($modal_open) && $yr->academic_year_id == $modal_year_id) ? 'selected' : ''; ?>><?php echo html_escape($yr->year_name); ?></option>
               <?php endforeach; ?>
             </select>
           </div>
           <div>
             <label class="block text-label-md mb-1">Class *</label>
-            <select name="class_id" id="modal_ct_class" onchange="loadSectionsForClass(this.value)" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
+            <select name="class_id" id="modal_ct_class" onchange="loadDivisionsForClass(this.value)" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
               <option value="">Select Class</option>
               <?php foreach ($classes as $cls): ?>
-                <option value="<?php echo $cls->class_id; ?>"><?php echo html_escape($cls->class_name); ?></option>
+                <option value="<?php echo $cls->class_id; ?>" <?php echo (!empty($modal_open) && $cls->class_id == $modal_class_id) ? 'selected' : ''; ?>><?php echo html_escape($cls->class_name); ?></option>
               <?php endforeach; ?>
             </select>
           </div>
           <div>
             <label class="block text-label-md mb-1">Division *</label>
             <select name="division_id" id="modal_ct_section" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
-              <option value="">Select Class First</option>
+              <?php if (!empty($modal_open) && !empty($modal_divisions)): ?>
+                <option value="">Select Division</option>
+                <?php foreach ($modal_divisions as $mdiv): ?>
+                  <?php $m_id = $mdiv->division_id ?: $mdiv->section_id; ?>
+                  <option value="<?php echo $m_id; ?>" <?php echo ($m_id == $modal_division_id) ? 'selected' : ''; ?>>Division <?php echo html_escape($mdiv->division_name ?: $mdiv->section_name); ?></option>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <option value="">Select Class First</option>
+              <?php endif; ?>
             </select>
           </div>
           <div>
@@ -143,41 +151,57 @@
       function applyFilter(key, val) {
         var url = new URL(window.location.href);
         if (val) { url.searchParams.set(key, val); } else { url.searchParams.delete(key); }
+        url.searchParams.delete('open_assign');
         window.location.href = url.toString();
       }
 
       function openAssignModal() {
         document.getElementById('modal_ct_class').selectedIndex = 0;
         document.getElementById('modal_ct_section').innerHTML = '<option value="">Select Class First</option>';
+        document.getElementById('modal_ct_staff').selectedIndex = 0;
         document.getElementById('modal-assign-ct').classList.remove('hidden');
       }
 
-      function loadSectionsForClass(classId) {
+      function loadDivisionsForClass(classId, selectedDivisionId) {
         var secSelect = document.getElementById('modal_ct_section');
         secSelect.innerHTML = '<option value="">Loading divisions...</option>';
         if (!classId) {
           secSelect.innerHTML = '<option value="">Select Class First</option>';
-          return;
+          return Promise.resolve();
         }
 
-        fetch('<?php echo site_url('academics/ajax_get_divisions/'); ?>' + classId)
+        return fetch('<?php echo site_url('academics/ajax_get_divisions/'); ?>' + classId)
           .then(res => res.json())
           .then(data => {
-            if (data.length === 0) {
+            if (!data || data.length === 0) {
               secSelect.innerHTML = '<option value="">No divisions found</option>';
             } else {
               var opts = '<option value="">Select Division</option>';
               data.forEach(function(sec) {
                 var divId = sec.division_id || sec.section_id;
                 var divName = sec.division_name || sec.section_name;
-                opts += '<option value="' + divId + '">Division ' + divName + '</option>';
+                var isSelected = (selectedDivisionId && String(divId) === String(selectedDivisionId)) ? ' selected' : '';
+                opts += '<option value="' + divId + '"' + isSelected + '>Division ' + divName + '</option>';
               });
               secSelect.innerHTML = opts;
+              if (selectedDivisionId) {
+                secSelect.value = selectedDivisionId;
+              }
             }
           })
           .catch(function() {
             secSelect.innerHTML = '<option value="">Error loading divisions</option>';
           });
       }
-      var loadDivisionsForClass = loadSectionsForClass;
+      var loadSectionsForClass = loadDivisionsForClass;
+
+      document.addEventListener('DOMContentLoaded', function() {
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('open_assign') === '1') {
+          var modal = document.getElementById('modal-assign-ct');
+          if (modal) {
+            modal.classList.remove('hidden');
+          }
+        }
+      });
     </script>

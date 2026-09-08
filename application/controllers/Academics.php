@@ -748,32 +748,84 @@ class Academics extends MY_Controller {
         $this->require_permission('academics.view');
         if ($this->input->method() === 'post') {
             $this->require_permission('academics.edit');
-            $year_id     = $this->input->post('academic_year_id') ?: 1;
-            $class_id    = $this->input->post('class_id');
-            $division_id = $this->input->post('division_id') ?: $this->input->post('section_id');
-            $staff_id    = $this->input->post('staff_id');
+            $year_id     = (int)$this->input->post('academic_year_id');
+            $class_id    = (int)$this->input->post('class_id');
+            $division_id = (int)($this->input->post('division_id') ?: $this->input->post('section_id'));
+            $staff_id    = (int)$this->input->post('staff_id');
 
-            if (empty($class_id) || empty($division_id) || empty($staff_id)) {
+            if (empty($year_id) || empty($class_id) || empty($division_id) || empty($staff_id)) {
                 $this->session->set_flashdata('error', 'Please select academic year, class, division, and teacher.');
+                redirect('academics/class_teachers');
+            }
+
+            // 1. Validate Academic Year exists and is active/not deleted
+            $year = $this->Academic_year_model->get_by_id($year_id);
+            if (!$year || $year->status != 1 || $year->is_deleted !== 'n') {
+                $this->session->set_flashdata('error', 'Invalid Academic Session selected.');
+                redirect('academics/class_teachers');
+            }
+
+            // 2. Validate Class exists and is not deleted
+            $class = $this->Class_model->get_by_id($class_id);
+            if (!$class || $class->status != 1 || $class->is_deleted !== 'n') {
+                $this->session->set_flashdata('error', 'Invalid Class selected.');
+                redirect('academics/class_teachers');
+            }
+
+            // 3. Validate Division exists, is not deleted, and belongs to the selected Class
+            $division = $this->Division_model->get_by_id($division_id);
+            if (!$division || $division->status != 1 || $division->is_deleted !== 'n' || (int)$division->class_id !== $class_id) {
+                $this->session->set_flashdata('error', 'Selected Division does not belong to the selected Class.');
+                redirect('academics/class_teachers');
+            }
+
+            // 4. Validate Teacher exists, is active, and is teaching faculty
+            $staff = $this->db->where('staff_id', $staff_id)->where('is_deleted', 'n')->get('tbl_staff')->row();
+            if (!$staff || $staff->status != 1 || (strtolower($staff->staff_type) !== 'teacher' && strtolower($staff->category) !== 'teaching' && strtolower($staff->category) !== 'teacher')) {
+                $this->session->set_flashdata('error', 'Failed to assign class teacher. Only active teaching faculty can be assigned.');
+                redirect('academics/class_teachers');
+            }
+
+            $res = $this->Class_teacher_model->assign($year_id, $class_id, $division_id, $staff_id);
+            if ($res) {
+                $this->session->set_flashdata('success', 'Class Teacher assigned successfully!');
             } else {
-                $res = $this->Class_teacher_model->assign($year_id, $class_id, $division_id, $staff_id);
-                if ($res) {
-                    $this->session->set_flashdata('success', 'Class Teacher assigned successfully!');
-                } else {
-                    $this->session->set_flashdata('error', 'Failed to assign class teacher. Only teaching faculty can be assigned.');
-                }
+                $this->session->set_flashdata('error', 'Failed to assign class teacher. Only teaching faculty can be assigned.');
             }
             redirect('academics/class_teachers');
         }
 
-        $div_filter = $this->input->get('division_id') ?: $this->input->get('section_id');
-        $filters = array(
-            'academic_year_id' => $this->input->get('academic_year_id'),
-            'class_id'         => $this->input->get('class_id'),
-            'division_id'      => $div_filter,
-            'section_id'       => $div_filter,
-            'staff_id'         => $this->input->get('staff_id'),
-        );
+        $open_assign   = (string)$this->input->get('open_assign') === '1';
+        $req_year_id   = $this->input->get('academic_year_id');
+        $req_class_id  = $this->input->get('class_id');
+        $req_div_id    = $this->input->get('division_id') ?: $this->input->get('section_id');
+
+        // Check if opening assign modal with valid context
+        $modal_open = false;
+        $modal_divisions = array();
+        if ($open_assign && !empty($req_class_id) && !empty($req_div_id)) {
+            $chk_div = $this->Division_model->get_by_id($req_div_id);
+            if ($chk_div && (int)$chk_div->class_id === (int)$req_class_id) {
+                $modal_open = true;
+                $modal_divisions = $this->Division_model->get_all($req_class_id);
+            }
+        }
+
+        if ($open_assign) {
+            $filters = array(
+                'academic_year_id' => $req_year_id,
+                'class_id'         => $req_class_id,
+            );
+        } else {
+            $div_filter = $this->input->get('division_id') ?: $this->input->get('section_id');
+            $filters = array(
+                'academic_year_id' => $this->input->get('academic_year_id'),
+                'class_id'         => $this->input->get('class_id'),
+                'division_id'      => $div_filter,
+                'section_id'       => $div_filter,
+                'staff_id'         => $this->input->get('staff_id'),
+            );
+        }
 
         $assignments = $this->Class_teacher_model->get_all($filters);
         $years       = $this->Academic_year_model->get_all();
@@ -782,15 +834,20 @@ class Academics extends MY_Controller {
         $teachers    = $this->Staff_model->get_teachers();
 
         $this->render('pages/academics/class_teachers', array(
-            'title'       => 'Class Teachers',
-            'page_key'    => 'class-teachers',
-            'breadcrumb'  => array('Academic Management', 'Class Teachers'),
-            'assignments' => $assignments,
-            'years'       => $years,
-            'classes'     => $classes,
-            'divisions'   => $divisions,
-            'sections'    => $divisions,
-            'teachers'    => $teachers,
+            'title'             => 'Class Teachers',
+            'page_key'          => 'class-teachers',
+            'breadcrumb'        => array('Academic Management', 'Class Teachers'),
+            'assignments'       => $assignments,
+            'years'             => $years,
+            'classes'           => $classes,
+            'divisions'         => $divisions,
+            'sections'          => $divisions,
+            'teachers'          => $teachers,
+            'modal_open'        => $modal_open,
+            'modal_year_id'     => $req_year_id,
+            'modal_class_id'    => $req_class_id,
+            'modal_division_id' => $req_div_id,
+            'modal_divisions'   => $modal_divisions,
         ));
     }
 

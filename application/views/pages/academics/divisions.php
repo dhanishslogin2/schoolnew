@@ -156,7 +156,11 @@
                       <span class="material-symbols-outlined text-[18px]">person</span><?php echo html_escape($div->class_teacher_name); ?>
                     </span>
                   <?php else: ?>
-                    <a href="<?php echo site_url('academics/class_teachers?class_id=' . $div->class_id); ?>" class="text-[12px] text-primary hover:underline">+ Assign Teacher</a>
+                    <?php
+                      $div_year_id = !empty($div->academic_year_id) ? (int)$div->academic_year_id : get_current_academic_year_id();
+                      $assign_url = site_url('academics/class_teachers?open_assign=1&academic_year_id=' . $div_year_id . '&class_id=' . (int)$div->class_id . '&division_id=' . (int)$div_id);
+                    ?>
+                    <a href="<?php echo $assign_url; ?>" class="text-[12px] text-primary hover:underline">+ Assign Teacher</a>
                   <?php endif; ?>
                 </td>
                 <td class="px-4 py-3 text-on-surface whitespace-nowrap"><?php echo html_escape($div->room_no ?: '—'); ?></td>
