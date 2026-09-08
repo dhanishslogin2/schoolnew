@@ -46,18 +46,20 @@ if ( ! function_exists('school_currency'))
     function school_currency($amount, $symbol = '₹', $decimals = 2)
     {
         $amount = (float)$amount;
-        // Indian numbering system formatting
-        $formatted = number_format(abs($amount), $decimals);
-        // Convert to Indian style (lakhs/crores)
+        // Format absolute amount with specified decimals, suppressing default thousands separator
+        $formatted = number_format(abs($amount), $decimals, '.', '');
+        // Convert integer part to Indian style (thousands, then lakhs/crores in pairs of 2)
         $parts  = explode('.', $formatted);
         $int    = $parts[0];
-        $dec    = isset($parts[1]) ? '.' . $parts[1] : '';
-        $last3  = strlen($int) > 3 ? substr($int, -3) : $int;
-        $rest   = strlen($int) > 3 ? substr($int, 0, strlen($int) - 3) : '';
-        if ($rest !== '') {
-            $rest = preg_replace('/(\d)(?=(\d{2})+(?!\d))/', '$1,', $rest);
-            $int  = $rest . ',' . $last3;
+        $dec    = (isset($parts[1]) && $decimals > 0) ? '.' . $parts[1] : '';
+
+        if (strlen($int) > 3) {
+            $last3 = substr($int, -3);
+            $rest  = substr($int, 0, -3);
+            $rest  = preg_replace('/\B(?=(\d{2})+(?!\d))/', ',', $rest);
+            $int   = $rest . ',' . $last3;
         }
+
         $sign = $amount < 0 ? '-' : '';
         return $sign . $symbol . ' ' . $int . $dec;
     }
