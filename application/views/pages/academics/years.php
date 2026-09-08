@@ -112,14 +112,31 @@
     </div>
 
     <script>
+      let isSubmittingYear = false;
+
+      function resetSubmitButton() {
+        isSubmittingYear = false;
+        const form = document.querySelector('#modal-year form');
+        if (form) {
+          const btn = form.querySelector('button[type="submit"]');
+          if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-70', 'cursor-not-allowed');
+            btn.textContent = 'Save Session';
+          }
+        }
+      }
+
       function openAddYearModal() {
         document.getElementById('year_action').value = 'add';
         document.getElementById('modal-year-title').textContent = 'Add Academic Year';
         document.getElementById('modal_year_id').value = '';
         document.getElementById('modal_year_name').value = '';
         document.getElementById('modal_is_active').checked = false;
+        resetSubmitButton();
         document.getElementById('modal-year').classList.remove('hidden');
       }
+
       function openEditYearModal(id, name, start, end, isActive) {
         document.getElementById('year_action').value = 'edit';
         document.getElementById('modal-year-title').textContent = 'Edit Academic Year';
@@ -128,6 +145,25 @@
         document.getElementById('modal_start_date').value = start;
         document.getElementById('modal_end_date').value = end;
         document.getElementById('modal_is_active').checked = (isActive == 1);
+        resetSubmitButton();
         document.getElementById('modal-year').classList.remove('hidden');
       }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('#modal-year form');
+        if (form) {
+          form.addEventListener('submit', function(e) {
+            if (isSubmittingYear) {
+              e.preventDefault();
+              return false;
+            }
+            isSubmittingYear = true;
+            const btn = form.querySelector('button[type="submit"]');
+            if (btn) {
+              btn.classList.add('opacity-70', 'cursor-not-allowed');
+              btn.innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Saving...</span>';
+            }
+          });
+        }
+      });
     </script>

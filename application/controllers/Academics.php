@@ -90,31 +90,69 @@ class Academics extends MY_Controller {
                 $this->form_validation->set_rules('end_date', 'End Date', 'required');
 
                 if ($this->form_validation->run() === TRUE) {
+                    $year_name = trim(preg_replace('/\s+/', ' ', (string)$this->input->post('year_name')));
+
+                    // Prevent duplicate academic year creation before INSERT
+                    if ($this->Academic_year_model->is_year_name_exists($year_name)) {
+                        $this->session->set_flashdata('error', "Academic year {$year_name} already exists.");
+                        redirect('academics/years');
+                        return;
+                    }
+
                     $isActive = ($this->input->post('is_active') == '1') ? 1 : 0;
-                    $this->Academic_year_model->insert(array(
-                        'year_name'  => $this->input->post('year_name'),
+                    $insert_id = $this->Academic_year_model->insert(array(
+                        'year_name'  => $year_name,
                         'start_date' => $this->input->post('start_date'),
                         'end_date'   => $this->input->post('end_date'),
                         'is_active'  => $isActive,
                         'status'     => 1,
                         'created_at' => date('Y-m-d H:i:s')
                     ));
-                    $this->session->set_flashdata('success', 'Academic Year added successfully!');
+
+                    if ($insert_id === FALSE) {
+                        $this->session->set_flashdata('error', "Academic year {$year_name} already exists.");
+                    } else {
+                        $this->session->set_flashdata('success', 'Academic Year added successfully!');
+                    }
                 } else {
                     $this->session->set_flashdata('error', validation_errors());
                 }
             } elseif ($action === 'edit') {
                 $this->require_permission('academics.edit');
-                $id = $this->input->post('academic_year_id');
-                $isActive = ($this->input->post('is_active') == '1') ? 1 : 0;
-                $this->Academic_year_model->update($id, array(
-                    'year_name'  => $this->input->post('year_name'),
-                    'start_date' => $this->input->post('start_date'),
-                    'end_date'   => $this->input->post('end_date'),
-                    'is_active'  => $isActive,
-                    'updated_at' => date('Y-m-d H:i:s')
-                ));
-                $this->session->set_flashdata('success', 'Academic Year updated successfully!');
+                $id = (int)$this->input->post('academic_year_id');
+
+                $this->form_validation->set_rules('academic_year_id', 'Academic Year ID', 'required|integer');
+                $this->form_validation->set_rules('year_name', 'Year Name', 'required|trim');
+                $this->form_validation->set_rules('start_date', 'Start Date', 'required');
+                $this->form_validation->set_rules('end_date', 'End Date', 'required');
+
+                if ($this->form_validation->run() === TRUE) {
+                    $year_name = trim(preg_replace('/\s+/', ' ', (string)$this->input->post('year_name')));
+
+                    // Check duplicate for edit (excluding current record)
+                    if ($this->Academic_year_model->is_year_name_exists($year_name, $id)) {
+                        $this->session->set_flashdata('error', "Academic year {$year_name} already exists.");
+                        redirect('academics/years');
+                        return;
+                    }
+
+                    $isActive = ($this->input->post('is_active') == '1') ? 1 : 0;
+                    $updated = $this->Academic_year_model->update($id, array(
+                        'year_name'  => $year_name,
+                        'start_date' => $this->input->post('start_date'),
+                        'end_date'   => $this->input->post('end_date'),
+                        'is_active'  => $isActive,
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ));
+
+                    if ($updated === FALSE) {
+                        $this->session->set_flashdata('error', "Academic year {$year_name} already exists.");
+                    } else {
+                        $this->session->set_flashdata('success', 'Academic Year updated successfully!');
+                    }
+                } else {
+                    $this->session->set_flashdata('error', validation_errors());
+                }
             }
             redirect('academics/years');
         }

@@ -93,12 +93,63 @@ class Academic_year_model extends CI_Model {
             ->update($this->table, array('is_active' => 1));
     }
 
+    /**
+     * Check whether an academic year name already exists in tbl_academic_years.
+     * Normalizes input whitespace and checks both exact and formatted variants.
+     *
+     * @param string $year_name
+     * @param int|null $exclude_id  Optional record ID to exclude during edits
+     * @return bool
+     */
+    public function is_year_name_exists($year_name, $exclude_id = NULL)
+    {
+        $year_name = trim(preg_replace('/\s+/', ' ', (string)$year_name));
+        if ($year_name === '') {
+            return false;
+        }
+
+        $compact_name = preg_replace('/\s*-\s*/', '-', $year_name);
+        $spaced_name  = preg_replace('/\s*-\s*/', ' - ', $year_name);
+
+        $this->db->group_start()
+            ->where('year_name', $year_name)
+            ->or_where('year_name', $compact_name)
+            ->or_where('year_name', $spaced_name)
+            ->group_end();
+
+        if ($exclude_id !== NULL && (int)$exclude_id > 0) {
+            $this->db->where($this->primaryKey . ' !=', (int)$exclude_id);
+        }
+
+        return ($this->db->count_all_results($this->table) > 0);
+    }
+
     public function insert($data)
     {
         if (!empty($data['is_active'])) {
             $this->db->update($this->table, array('is_active' => 0));
         }
-        $this->db->insert($this->table, $data);
+
+        // Defensive handling for race condition on uk_academic_year_name unique key
+        $saved_debug = $this->db->db_debug;
+        $this->db->db_debug = FALSE;
+
+        $res = $this->db->insert($this->table, $data);
+        $err = $this->db->error();
+
+        $this->db->db_debug = $saved_debug;
+
+        if (!$res) {
+            if (isset($err['code']) && (int)$err['code'] === 1062) {
+                log_message('error', 'Duplicate academic year entry caught on insert: ' . ($err['message'] ?? ''));
+                return false;
+            }
+            if ($saved_debug) {
+                $this->db->display_error($err['message'] ?? 'Database error');
+            }
+            return false;
+        }
+
         return $this->db->insert_id();
     }
 
@@ -107,9 +158,30 @@ class Academic_year_model extends CI_Model {
         if (!empty($data['is_active'])) {
             $this->db->update($this->table, array('is_active' => 0));
         }
-        return $this->db
+
+        // Defensive handling for race condition on uk_academic_year_name unique key
+        $saved_debug = $this->db->db_debug;
+        $this->db->db_debug = FALSE;
+
+        $res = $this->db
             ->where($this->primaryKey, $id)
             ->update($this->table, $data);
+        $err = $this->db->error();
+
+        $this->db->db_debug = $saved_debug;
+
+        if (!$res) {
+            if (isset($err['code']) && (int)$err['code'] === 1062) {
+                log_message('error', 'Duplicate academic year entry caught on update: ' . ($err['message'] ?? ''));
+                return false;
+            }
+            if ($saved_debug) {
+                $this->db->display_error($err['message'] ?? 'Database error');
+            }
+            return false;
+        }
+
+        return $res;
     }
 
     public function soft_delete($id)
