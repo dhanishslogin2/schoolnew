@@ -988,7 +988,7 @@ class Attendance_model extends CI_Model {
         if ($academic_year_id) $this->db->where('academic_year_id', $academic_year_id);
         $absent = $this->db->count_all_results($this->table);
 
-        $this->db->where('student_id', $student_id)->where('attendance_type', 'Daily')->where('attendance_status', 'Late');
+        $this->db->where('student_id', $student_id)->where('attendance_type', 'Daily')->where_in('attendance_status', array('Late', 'Late Coming'));
         if ($academic_year_id) $this->db->where('academic_year_id', $academic_year_id);
         $late = $this->db->count_all_results($this->table);
 
@@ -999,17 +999,21 @@ class Attendance_model extends CI_Model {
         $pct = ($total > 0) ? round(($present / $total) * 100, 1) : 100;
 
         // 2. Month-wise Breakdown
-        $months = $this->db
+        $this->db
             ->select("DATE_FORMAT(attendance_date, '%Y-%m') as ym, DATE_FORMAT(attendance_date, '%M %Y') as month_name,
                 SUM(CASE WHEN attendance_status = 'Present' THEN 1 ELSE 0 END) as present_count,
                 SUM(CASE WHEN attendance_status = 'Half Day' THEN 1 ELSE 0 END) as half_day_count,
                 SUM(CASE WHEN attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
-                SUM(CASE WHEN attendance_status = 'Late Coming' THEN 1 ELSE 0 END) as late_count,
-                0 as excused_count,
+                SUM(CASE WHEN attendance_status IN ('Late', 'Late Coming') THEN 1 ELSE 0 END) as late_count,
+                SUM(CASE WHEN attendance_status IN ('Excused', 'Leave') THEN 1 ELSE 0 END) as excused_count,
                 COUNT(attendance_id) as total_days", FALSE)
             ->from($this->table)
             ->where('student_id', $student_id)
-            ->where('attendance_type', 'Daily')
+            ->where('attendance_type', 'Daily');
+        if ($academic_year_id) {
+            $this->db->where('academic_year_id', $academic_year_id);
+        }
+        $months = $this->db
             ->group_by('ym')
             ->order_by('ym', 'DESC')
             ->get()
@@ -1021,9 +1025,13 @@ class Attendance_model extends CI_Model {
         }
 
         // 3. Recent 30 Days Records
-        $recent_records = $this->db
+        $this->db
             ->where('student_id', $student_id)
-            ->where('attendance_type', 'Daily')
+            ->where('attendance_type', 'Daily');
+        if ($academic_year_id) {
+            $this->db->where('academic_year_id', $academic_year_id);
+        }
+        $recent_records = $this->db
             ->order_by('attendance_date', 'DESC')
             ->limit(30)
             ->get($this->table)
@@ -1036,6 +1044,7 @@ class Attendance_model extends CI_Model {
             'excused'        => $excused,
             'percentage'     => $pct,
             'monthly'        => $months,
+            'recent'         => $recent_records,
             'recent_records' => $recent_records
         );
     }

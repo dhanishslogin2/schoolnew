@@ -1626,16 +1626,18 @@ class Students extends MY_Controller {
             $student_id = !empty($first) ? $first[0]->student_id : 1;
         }
 
-        $student = $this->Student_model->get_profile($student_id);
+        $academic_year_id = $this->academic_year_id ?: get_current_academic_year_id();
+        $student = $this->Student_model->get_profile($student_id, $academic_year_id);
         if (!$student) {
             $this->session->set_flashdata('error', 'Student profile not found.');
             redirect('students');
             return;
         }
 
-        $classes  = $this->Class_model->get_all($student->academic_year_id);
-        $sections = $this->Section_model->get_all();
-        $years    = $this->Academic_year_model->get_all();
+        $classes   = $this->Class_model->get_all($student->academic_year_id);
+        $divisions = $student->class_id ? $this->Division_model->get_by_class($student->class_id) : $this->Division_model->get_all();
+        $sections  = $divisions;
+        $years     = $this->Academic_year_model->get_all();
 
         $this->render('pages/students/profile', array(
             'title'      => 'Student Profile',
@@ -1644,6 +1646,7 @@ class Students extends MY_Controller {
             'student'    => $student,
             'student_id' => $student_id,
             'classes'    => $classes,
+            'divisions'  => $divisions,
             'sections'   => $sections,
             'years'      => $years,
         ));

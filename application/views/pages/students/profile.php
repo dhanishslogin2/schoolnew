@@ -10,7 +10,8 @@
   $statusBadge = ($status == 'Active')
     ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-secondary-container text-on-secondary-container">Active</span>'
     : '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-surface-container-high text-on-surface-variant">Inactive / Transferred</span>';
-  $classDisplay = (isset($student->class_name) ? $student->class_name : '') . ' ' . (isset($student->section_name) ? $student->section_name : '');
+  $divisionDisplay = !empty($student->division_name) ? $student->division_name : (!empty($student->section_name) ? $student->section_name : '');
+  $classDisplay = trim((isset($student->class_name) ? $student->class_name : '') . ' ' . $divisionDisplay);
 ?>
 
   <!-- Header Card -->
@@ -234,7 +235,10 @@
         </div>
         <div class="p-4 rounded-lg bg-surface-container-low border border-outline-variant/40">
           <div class="text-[12px] text-on-surface-variant">Division</div>
-          <div class="text-title-md font-semibold text-on-surface">Section <?php echo html_escape($student->section_name ?: '—'); ?></div>
+          <div class="text-title-md font-semibold text-on-surface"><?php
+            $currentDiv = !empty($student->division_name) ? $student->division_name : (!empty($student->section_name) ? $student->section_name : '');
+            echo html_escape($currentDiv ? 'Division ' . $currentDiv : 'Not Assigned');
+          ?></div>
         </div>
         <div class="p-4 rounded-lg bg-surface-container-low border border-outline-variant/40">
           <div class="text-[12px] text-on-surface-variant">Current Academic Year</div>
@@ -263,8 +267,14 @@
               <?php foreach ($student->promotions as $p): ?>
                 <tr>
                   <td class="px-4 py-3 text-body-md text-on-surface whitespace-nowrap"><?php echo date('d M Y', strtotime($p->promotion_date)); ?></td>
-                  <td class="px-4 py-3 text-body-md text-on-surface whitespace-nowrap"><?php echo html_escape($p->from_class . ' ' . $p->from_section . ' (' . $p->from_year . ')'); ?></td>
-                  <td class="px-4 py-3 text-body-md text-on-surface whitespace-nowrap font-medium"><?php echo html_escape($p->to_class . ' ' . $p->to_section . ' (' . $p->to_year . ')'); ?></td>
+                  <td class="px-4 py-3 text-body-md text-on-surface whitespace-nowrap"><?php
+                    $fromDiv = !empty($p->from_division) ? $p->from_division : (!empty($p->from_section) ? $p->from_section : '');
+                    echo html_escape($p->from_class . ($fromDiv ? ' ' . $fromDiv : '') . ' (' . $p->from_year . ')');
+                  ?></td>
+                  <td class="px-4 py-3 text-body-md text-on-surface whitespace-nowrap font-medium"><?php
+                    $toDiv = !empty($p->to_division) ? $p->to_division : (!empty($p->to_section) ? $p->to_section : '');
+                    echo html_escape($p->to_class . ($toDiv ? ' ' . $toDiv : '') . ' (' . $p->to_year . ')');
+                  ?></td>
                   <td class="px-4 py-3 text-body-md whitespace-nowrap">
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-secondary-container text-on-secondary-container"><?php echo html_escape($p->promotion_type); ?></span>
                   </td>
@@ -367,7 +377,19 @@
           <p class="text-body-md text-on-surface-variant mt-0.5">Summary, monthly trend, and historical logs for <?php echo html_escape($fullName); ?>.</p>
         </div>
         <div class="flex items-center gap-2">
-          <a href="<?php echo site_url('attendance/calendar?student_id=' . $student_id . '&class_id=' . $student->class_id . '&section_id=' . $student->section_id); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm">
+          <?php
+            $calendarUrlParams = array('student_id' => (int)$student->student_id);
+            if (!empty($student->class_id)) {
+              $calendarUrlParams['class_id'] = (int)$student->class_id;
+            }
+            if (!empty($student->division_id)) {
+              $calendarUrlParams['division_id'] = (int)$student->division_id;
+            }
+            if (!empty($student->academic_year_id)) {
+              $calendarUrlParams['academic_year_id'] = (int)$student->academic_year_id;
+            }
+          ?>
+          <a href="<?php echo site_url('attendance/calendar?' . http_build_query($calendarUrlParams)); ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-secondary text-on-secondary text-label-md font-semibold hover:bg-on-secondary-fixed-variant transition-colors shadow-sm">
             <span class="material-symbols-outlined text-[18px]">calendar_month</span>View Interactive Calendar
           </a>
         </div>

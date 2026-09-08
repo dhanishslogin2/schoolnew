@@ -627,19 +627,36 @@ class Attendance extends MY_Controller {
         $month        = (int)($this->input->get('month') ?: date('n'));
         $year         = (int)($this->input->get('year') ?: ($current_year ? date('Y', strtotime($current_year->start_date)) : date('Y')));
         $class_id     = $this->input->get('class_id') ?: NULL;
-        $section_id   = $this->input->get('section_id') ?: NULL;
+        $division_id  = $this->input->get('division_id') ?: ($this->input->get('section_id') ?: NULL);
+        $section_id   = $division_id;
         $student_id   = $this->input->get('student_id') ?: NULL;
         $type         = $this->input->get('attendance_type') ?: 'Daily';
 
-        $matrix   = $this->Attendance_model->get_calendar_data($year, $month, $class_id, $section_id, $student_id, $type, $year_id);
+        if ($student_id && (!$class_id || !$division_id)) {
+            $st_rec = $this->Student_model->get_by_id($student_id);
+            if ($st_rec) {
+                if (!$class_id && !empty($st_rec->class_id)) {
+                    $class_id = $st_rec->class_id;
+                }
+                if (!$division_id && !empty($st_rec->division_id)) {
+                    $division_id = $st_rec->division_id;
+                    $section_id  = $division_id;
+                }
+            }
+        }
+
+        $matrix   = $this->Attendance_model->get_calendar_data($year, $month, $class_id, $division_id, $student_id, $type, $year_id);
         $classes  = $this->Class_model->get_all($year_id);
         $sections = $class_id ? $this->Division_model->get_by_class($class_id) : $this->Division_model->get_all();
-        $students = ($class_id && $section_id) ? $this->Student_model->get_all(array('section_id' => $section_id, 'academic_year_id' => $year_id, 'status' => 1)) : array();
+        $student_filters = array('academic_year_id' => $year_id, 'status' => 1);
+        if ($class_id) $student_filters['class_id'] = $class_id;
+        if ($division_id) $student_filters['division_id'] = $division_id;
+        $students = $class_id ? $this->Student_model->get_all($student_filters) : array();
 
         $selected_date = $this->input->get('date') ? normalize_date_to_academic_year($this->input->get('date'), $year_id) : NULL;
         $day_details = array();
         if ($selected_date) {
-            $day_details = $this->Attendance_model->get_date_attendance_details($selected_date, $class_id, $section_id, $student_id, $type, $year_id);
+            $day_details = $this->Attendance_model->get_date_attendance_details($selected_date, $class_id, $division_id, $student_id, $type, $year_id);
         }
 
         $this->render('pages/attendance/calendar', array(
@@ -650,13 +667,13 @@ class Attendance extends MY_Controller {
             'month'         => $month,
             'year'          => $year,
             'class_id'      => $class_id,
-            'section_id'    => $section_id,
+            'division_id'   => $division_id,
+            'section_id'    => $division_id,
             'student_id'    => $student_id,
             'type'          => $type,
             'classes'       => $classes,
             'divisions'     => $sections,
             'sections'      => $sections,
-            'division_id'     => $section_id,
             'students'      => $students,
             'current_year'  => $current_year,
             'selected_date' => $selected_date,

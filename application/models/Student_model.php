@@ -235,7 +235,7 @@ class Student_model extends CI_Model {
     public function get_by_id($id)
     {
         return $this->db
-            ->select('st.*, c.class_name, div.division_name as division_name, div.division_name as section_name, y.year_name')
+            ->select('st.*, c.class_name, c.class_code, div.division_id as division_id, div.division_name as division_name, div.division_name as section_name, div.division_id as section_id, y.year_name')
             ->from('tbl_students st')
             ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
             ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
@@ -245,10 +245,22 @@ class Student_model extends CI_Model {
             ->row();
     }
 
-    public function get_profile($id)
+    public function get_profile($id, $academic_year_id = NULL)
     {
         $student = $this->get_by_id($id);
         if (!$student) return NULL;
+
+        // Ensure division_id and section_id compatibility
+        if (!isset($student->division_id) && isset($student->section_id)) {
+            $student->division_id = $student->section_id;
+        } elseif (isset($student->division_id) && !isset($student->section_id)) {
+            $student->section_id = $student->division_id;
+        }
+        if (!isset($student->division_name) && isset($student->section_name)) {
+            $student->division_name = $student->section_name;
+        } elseif (isset($student->division_name) && !isset($student->section_name)) {
+            $student->section_name = $student->division_name;
+        }
 
         // 1. Documents
         $student->documents = $this->db
@@ -287,7 +299,8 @@ class Student_model extends CI_Model {
 
         // 4. Attendance Summary
         $this->load->model('Attendance_model');
-        $student->attendance = $this->Attendance_model->get_student_profile_attendance($id);
+        $ay_id = $academic_year_id ?: (!empty($student->academic_year_id) ? $student->academic_year_id : get_current_academic_year_id());
+        $student->attendance = $this->Attendance_model->get_student_profile_attendance($id, $ay_id);
 
         // 5. Fees & Finance Summary
         $this->load->model('Fee_model');
