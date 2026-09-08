@@ -243,7 +243,7 @@ class Students extends MY_Controller {
                 '<a href="' . site_url('students/profile/' . $st->student_id) . '" title="View Profile" class="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-emerald-700 transition-colors shadow-2xs">' .
                     '<span class="material-symbols-outlined text-[17px]">visibility</span>' .
                 '</a>' .
-                '<a href="' . site_url('students/add?student_id=' . $st->student_id) . '" title="Edit Student" class="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-blue-700 transition-colors shadow-2xs">' .
+                '<a href="' . site_url('students/edit/' . $st->student_id) . '" title="Edit Student" class="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-blue-700 transition-colors shadow-2xs">' .
                     '<span class="material-symbols-outlined text-[17px]">edit</span>' .
                 '</a>' .
                 '<a href="' . site_url('students/id_cards?student_id=' . $st->student_id) . '" title="Generate ID Card" class="p-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs">' .
@@ -1399,6 +1399,10 @@ class Students extends MY_Controller {
         $this->require_permission('students.edit');
 
         if (!$student_id) {
+            $student_id = $this->input->get('student_id');
+        }
+
+        if (!$student_id) {
             redirect('students');
             return;
         }
@@ -1410,44 +1414,98 @@ class Students extends MY_Controller {
             return;
         }
 
+        $this->load->model('Student_academic_model');
+
         $photo_error = NULL;
+        $tc_error    = NULL;
+
+        $prev_school = $this->Student_academic_model->get_previous_school($student_id);
+        $tc_document = $this->Student_academic_model->get_tc_document($student_id, $prev_school ? $prev_school->tc_document_id : NULL);
 
         if ($this->input->method() === 'post') {
             $this->form_validation->set_rules('first_name', 'First Name', 'required|trim');
-            $this->form_validation->set_rules('admission_number', 'Admission Number', 'required|trim');
+            $this->form_validation->set_rules('middle_name', 'Middle Name', 'trim');
+            $this->form_validation->set_rules('last_name', 'Last Name', 'trim');
+            $this->form_validation->set_rules('gender', 'Gender', 'trim');
             $this->form_validation->set_rules('date_of_birth', 'Date of Birth', 'trim|callback_validate_dob');
+            $this->form_validation->set_rules('blood_group', 'Blood Group', 'trim');
+            $this->form_validation->set_rules('nationality', 'Nationality', 'trim');
+            $this->form_validation->set_rules('religion', 'Religion', 'trim');
             $this->form_validation->set_rules('class_id', 'Class', 'required|integer');
             $this->form_validation->set_rules('division_id', 'Division', 'trim|callback_validate_class_division');
             if ($this->input->post('academic_year_id')) {
                 $this->form_validation->set_rules('academic_year_id', 'Academic Year', 'integer');
             }
+            $this->form_validation->set_rules('roll_number', 'Roll Number', 'trim');
+            $this->form_validation->set_rules('guardian_name', 'Guardian Name', 'required|trim');
+            $this->form_validation->set_rules('guardian_relation', 'Guardian Relation', 'trim');
+            $this->form_validation->set_rules('guardian_phone', 'Guardian Phone', 'required|trim');
+            $this->form_validation->set_rules('guardian_email', 'Guardian Email', 'trim|valid_email');
+            $this->form_validation->set_rules('address', 'Address', 'trim');
+
+            $no_prev_school = ($this->input->post('no_previous_school') == '1');
+            if (!$no_prev_school) {
+                $has_prev_input = (
+                    strlen(trim((string)$this->input->post('prev_school_name'))) > 0 ||
+                    strlen(trim((string)$this->input->post('tc_number'))) > 0 ||
+                    !empty($_FILES['tc_document']['name']) ||
+                    $prev_school !== NULL
+                );
+
+                if ($has_prev_input) {
+                    $this->form_validation->set_rules('prev_school_name', 'Previous School Name', 'required|trim');
+                    $this->form_validation->set_rules('tc_number', 'TC Number', 'required|trim');
+                }
+                $this->form_validation->set_rules('prev_school_address', 'Previous School Address', 'trim');
+                $this->form_validation->set_rules('prev_school_board', 'Previous School Board', 'trim');
+                $this->form_validation->set_rules('prev_class', 'Previous Class', 'trim');
+                $this->form_validation->set_rules('prev_academic_year', 'Previous Academic Year', 'trim');
+                $this->form_validation->set_rules('date_of_leaving', 'Date of Leaving', 'trim');
+                $this->form_validation->set_rules('prev_percentage', 'Previous Percentage', 'trim|numeric|greater_than_equal_to[0]|less_than_equal_to[100]');
+                $this->form_validation->set_rules('reason_for_leaving', 'Reason for Leaving', 'trim');
+            }
 
             if ($this->form_validation->run() === TRUE) {
+                // 1. Process Photo
                 $photo_result = $this->process_student_photo($student_id);
                 if ($photo_result['success'] === FALSE && !empty($photo_result['error'])) {
                     $photo_error = $photo_result['error'];
-                } else {
+                }
+
+                // 2. Process TC Document (if uploaded)
+                $existing_tc_doc_id = $prev_school ? (int)$prev_school->tc_document_id : ($tc_document ? (int)$tc_document->document_id : NULL);
+                $tc_number_val      = trim((string)$this->input->post('tc_number', TRUE));
+                $tc_result          = $this->_process_tc_document_upload($student_id, $existing_tc_doc_id, $tc_number_val);
+
+                if ($tc_result['success'] === FALSE && !empty($tc_result['error'])) {
+                    $tc_error = $tc_result['error'];
+                }
+
+                if (empty($photo_error) && empty($tc_error)) {
                     $class_id = (int)($this->input->post('class_id') ?: $student->class_id);
                     $division_id_input = $this->input->post('division_id') !== NULL ? $this->input->post('division_id') : $this->input->post('section_id');
                     $division_id = ($division_id_input !== '' && $division_id_input !== NULL) ? (int)$division_id_input : (isset($student->division_id) ? (int)$student->division_id : NULL);
 
                     $data = array(
-                        'admission_number' => $this->input->post('admission_number', TRUE),
-                        'first_name'       => $this->input->post('first_name', TRUE),
-                        'last_name'        => $this->input->post('last_name', TRUE),
-                        'gender'           => $this->input->post('gender', TRUE),
-                        'date_of_birth'    => $this->input->post('date_of_birth', TRUE) ?: $student->date_of_birth,
-                        'blood_group'      => $this->input->post('blood_group', TRUE),
-                        'academic_year_id' => $this->input->post('academic_year_id') ? (int)$this->input->post('academic_year_id') : (int)$student->academic_year_id,
-                        'class_id'         => $class_id,
-                        'division_id'      => $division_id,
-                        'roll_number'      => $this->input->post('roll_number', TRUE),
-                        'guardian_name'    => $this->input->post('guardian_name', TRUE),
-                        'guardian_relation'=> $this->input->post('guardian_relation', TRUE) ?: $student->guardian_relation,
-                        'guardian_phone'   => $this->input->post('guardian_phone', TRUE),
-                        'guardian_email'   => $this->input->post('guardian_email', TRUE),
-                        'address'          => $this->input->post('address', TRUE),
-                        'updated_at'       => date('Y-m-d H:i:s'),
+                        'admission_number'  => $student->admission_number, // Must never change or regenerate
+                        'first_name'        => $this->input->post('first_name', TRUE),
+                        'middle_name'       => $this->input->post('middle_name', TRUE) ?: NULL,
+                        'last_name'         => $this->input->post('last_name', TRUE) ?: '',
+                        'gender'            => $this->input->post('gender', TRUE) ?: $student->gender,
+                        'date_of_birth'     => $this->input->post('date_of_birth', TRUE) ?: $student->date_of_birth,
+                        'blood_group'       => $this->input->post('blood_group', TRUE) ?: NULL,
+                        'nationality'       => $this->input->post('nationality', TRUE) ?: ($student->nationality ?: 'Indian'),
+                        'religion'          => $this->input->post('religion', TRUE) ?: NULL,
+                        'academic_year_id'  => $this->input->post('academic_year_id') ? (int)$this->input->post('academic_year_id') : (int)$student->academic_year_id,
+                        'class_id'          => $class_id,
+                        'division_id'       => $division_id,
+                        'roll_number'       => $this->input->post('roll_number', TRUE) ?: NULL,
+                        'guardian_name'     => $this->input->post('guardian_name', TRUE),
+                        'guardian_relation' => $this->input->post('guardian_relation', TRUE) ?: ($student->guardian_relation ?: 'Father'),
+                        'guardian_phone'    => $this->input->post('guardian_phone', TRUE),
+                        'guardian_email'    => $this->input->post('guardian_email', TRUE) ?: NULL,
+                        'address'           => $this->input->post('address', TRUE) ?: NULL,
+                        'updated_at'        => date('Y-m-d H:i:s'),
                     );
 
                     // Check if photo was requested to be removed
@@ -1455,7 +1513,6 @@ class Students extends MY_Controller {
                         $this->Student_model->delete_photo($student_id);
                         $data['photo'] = NULL;
                     } elseif (!empty($photo_result['file_name'])) {
-                        // Unlink old photo if exists before replacing
                         if (!empty($student->photo)) {
                             $oldFile = FCPATH . 'uploads/students/' . $student->photo;
                             if (file_exists($oldFile) && is_file($oldFile)) {
@@ -1465,7 +1522,87 @@ class Students extends MY_Controller {
                         $data['photo'] = $photo_result['file_name'];
                     }
 
+                    // Perform UPDATE on tbl_students
                     $this->Student_model->update($student_id, $data);
+
+                    // 3. Save Previous School Data
+                    $tc_document_id = !empty($tc_result['document_id']) ? (int)$tc_result['document_id'] : $existing_tc_doc_id;
+
+                    if (!$no_prev_school && (strlen(trim((string)$this->input->post('prev_school_name'))) > 0 || strlen($tc_number_val) > 0)) {
+                        $prev_school_data = array(
+                            'student_id'             => (int)$student_id,
+                            'school_name'            => $this->input->post('prev_school_name', TRUE),
+                            'school_address'         => $this->input->post('prev_school_address', TRUE) ?: NULL,
+                            'school_board'           => $this->input->post('prev_school_board', TRUE) ?: NULL,
+                            'previous_class'         => $this->input->post('prev_class', TRUE) ?: NULL,
+                            'previous_academic_year' => $this->input->post('prev_academic_year', TRUE) ?: NULL,
+                            'date_of_leaving'        => $this->input->post('date_of_leaving', TRUE) ?: NULL,
+                            'reason_for_leaving'     => $this->input->post('reason_for_leaving', TRUE) ?: NULL,
+                            'tc_number'              => $tc_number_val ?: NULL,
+                            'tc_document_id'         => $tc_document_id ?: NULL,
+                            'previous_percentage'    => strlen($this->input->post('prev_percentage')) > 0 ? (float)$this->input->post('prev_percentage') : NULL,
+                            'status'                 => 1,
+                        );
+                        $this->Student_academic_model->save_previous_school($student_id, $prev_school_data);
+
+                        // If TC number changed and document exists, update document record
+                        if ($tc_document_id && !empty($tc_number_val)) {
+                            $this->db->where('document_id', (int)$tc_document_id)
+                                     ->update('tbl_student_documents', array(
+                                         'document_name'   => 'TC - ' . $tc_number_val,
+                                         'document_number' => $tc_number_val,
+                                         'updated_at'      => date('Y-m-d H:i:s'),
+                                     ));
+                        }
+                    } elseif ($no_prev_school) {
+                        if ($prev_school) {
+                            $this->db->where('prev_school_id', (int)$prev_school->prev_school_id)
+                                     ->update('tbl_student_previous_school', array(
+                                         'status'     => 0,
+                                         'updated_at' => date('Y-m-d H:i:s'),
+                                     ));
+                        }
+                    }
+
+                    // 4. Save Academic Activities
+                    $raw_academic = $this->input->post('academic_activities');
+                    $academic_acts = array();
+                    if (!empty($raw_academic) && is_array($raw_academic)) {
+                        foreach ($raw_academic as $act) {
+                            if (!empty($act['activity_name'])) {
+                                $academic_acts[] = array(
+                                    'category'        => 'Academic',
+                                    'activity_type'   => !empty($act['activity_type']) ? $act['activity_type'] : 'Achievement',
+                                    'activity_name'   => trim($act['activity_name']),
+                                    'position_result' => !empty($act['position_result']) ? trim($act['position_result']) : NULL,
+                                    'year'            => !empty($act['year']) && is_numeric($act['year']) ? (int)$act['year'] : (int)date('Y'),
+                                    'description'     => !empty($act['description']) ? trim($act['description']) : NULL,
+                                );
+                            }
+                        }
+                    }
+                    $this->Student_academic_model->save_activities($student_id, $academic_acts, 'Academic');
+
+                    // 5. Save Extracurricular Activities
+                    $raw_extra = $this->input->post('extracurricular');
+                    $extra_acts = array();
+                    if (!empty($raw_extra) && is_array($raw_extra)) {
+                        foreach ($raw_extra as $xact) {
+                            if (!empty($xact['activity_name'])) {
+                                $extra_acts[] = array(
+                                    'category'        => 'Extracurricular',
+                                    'activity_type'   => !empty($xact['activity_type']) ? $xact['activity_type'] : 'Sports',
+                                    'activity_name'   => trim($xact['activity_name']),
+                                    'level'           => !empty($xact['level']) ? trim($xact['level']) : NULL,
+                                    'position_result' => !empty($xact['position_result']) ? trim($xact['position_result']) : NULL,
+                                    'year'            => !empty($xact['year']) && is_numeric($xact['year']) ? (int)$xact['year'] : (int)date('Y'),
+                                    'description'     => !empty($xact['description']) ? trim($xact['description']) : NULL,
+                                );
+                            }
+                        }
+                    }
+                    $this->Student_academic_model->save_activities($student_id, $extra_acts, 'Extracurricular');
+
                     $this->session->set_flashdata('success', 'Student details updated successfully.');
                     redirect('students/profile/' . $student_id);
                     return;
@@ -1479,19 +1616,113 @@ class Students extends MY_Controller {
         $years     = $this->Academic_year_model->get_all();
         $groups    = $this->Academic_group_model->get_all();
 
+        // Refresh previous school, TC document, and activities for view rendering
+        $prev_school           = $this->Student_academic_model->get_previous_school($student_id);
+        $tc_document           = $this->Student_academic_model->get_tc_document($student_id, $prev_school ? $prev_school->tc_document_id : NULL);
+        $saved_activities      = $this->Student_academic_model->get_activities($student_id, 'Academic');
+        $saved_extracurricular = $this->Student_academic_model->get_activities($student_id, 'Extracurricular');
+        $documents             = $this->db->where('student_id', (int)$student_id)
+                                          ->where('status', 1)
+                                          ->where('is_deleted', 'n')
+                                          ->order_by('document_id', 'DESC')
+                                          ->get('tbl_student_documents')
+                                          ->result();
+
         $this->render('pages/students/edit', array(
-            'title'       => 'Edit Student',
-            'page_key'    => 'students',
-            'breadcrumb'  => array('Student Management', 'Edit Student'),
-            'student'     => $student,
-            'student_id'  => $student_id,
-            'groups'      => $groups,
-            'classes'     => $classes,
-            'divisions'   => $divisions,
-            'sections'    => $sections,
-            'years'       => $years,
-            'photo_error' => $photo_error,
+            'title'                 => 'Edit Student',
+            'page_key'              => 'students',
+            'breadcrumb'            => array('Student Management', 'Edit Student'),
+            'student'               => $student,
+            'student_id'            => $student_id,
+            'groups'                => $groups,
+            'classes'               => $classes,
+            'divisions'             => $divisions,
+            'sections'              => $sections,
+            'years'                 => $years,
+            'prev_school'           => $prev_school,
+            'tc_document'           => $tc_document,
+            'saved_activities'      => $saved_activities,
+            'saved_extracurricular' => $saved_extracurricular,
+            'documents'             => $documents,
+            'photo_error'           => $photo_error,
+            'tc_error'              => $tc_error,
         ));
+    }
+
+    /**
+     * Process uploaded TC Document for student edit flow.
+     * Validates PDF, JPG, JPEG, PNG format and size limit (max 10MB).
+     *
+     * @param  int      $student_id
+     * @param  int|null $existing_document_id
+     * @param  string   $tc_number
+     * @return array
+     */
+    protected function _process_tc_document_upload($student_id, $existing_document_id = NULL, $tc_number = '')
+    {
+        if (empty($_FILES['tc_document']['name'])) {
+            return array('success' => TRUE, 'document_id' => $existing_document_id);
+        }
+
+        $fileError = isset($_FILES['tc_document']['error']) ? (int)$_FILES['tc_document']['error'] : UPLOAD_ERR_NO_FILE;
+        if ($fileError !== UPLOAD_ERR_OK) {
+            return array('success' => FALSE, 'error' => 'Unable to upload TC Document. Please check file size and permissions.');
+        }
+
+        $orig_name = $_FILES['tc_document']['name'];
+        $ext = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
+        $allowed = array('pdf', 'jpg', 'jpeg', 'png');
+        if (!in_array($ext, $allowed, TRUE)) {
+            return array('success' => FALSE, 'error' => 'TC Document must be a PDF, JPG, JPEG, or PNG file.');
+        }
+
+        $max_size = 10 * 1024 * 1024; // 10 MB
+        if ($_FILES['tc_document']['size'] > $max_size || $_FILES['tc_document']['size'] <= 0) {
+            return array('success' => FALSE, 'error' => 'TC Document must not exceed 10 MB.');
+        }
+
+        $tmp_path = $_FILES['tc_document']['tmp_name'];
+        if ($ext === 'pdf') {
+            $fh = @fopen($tmp_path, 'rb');
+            $header = $fh ? @fread($fh, 5) : '';
+            if ($fh) { @fclose($fh); }
+            if (strpos($header, '%PDF-') !== 0) {
+                return array('success' => FALSE, 'error' => 'TC Document must be a valid PDF file.');
+            }
+        } else {
+            $img_info = @getimagesize($tmp_path);
+            if ($img_info === FALSE || !in_array($img_info[2], array(IMAGETYPE_JPEG, IMAGETYPE_PNG), TRUE)) {
+                return array('success' => FALSE, 'error' => 'TC Document must be a valid PDF, JPG, JPEG, or PNG file.');
+            }
+        }
+
+        $dest_dir = FCPATH . 'uploads/documents/';
+        if (!is_dir($dest_dir)) {
+            @mkdir($dest_dir, 0755, TRUE);
+        }
+
+        try {
+            $rand_token = bin2hex(random_bytes(6));
+        } catch (Exception $e) {
+            $rand_token = substr(md5(uniqid(mt_rand(), true)), 0, 12);
+        }
+        $safe_name = 'tc_' . $student_id . '_' . time() . '_' . $rand_token . '.' . ($ext === 'jpeg' ? 'jpg' : $ext);
+        $dest_path = $dest_dir . $safe_name;
+
+        if (!@move_uploaded_file($tmp_path, $dest_path)) {
+            return array('success' => FALSE, 'error' => 'Failed to move uploaded TC document.');
+        }
+
+        $perm_path = 'uploads/documents/' . $safe_name;
+
+        if ($existing_document_id) {
+            $this->Student_academic_model->update_tc_document($existing_document_id, $perm_path, $tc_number);
+            $doc_id = (int)$existing_document_id;
+        } else {
+            $doc_id = $this->Student_academic_model->insert_tc_document($student_id, $perm_path, $tc_number);
+        }
+
+        return array('success' => TRUE, 'document_id' => $doc_id, 'file_path' => $perm_path);
     }
 
     public function remove_photo($student_id = NULL)

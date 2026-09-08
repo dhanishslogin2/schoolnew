@@ -110,6 +110,111 @@ class Student_academic_model extends CI_Model
             ->result();
     }
 
+    /**
+     * Save (insert or update) a previous school record for a student.
+     *
+     * @param  int   $student_id
+     * @param  array $data
+     * @return int   Record ID
+     */
+    public function save_previous_school($student_id, array $data)
+    {
+        $existing = $this->get_previous_school($student_id);
+        if ($existing) {
+            $data['updated_at'] = date('Y-m-d H:i:s');
+            $this->db->where('prev_school_id', (int)$existing->prev_school_id)
+                     ->update('tbl_student_previous_school', $data);
+            return (int)$existing->prev_school_id;
+        } else {
+            $data['student_id'] = (int)$student_id;
+            $data['status']     = 1;
+            $data['created_at'] = date('Y-m-d H:i:s');
+            return $this->insert_previous_school($data);
+        }
+    }
+
+    /**
+     * Sync activities for a student (Academic or Extracurricular).
+     *
+     * @param  int         $student_id
+     * @param  array       $activities
+     * @param  string|null $category
+     * @return bool
+     */
+    public function save_activities($student_id, array $activities, $category = NULL)
+    {
+        if ($category !== NULL) {
+            $this->db->where('student_id', (int)$student_id)
+                     ->where('category', $category)
+                     ->delete('tbl_student_activities');
+        } else {
+            $this->db->where('student_id', (int)$student_id)
+                     ->delete('tbl_student_activities');
+        }
+
+        if (!empty($activities)) {
+            foreach ($activities as $act) {
+                if (is_array($act) && !empty($act['activity_name'])) {
+                    $cat = !empty($act['category']) ? $act['category'] : ($category ?: 'Academic');
+                    $row = array(
+                        'student_id'      => (int)$student_id,
+                        'category'        => $cat,
+                        'activity_type'   => !empty($act['activity_type']) ? $act['activity_type'] : ($cat === 'Academic' ? 'Achievement' : 'Sports'),
+                        'activity_name'   => trim($act['activity_name']),
+                        'level'           => !empty($act['level']) ? $act['level'] : NULL,
+                        'position_result' => !empty($act['position_result']) ? $act['position_result'] : NULL,
+                        'year'            => !empty($act['year']) && is_numeric($act['year']) ? (int)$act['year'] : (int)date('Y'),
+                        'description'     => !empty($act['description']) ? $act['description'] : NULL,
+                        'status'          => 1,
+                        'created_at'      => date('Y-m-d H:i:s'),
+                    );
+                    $this->db->insert('tbl_student_activities', $row);
+                }
+            }
+        }
+        return TRUE;
+    }
+
+    /**
+     * Get TC document for a student.
+     *
+     * @param  int      $student_id
+     * @param  int|null $document_id
+     * @return object|null
+     */
+    public function get_tc_document($student_id, $document_id = NULL)
+    {
+        $this->db->where('student_id', (int)$student_id);
+        if ($document_id) {
+            $this->db->where('document_id', (int)$document_id);
+        } else {
+            $this->db->where('document_type', 'Transfer Certificate');
+        }
+        return $this->db->where('status', 1)
+                        ->order_by('document_id', 'DESC')
+                        ->get('tbl_student_documents')
+                        ->row();
+    }
+
+    /**
+     * Update an existing TC document in tbl_student_documents.
+     *
+     * @param  int    $document_id
+     * @param  string $file_path
+     * @param  string $tc_number
+     * @return int    document_id
+     */
+    public function update_tc_document($document_id, $file_path, $tc_number = '')
+    {
+        $data = array(
+            'document_name' => 'TC - ' . ($tc_number ?: 'Transfer Certificate'),
+            'file_path'     => $file_path,
+            'updated_at'    => date('Y-m-d H:i:s'),
+        );
+        $this->db->where('document_id', (int)$document_id)->update('tbl_student_documents', $data);
+        return (int)$document_id;
+    }
+
     /* =========================================================================
        TC Document (via tbl_student_documents — reused existing table)
     ========================================================================= */
