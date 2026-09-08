@@ -28,7 +28,7 @@
 
     <!-- Filters Bar -->
     <div class="flex flex-col md:flex-row gap-3 mb-4 flex-wrap">
-      <select onchange="applyFilter('academic_year_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
+      <select id="filter_academic_year_id" onchange="onYearFilterChange(this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
         <option value="">All Academic Years</option>
         <?php foreach ($years as $yr): ?>
           <option value="<?php echo $yr->academic_year_id; ?>" <?php echo ($selected_year_id == $yr->academic_year_id) ? 'selected' : ''; ?>><?php echo html_escape($yr->year_name); ?></option>
@@ -53,11 +53,13 @@
           <?php endforeach; ?>
         <?php endif; ?>
       </select>
-      <select id="filter_subject_id" onchange="applyFilter('subject_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
+      <select id="filter_subject_id" onchange="applyFilter('subject_id', this.value)" <?php echo empty($selected_class_id) ? 'disabled' : ''; ?> class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant <?php echo empty($selected_class_id) ? 'opacity-60 cursor-not-allowed' : ''; ?>">
         <option value="">All Subjects</option>
-        <?php foreach ($filter_subjects as $sub): ?>
-          <option value="<?php echo $sub->subject_id; ?>" <?php echo ($selected_subject_id == $sub->subject_id) ? 'selected' : ''; ?>><?php echo html_escape($sub->subject_name); ?></option>
-        <?php endforeach; ?>
+        <?php if (!empty($selected_class_id)): ?>
+          <?php foreach ($filter_subjects as $sub): ?>
+            <option value="<?php echo $sub->subject_id; ?>" <?php echo ($selected_subject_id == $sub->subject_id) ? 'selected' : ''; ?>><?php echo html_escape($sub->subject_name); ?></option>
+          <?php endforeach; ?>
+        <?php endif; ?>
       </select>
       <select onchange="applyFilter('staff_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
         <option value="">All Teachers</option>
@@ -123,7 +125,7 @@
         <?php echo form_open('academics/subject_teachers', array('class' => 'p-6 space-y-4')); ?>
           <div>
             <label class="block text-label-md mb-1">Academic Session *</label>
-            <select name="academic_year_id" id="modal_st_year" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
+            <select name="academic_year_id" id="modal_st_year" onchange="if(document.getElementById('modal_st_class').value) loadClassDependencies(document.getElementById('modal_st_class').value)" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
               <?php foreach ($years as $yr): ?>
                 <option value="<?php echo $yr->academic_year_id; ?>"><?php echo html_escape($yr->year_name); ?></option>
               <?php endforeach; ?>
@@ -171,6 +173,18 @@
       function applyFilter(key, val) {
         var url = new URL(window.location.href);
         if (val) { url.searchParams.set(key, val); } else { url.searchParams.delete(key); }
+        window.location.href = url.toString();
+      }
+
+      function onYearFilterChange(yearId) {
+        var url = new URL(window.location.href);
+        if (yearId) {
+          url.searchParams.set('academic_year_id', yearId);
+        } else {
+          url.searchParams.delete('academic_year_id');
+        }
+        // Changing academic year clears stale subject selection
+        url.searchParams.delete('subject_id');
         window.location.href = url.toString();
       }
 
@@ -225,8 +239,10 @@
             }
           });
 
-        // Fetch Subjects
-        fetch('<?php echo site_url('academics/ajax_get_subjects/'); ?>' + classId)
+        // Fetch Subjects with Academic Year awareness
+        var yearSelect = document.getElementById('modal_st_year');
+        var yearParam = (yearSelect && yearSelect.value) ? '?academic_year_id=' + encodeURIComponent(yearSelect.value) : '';
+        fetch('<?php echo site_url('academics/ajax_get_subjects/'); ?>' + classId + yearParam)
           .then(res => res.json())
           .then(data => {
             if (data.length === 0) {

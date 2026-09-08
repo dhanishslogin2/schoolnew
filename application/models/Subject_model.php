@@ -19,6 +19,7 @@ class Subject_model extends CI_Model {
             ->join('tbl_classes c', 'c.class_id = sub.class_id', 'left')
             ->join('tbl_staff s', 's.staff_id = sub.teacher_id', 'left')
             ->where('sub.status', 1)
+            ->where('sub.is_deleted', 'n')
             ->order_by('sub.class_id', 'ASC')
             ->order_by('sub.subject_name', 'ASC');
 
@@ -75,6 +76,10 @@ class Subject_model extends CI_Model {
      */
     public function get_for_class($year_id, $class_id, $section_id = NULL)
     {
+        if (empty($class_id)) {
+            return array();
+        }
+
         // Primary: subjects from subject_allocations table
         $this->db
             ->select('sub.subject_id, sub.subject_name, sub.subject_code, sub.subject_type,
@@ -84,8 +89,13 @@ class Subject_model extends CI_Model {
             ->from('tbl_subject_allocations sa')
             ->join('tbl_subjects sub', 'sub.subject_id = sa.subject_id', 'left')
             ->join('tbl_classes c', 'c.class_id = sa.class_id', 'left')
-            ->join('tbl_staff s', 's.staff_id = sa.teacher_id', 'left')
-            ->where('sa.academic_year_id', (int)$year_id)
+            ->join('tbl_staff s', 's.staff_id = sa.teacher_id', 'left');
+
+        if (!empty($year_id)) {
+            $this->db->where('sa.academic_year_id', (int)$year_id);
+        }
+
+        $this->db
             ->where('sa.class_id', (int)$class_id)
             ->where('sa.status', 1)
             ->where('sa.is_deleted', 'n')

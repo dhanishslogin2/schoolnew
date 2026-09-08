@@ -940,12 +940,33 @@ class Academics extends MY_Controller {
             }
         }
 
+        // Backend validation of subject filter
+        $filter_subjects = array();
+        if (!empty($selected_class_id)) {
+            $filter_subjects = $this->Subject_model->get_for_class($selected_year_id, (int)$selected_class_id);
+            if (!empty($selected_subject_id)) {
+                $subject_belongs = false;
+                foreach ($filter_subjects as $fs) {
+                    if ((int)$fs->subject_id === (int)$selected_subject_id) {
+                        $subject_belongs = true;
+                        break;
+                    }
+                }
+                if (!$subject_belongs) {
+                    $selected_subject_id = -1; // Neutralize mismatched subject filter
+                }
+            }
+        } elseif (!empty($selected_subject_id)) {
+            // When no class is selected, subject filtering is not applicable
+            $selected_subject_id = -1;
+        }
+
         $filters = array(
             'academic_year_id' => $selected_year_id,
             'class_id'         => $selected_class_id,
             'division_id'      => $selected_division_id,
             'section_id'       => $selected_division_id,
-            'subject_id'       => $selected_subject_id,
+            'subject_id'       => ($selected_subject_id == -1 ? -1 : $selected_subject_id),
             'staff_id'         => $selected_staff_id,
         );
 
@@ -955,9 +976,8 @@ class Academics extends MY_Controller {
         $divisions   = $this->Division_model->get_all();
         $teachers    = $this->Staff_model->get_teachers();
 
-        // If a class is selected, divisions and subjects in the filter dropdown must correspond to that class
+        // If a class is selected, divisions in the filter dropdown must correspond to that class
         $filter_divisions = !empty($selected_class_id) ? $this->Division_model->get_all($selected_class_id) : array();
-        $filter_subjects  = !empty($selected_class_id) ? $this->Subject_model->get_all($selected_class_id) : $this->Subject_model->get_all();
 
         $this->render('pages/academics/subject_teachers', array(
             'title'                => 'Subject Teachers',
@@ -974,7 +994,7 @@ class Academics extends MY_Controller {
             'selected_year_id'     => $selected_year_id,
             'selected_class_id'    => $selected_class_id,
             'selected_division_id' => ($selected_division_id == -1 ? '' : $selected_division_id),
-            'selected_subject_id'  => $selected_subject_id,
+            'selected_subject_id'  => ($selected_subject_id == -1 ? '' : $selected_subject_id),
             'selected_staff_id'    => $selected_staff_id,
         ));
     }
@@ -1351,7 +1371,15 @@ class Academics extends MY_Controller {
     public function ajax_get_subjects($class_id = NULL)
     {
         header('Content-Type: application/json');
-        $subjects = $this->Subject_model->get_all($class_id);
+        if (empty($class_id)) {
+            $class_id = $this->input->get('class_id');
+        }
+        if (empty($class_id)) {
+            echo json_encode(array());
+            return;
+        }
+        $academic_year_id = $this->input->get('academic_year_id');
+        $subjects = $this->Subject_model->get_for_class($academic_year_id, (int)$class_id);
         echo json_encode($subjects);
     }
 

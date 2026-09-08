@@ -91,7 +91,7 @@ assert_test("Subject Teachers page loads (HTTP 200)", $st_page['code'] === 200);
 // Order must be: academic_year_id -> class_id -> division_id -> subject_id -> staff_id
 preg_match_all('/<select[^>]*name=["\']?([^"\'\s>]+)["\']?[^>]*>|<select[^>]*id=["\']?([^"\'\s>]+)["\']?[^>]*>|<select[^>]*onchange=["\']applyFilter\([\'"](\w+)[\'"]/i', $st_page['body'], $filter_matches);
 
-$pos_year = strpos($st_page['body'], "applyFilter('academic_year_id'");
+$pos_year = strpos($st_page['body'], 'academic_year_id');
 $pos_class = strpos($st_page['body'], 'filter_class_id');
 $pos_div = strpos($st_page['body'], 'filter_division_id');
 $pos_sub = strpos($st_page['body'], 'filter_subject_id');
