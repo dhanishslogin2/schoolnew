@@ -1066,6 +1066,12 @@ class Staff extends MY_Controller {
         if ($this->input->method() === 'post') {
             $action = $this->input->post('action');
             if ($action === 'apply') {
+                $staff_id = $this->input->post('staff_id');
+                if (empty($staff_id)) {
+                    $this->session->set_flashdata('error', 'Please select a staff member.');
+                    redirect('staff/leave');
+                    return;
+                }
                 $from = $this->input->post('from_date');
                 $to   = $this->input->post('to_date');
                 if (strtotime($from) > strtotime($to)) {
@@ -1073,7 +1079,7 @@ class Staff extends MY_Controller {
                 } else {
                     $days = max(1, round((strtotime($to) - strtotime($from)) / (60 * 60 * 24)) + 1);
                     $this->Staff_model->apply_leave(array(
-                        'staff_id'     => $this->input->post('staff_id'),
+                        'staff_id'     => $staff_id,
                         'leave_type'   => $this->input->post('leave_type'),
                         'from_date'    => $from,
                         'to_date'      => $to,

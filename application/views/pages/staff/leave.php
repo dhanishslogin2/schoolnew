@@ -1,12 +1,25 @@
 <?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
 
+    <?php if ($this->session->flashdata('success')): ?>
+      <div class="mb-4 p-3.5 rounded-xl bg-secondary-container text-on-secondary-container text-body-md font-medium flex items-center gap-2 border border-secondary/20">
+        <span class="material-symbols-outlined text-[20px] text-secondary">check_circle</span>
+        <?php echo html_escape($this->session->flashdata('success')); ?>
+      </div>
+    <?php endif; ?>
+    <?php if ($this->session->flashdata('error')): ?>
+      <div class="mb-4 p-3.5 rounded-xl bg-error-container text-on-error-container text-body-md font-medium flex items-center gap-2 border border-error/20">
+        <span class="material-symbols-outlined text-[20px] text-error">error</span>
+        <?php echo html_escape($this->session->flashdata('error')); ?>
+      </div>
+    <?php endif; ?>
+
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
         <h2 class="font-headline-md text-headline-md text-on-surface">Staff Leave Management</h2>
         <p class="text-body-md font-body-md text-on-surface-variant mt-1">Review staff leave applications, approve/reject requests, and track leave balances.</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
-        <button onclick="document.getElementById('modal-apply-leave').classList.remove('hidden')" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
+        <button onclick="openApplyLeaveModal()" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
           <span class="material-symbols-outlined text-[18px]">event_busy</span>New Leave Request
         </button>
       </div>
@@ -102,21 +115,23 @@
       <div class="elevation-3 rounded-2xl bg-surface-container-lowest border border-outline-variant w-full max-w-lg">
         <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant">
           <h3 class="font-headline-md text-headline-md text-on-surface">Submit Leave Application</h3>
-          <button onclick="document.getElementById('modal-apply-leave').classList.add('hidden')" class="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container-high"><span class="material-symbols-outlined">close</span></button>
+          <button type="button" onclick="closeApplyLeaveModal()" class="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container-high cursor-pointer"><span class="material-symbols-outlined">close</span></button>
         </div>
-        <?php echo form_open('staff/leave', array('class' => 'p-6 space-y-4')); ?>
+        <?php echo form_open('staff/leave', array('id' => 'form-apply-leave', 'class' => 'p-6 space-y-4', 'onsubmit' => 'return validateLeaveApplication(this);')); ?>
           <input type="hidden" name="action" value="apply"/>
           <div>
-            <label class="block text-label-md mb-1">Select Staff Member *</label>
-            <select name="staff_id" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
+            <label class="block text-label-md mb-1 font-medium text-on-surface">Select Staff Member <span class="text-error">*</span></label>
+            <select name="staff_id" id="apply-leave-staff-id" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
+              <option value="">-- Select Staff Member --</option>
               <?php foreach ($staff_list as $st): ?>
                 <option value="<?php echo $st->staff_id; ?>"><?php echo html_escape($st->full_name . ' (' . $st->employee_code . ')'); ?></option>
               <?php endforeach; ?>
             </select>
+            <p class="text-error text-xs mt-1 hidden" id="err-apply-leave-staff">Please select a staff member.</p>
           </div>
           <div>
-            <label class="block text-label-md mb-1">Leave Type *</label>
-            <select name="leave_type" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest">
+            <label class="block text-label-md mb-1 font-medium text-on-surface">Leave Type *</label>
+            <select name="leave_type" required class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
               <option value="Casual Leave">Casual Leave</option>
               <option value="Medical Leave">Medical Leave</option>
               <option value="Earned Leave">Earned Leave</option>
@@ -126,21 +141,21 @@
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-label-md mb-1">From Date *</label>
-              <input type="date" name="from_date" required value="<?php echo date('Y-m-d'); ?>" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest"/>
+              <label class="block text-label-md mb-1 font-medium text-on-surface">From Date *</label>
+              <input type="date" name="from_date" required value="<?php echo date('Y-m-d'); ?>" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
             </div>
             <div>
-              <label class="block text-label-md mb-1">To Date *</label>
-              <input type="date" name="to_date" required value="<?php echo date('Y-m-d'); ?>" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest"/>
+              <label class="block text-label-md mb-1 font-medium text-on-surface">To Date *</label>
+              <input type="date" name="to_date" required value="<?php echo date('Y-m-d'); ?>" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
             </div>
           </div>
           <div>
-            <label class="block text-label-md mb-1">Reason for Leave *</label>
-            <textarea name="reason" required rows="3" placeholder="State reason for absence..." class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md"></textarea>
+            <label class="block text-label-md mb-1 font-medium text-on-surface">Reason for Leave *</label>
+            <textarea name="reason" required rows="3" placeholder="State reason for absence..." class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary"></textarea>
           </div>
           <div class="flex justify-end gap-2 pt-4 border-t border-outline-variant">
-            <button type="button" onclick="document.getElementById('modal-apply-leave').classList.add('hidden')" class="px-4 py-2 rounded-lg border border-outline-variant text-on-surface-variant">Cancel</button>
-            <button type="submit" class="px-4 py-2 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant cursor-pointer">Submit Leave Request</button>
+            <button type="button" onclick="closeApplyLeaveModal()" class="px-4 py-2 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer">Cancel</button>
+            <button type="submit" class="px-4 py-2 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer">Submit Leave Request</button>
           </div>
         <?php echo form_close(); ?>
       </div>
@@ -152,4 +167,81 @@
         if (val) { url.searchParams.set(key, val); } else { url.searchParams.delete(key); }
         window.location.href = url.toString();
       }
+
+      function openApplyLeaveModal() {
+        var modal = document.getElementById('modal-apply-leave');
+        var form = document.getElementById('form-apply-leave');
+        if (form) {
+          form.reset();
+        }
+        var staffSelect = document.getElementById('apply-leave-staff-id');
+        if (staffSelect) {
+          staffSelect.value = '';
+          staffSelect.classList.remove('!border-error');
+        }
+        var errText = document.getElementById('err-apply-leave-staff');
+        if (errText) {
+          errText.classList.add('hidden');
+        }
+        if (modal) {
+          modal.classList.remove('hidden');
+        }
+      }
+
+      function closeApplyLeaveModal() {
+        var modal = document.getElementById('modal-apply-leave');
+        var form = document.getElementById('form-apply-leave');
+        if (form) {
+          form.reset();
+        }
+        var staffSelect = document.getElementById('apply-leave-staff-id');
+        if (staffSelect) {
+          staffSelect.value = '';
+          staffSelect.classList.remove('!border-error');
+        }
+        var errText = document.getElementById('err-apply-leave-staff');
+        if (errText) {
+          errText.classList.add('hidden');
+        }
+        if (modal) {
+          modal.classList.add('hidden');
+        }
+      }
+
+      function validateLeaveApplication(form) {
+        var staffSelect = document.getElementById('apply-leave-staff-id');
+        var errText = document.getElementById('err-apply-leave-staff');
+        if (!staffSelect || !staffSelect.value || staffSelect.value.trim() === '') {
+          if (errText) {
+            errText.classList.remove('hidden');
+          }
+          if (staffSelect) {
+            staffSelect.classList.add('!border-error');
+            staffSelect.focus();
+          }
+          alert('Please select a staff member.');
+          return false;
+        }
+        if (errText) {
+          errText.classList.add('hidden');
+        }
+        if (staffSelect) {
+          staffSelect.classList.remove('!border-error');
+        }
+        return true;
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        var staffSelect = document.getElementById('apply-leave-staff-id');
+        if (staffSelect) {
+          staffSelect.value = '';
+          staffSelect.addEventListener('change', function () {
+            var errText = document.getElementById('err-apply-leave-staff');
+            if (this.value) {
+              if (errText) errText.classList.add('hidden');
+              this.classList.remove('!border-error');
+            }
+          });
+        }
+      });
     </script>
