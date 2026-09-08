@@ -191,8 +191,16 @@ class Student_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('st.class_id', (int)$filters['class_id']);
         }
-        if (!empty($filters['division_id'])) {
-            $this->db->where('st.division_id', (int)$filters['division_id']);
+        $div_filter = !empty($filters['division_id']) ? $filters['division_id'] : (!empty($filters['section_id']) ? $filters['section_id'] : null);
+        if (!empty($div_filter)) {
+            $default_sec_id = $this->Division_model->get_default_division_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
+            $this->db->group_start()
+                ->where('st.division_id', (int)$div_filter);
+            if ((int)$div_filter === (int)$default_sec_id) {
+                $this->db->or_where('st.division_id IS NULL', null, false)
+                         ->or_where('st.division_id', 0);
+            }
+            $this->db->group_end();
         }
         if (!empty($filters['gender'])) {
             $this->db->where('st.gender', $filters['gender']);
@@ -210,7 +218,7 @@ class Student_model extends CI_Model {
                 ->or_like('st.guardian_phone', $s)
                 ->or_like('st.roll_number', $s)
                 ->or_like('c.class_name', $s)
-                ->or_like('div.division_name as division_name, div.division_name as section_name', $s)
+                ->or_like('div.division_name', $s)
             ->group_end();
         }
 
@@ -648,12 +656,22 @@ class Student_model extends CI_Model {
 
     public function insert($data)
     {
+        if (isset($data['section_id']) && !isset($data['division_id'])) {
+            $data['division_id'] = $data['section_id'];
+        }
+        unset($data['section_id']);
+
         $this->db->insert($this->table, $data);
         return $this->db->insert_id();
     }
 
     public function update($id, $data)
     {
+        if (isset($data['section_id']) && !isset($data['division_id'])) {
+            $data['division_id'] = $data['section_id'];
+        }
+        unset($data['section_id']);
+
         return $this->db
             ->where($this->primaryKey, $id)
             ->update($this->table, $data);
@@ -730,11 +748,12 @@ class Student_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('st.class_id', (int)$filters['class_id']);
         }
-        if (!empty($filters['division_id'])) {
+        $div_filter = !empty($filters['division_id']) ? $filters['division_id'] : (!empty($filters['section_id']) ? $filters['section_id'] : null);
+        if (!empty($div_filter)) {
             $default_sec_id = $this->Division_model->get_default_division_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
             $this->db->group_start()
-                ->where('st.division_id', (int)$filters['division_id']);
-            if ((int)$filters['division_id'] === (int)$default_sec_id) {
+                ->where('st.division_id', (int)$div_filter);
+            if ((int)$div_filter === (int)$default_sec_id) {
                 $this->db->or_where('st.division_id IS NULL', null, false)
                          ->or_where('st.division_id', 0);
             }
@@ -785,11 +804,12 @@ class Student_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('st.class_id', (int)$filters['class_id']);
         }
-        if (!empty($filters['division_id'])) {
+        $div_filter = !empty($filters['division_id']) ? $filters['division_id'] : (!empty($filters['section_id']) ? $filters['section_id'] : null);
+        if (!empty($div_filter)) {
             $default_sec_id = $this->Division_model->get_default_division_id(!empty($filters['class_id']) ? (int)$filters['class_id'] : null);
             $this->db->group_start()
-                ->where('st.division_id', (int)$filters['division_id']);
-            if ((int)$filters['division_id'] === (int)$default_sec_id) {
+                ->where('st.division_id', (int)$div_filter);
+            if ((int)$div_filter === (int)$default_sec_id) {
                 $this->db->or_where('st.division_id IS NULL', null, false)
                          ->or_where('st.division_id', 0);
             }

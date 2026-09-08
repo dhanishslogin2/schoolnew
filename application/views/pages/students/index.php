@@ -29,10 +29,10 @@
           <option value="<?php echo $cls->class_id; ?>" <?php echo ($this->input->get('class_id') == $cls->class_id) ? 'selected' : ''; ?>><?php echo html_escape($cls->class_name); ?></option>
         <?php endforeach; ?>
       </select>
-      <select onchange="applyFilter('section_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
+      <select onchange="applyFilter('division_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
         <option value="">All Divisions</option>
         <?php foreach ($sections as $sec): ?>
-          <option value="<?php echo $sec->section_id; ?>" <?php echo ($this->input->get('section_id') == $sec->section_id) ? 'selected' : ''; ?>><?php echo html_escape($sec->class_name . ' ' . $sec->section_name); ?></option>
+          <option value="<?php echo ($sec->division_id ?? $sec->section_id); ?>" <?php echo (($this->input->get('division_id') ?: $this->input->get('section_id')) == ($sec->division_id ?? $sec->section_id)) ? 'selected' : ''; ?>><?php echo html_escape(($sec->class_name ?? '') . ' Division ' . ($sec->division_name ?? $sec->section_name)); ?></option>
         <?php endforeach; ?>
       </select>
       <select onchange="applyFilter('gender', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
@@ -90,7 +90,8 @@
               data: function(d) {
                 d.academic_year_id = '<?php echo html_escape($this->input->get('academic_year_id')); ?>';
                 d.class_id         = '<?php echo html_escape($this->input->get('class_id')); ?>';
-                d.section_id       = '<?php echo html_escape($this->input->get('section_id')); ?>';
+                d.division_id      = '<?php echo html_escape($this->input->get('division_id') ?: $this->input->get('section_id')); ?>';
+                d.section_id       = '<?php echo html_escape($this->input->get('division_id') ?: $this->input->get('section_id')); ?>';
                 d.gender           = '<?php echo html_escape($this->input->get('gender')); ?>';
                 d.status           = '<?php echo html_escape($this->input->get('status')); ?>';
                 d.search           = { value: '<?php echo html_escape($this->input->get('search')); ?>' };

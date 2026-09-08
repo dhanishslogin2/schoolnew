@@ -31,7 +31,7 @@
         <label for="all-students-academic-year" class="text-xs font-bold text-slate-700 whitespace-nowrap">Academic Year:</label>
         <select id="all-students-academic-year" onchange="onAcademicYearChanged(this.value)" class="text-xs font-bold text-emerald-900 bg-transparent border-none focus:ring-0 cursor-pointer pr-6 py-1">
           <?php foreach ($years as $y): ?>
-            <?php $isActive = ($y->is_current == 1 || $y->status == 1); ?>
+            <?php $isActive = (!empty($y->is_current) || !empty($y->is_active) || (!empty($y->status) && $y->status == 1)); ?>
             <option value="<?php echo $y->academic_year_id; ?>" <?php echo ($selected_year == $y->academic_year_id) ? 'selected' : ''; ?>>
               <?php echo html_escape($y->year_name); ?><?php echo $isActive ? ' (Active)' : ''; ?>
             </option>

@@ -148,8 +148,9 @@ class Students extends MY_Controller {
         $class_id_raw = $this->input->post('class_id');
         $class_id = (!empty($class_id_raw) && is_numeric($class_id_raw) && (int)$class_id_raw > 0) ? (int)$class_id_raw : NULL;
 
-        $section_id_raw = $this->input->post('section_id');
-        $section_id = (!empty($section_id_raw) && is_numeric($section_id_raw) && (int)$section_id_raw > 0) ? (int)$section_id_raw : NULL;
+        $division_id_raw = $this->input->post('division_id') ?: $this->input->post('section_id');
+        $division_id = (!empty($division_id_raw) && is_numeric($division_id_raw) && (int)$division_id_raw > 0) ? (int)$division_id_raw : NULL;
+        $section_id  = $division_id;
 
         $status_raw = $this->input->post('status');
         $status = ($status_raw !== NULL && $status_raw !== '' && $status_raw !== 'All' && is_numeric($status_raw)) ? (int)$status_raw : NULL;
@@ -163,6 +164,7 @@ class Students extends MY_Controller {
         $filters = array(
             'academic_year_id' => $academic_year_id,
             'class_id'         => $class_id,
+            'division_id'      => $division_id,
             'section_id'       => $section_id,
             'status'           => $status,
             'gender'           => $gender,
@@ -323,7 +325,8 @@ class Students extends MY_Controller {
         $filters = array(
             'academic_year_id' => $this->input->post('academic_year_id') ?: ($this->input->get('academic_year_id') ?: $this->academic_year_id),
             'class_id'         => $this->input->post('class_id') ?: $this->input->get('class_id'),
-            'section_id'       => $this->input->post('section_id') ?: $this->input->get('section_id'),
+            'division_id'      => $this->input->post('division_id') ?: ($this->input->get('division_id') ?: ($this->input->post('section_id') ?: $this->input->get('section_id'))),
+            'section_id'       => $this->input->post('division_id') ?: ($this->input->get('division_id') ?: ($this->input->post('section_id') ?: $this->input->get('section_id'))),
             'gender'           => $this->input->post('gender') ?: $this->input->get('gender'),
             'status'           => $this->input->post('status') !== NULL ? $this->input->post('status') : $this->input->get('status'),
             'search'           => $search_val,
@@ -953,7 +956,8 @@ class Students extends MY_Controller {
         $academic_details = array(
             'academic_year_id'   => $this->academic_year_id,
             'class_id'           => (int)$this->input->post('class_id'),
-            'section_id'         => (int)$this->input->post('section_id') ?: 0,
+            'division_id'        => (int)($this->input->post('division_id') ?: $this->input->post('section_id')) ?: 0,
+            'section_id'         => (int)($this->input->post('division_id') ?: $this->input->post('section_id')) ?: 0,
             'roll_number'        => $this->input->post('roll_number', TRUE),
             'no_previous_school' => $no_prev_school ? 1 : 0,
         );
@@ -1123,8 +1127,8 @@ class Students extends MY_Controller {
             $sd = $wizard['student_details'];
             $ad = $wizard['academic_details'];
 
-            $class_id = !empty($ad['class_id']) ? (int)$ad['class_id'] : 1;
-            $section_id = !empty($ad['section_id']) ? (int)$ad['section_id'] : $this->Section_model->get_default_section_id($class_id);
+            $class_id    = !empty($ad['class_id']) ? (int)$ad['class_id'] : 1;
+            $division_id = !empty($ad['division_id']) ? (int)$ad['division_id'] : (!empty($ad['section_id']) ? (int)$ad['section_id'] : $this->Division_model->get_default_division_id($class_id));
 
             // ── Photo Handling: Move from temp → permanent uploads/students/ ──────
             $photo_filename   = NULL;
@@ -1158,7 +1162,7 @@ class Students extends MY_Controller {
                 'photo'             => $photo_filename,
                 'academic_year_id'  => !empty($ad['academic_year_id']) ? (int)$ad['academic_year_id'] : $this->academic_year_id,
                 'class_id'          => $class_id,
-                'section_id'        => $section_id,
+                'division_id'       => $division_id,
                 'roll_number'       => !empty($ad['roll_number']) ? trim($ad['roll_number']) : '',
                 'guardian_name'     => $parent_details['guardian_name'],
                 'guardian_relation' => $parent_details['guardian_relation'],
@@ -1367,6 +1371,25 @@ class Students extends MY_Controller {
         return TRUE;
     }
 
+    /* ─────────────────────────────────────────────────────────────────────────
+       Validation Callback: Division must be valid for the selected Class
+    ───────────────────────────────────────────────────────────────────────── */
+    public function validate_class_division($division_id)
+    {
+        if (empty($division_id)) {
+            $division_id = $this->input->post('section_id');
+        }
+        $class_id = (int)$this->input->post('class_id');
+        $division_id = (int)$division_id;
+        if (!empty($division_id) && !empty($class_id)) {
+            if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
+                $this->form_validation->set_message('validate_class_division', 'The selected division is invalid for the chosen class.');
+                return FALSE;
+            }
+        }
+        return TRUE;
+    }
+
 
     /* =========================================================================
        3. Student Edit
@@ -1393,12 +1416,21 @@ class Students extends MY_Controller {
             $this->form_validation->set_rules('first_name', 'First Name', 'required|trim');
             $this->form_validation->set_rules('admission_number', 'Admission Number', 'required|trim');
             $this->form_validation->set_rules('date_of_birth', 'Date of Birth', 'trim|callback_validate_dob');
+            $this->form_validation->set_rules('class_id', 'Class', 'required|integer');
+            $this->form_validation->set_rules('division_id', 'Division', 'trim|callback_validate_class_division');
+            if ($this->input->post('academic_year_id')) {
+                $this->form_validation->set_rules('academic_year_id', 'Academic Year', 'integer');
+            }
 
             if ($this->form_validation->run() === TRUE) {
                 $photo_result = $this->process_student_photo($student_id);
                 if ($photo_result['success'] === FALSE && !empty($photo_result['error'])) {
                     $photo_error = $photo_result['error'];
                 } else {
+                    $class_id = (int)($this->input->post('class_id') ?: $student->class_id);
+                    $division_id_input = $this->input->post('division_id') !== NULL ? $this->input->post('division_id') : $this->input->post('section_id');
+                    $division_id = ($division_id_input !== '' && $division_id_input !== NULL) ? (int)$division_id_input : (isset($student->division_id) ? (int)$student->division_id : NULL);
+
                     $data = array(
                         'admission_number' => $this->input->post('admission_number', TRUE),
                         'first_name'       => $this->input->post('first_name', TRUE),
@@ -1406,9 +1438,9 @@ class Students extends MY_Controller {
                         'gender'           => $this->input->post('gender', TRUE),
                         'date_of_birth'    => $this->input->post('date_of_birth', TRUE) ?: $student->date_of_birth,
                         'blood_group'      => $this->input->post('blood_group', TRUE),
-                        'academic_year_id' => $this->input->post('academic_year_id') ?: $student->academic_year_id,
-                        'class_id'         => $this->input->post('class_id') ?: $student->class_id,
-                        'section_id'       => $this->input->post('section_id') ?: $student->section_id,
+                        'academic_year_id' => $this->input->post('academic_year_id') ? (int)$this->input->post('academic_year_id') : (int)$student->academic_year_id,
+                        'class_id'         => $class_id,
+                        'division_id'      => $division_id,
                         'roll_number'      => $this->input->post('roll_number', TRUE),
                         'guardian_name'    => $this->input->post('guardian_name', TRUE),
                         'guardian_relation'=> $this->input->post('guardian_relation', TRUE) ?: $student->guardian_relation,
@@ -1442,7 +1474,8 @@ class Students extends MY_Controller {
         }
 
         $classes   = $this->Class_model->get_all($student->academic_year_id);
-        $sections  = $this->Division_model->get_all();
+        $divisions = $student->class_id ? $this->Division_model->get_by_class($student->class_id) : $this->Division_model->get_all();
+        $sections  = $divisions;
         $years     = $this->Academic_year_model->get_all();
         $groups    = $this->Academic_group_model->get_all();
 
@@ -1454,8 +1487,8 @@ class Students extends MY_Controller {
             'student_id'  => $student_id,
             'groups'      => $groups,
             'classes'     => $classes,
+            'divisions'   => $divisions,
             'sections'    => $sections,
-            'divisions'   => $sections,
             'years'       => $years,
             'photo_error' => $photo_error,
         ));
@@ -1760,7 +1793,7 @@ class Students extends MY_Controller {
 
         $academic_year_id = (int)$this->input->post('academic_year_id');
         $class_id         = (int)$this->input->post('class_id');
-        $section_id       = (int)$this->input->post('section_id');
+        $section_id       = (int)($this->input->post('division_id') ?: $this->input->post('section_id'));
 
         if (!$academic_year_id || !$class_id) {
             return $this->output->set_content_type('application/json')->set_output(json_encode(array(
@@ -1856,7 +1889,7 @@ class Students extends MY_Controller {
 
         $academic_year_id = (int)$this->input->post('academic_year_id');
         $class_id         = (int)$this->input->post('class_id');
-        $section_id       = (int)$this->input->post('section_id');
+        $section_id       = (int)($this->input->post('division_id') ?: $this->input->post('section_id'));
 
         $pending = $this->session->userdata('bulk_import_pending');
         $rows_to_insert = array();
@@ -1922,7 +1955,8 @@ class Students extends MY_Controller {
 
         $academic_year_id = (int)$this->input->post('academic_year_id');
         $class_id         = (int)$this->input->post('class_id');
-        $section_id       = (int)$this->input->post('section_id');
+        $division_id      = (int)($this->input->post('division_id') ?: $this->input->post('section_id'));
+        $section_id       = $division_id;
         $raw_entries      = $this->input->post('entries');
 
         if (!$academic_year_id || !$class_id) {

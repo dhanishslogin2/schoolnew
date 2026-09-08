@@ -146,11 +146,15 @@
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1.5">Division</label>
           <select id="edit_division_id" name="division_id" class="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md focus:ring-2 focus:ring-primary/10 focus:border-primary">
-            <?php foreach ($sections as $sec): 
-              $sec_cls_id = (int)($sec->class_id ?? 0);
-              if ($sec_cls_id && $sec_cls_id !== (int)$student->class_id) continue;
+            <?php 
+              $div_list = !empty($divisions) ? $divisions : (!empty($sections) ? $sections : []);
+              foreach ($div_list as $sec): 
+                $sec_cls_id = (int)($sec->class_id ?? 0);
+                if ($sec_cls_id && $sec_cls_id !== (int)$student->class_id) continue;
+                $div_name = $sec->division_name ?? $sec->section_name ?? '';
+                $display_name = (stripos($div_name, 'division') === false) ? 'Division ' . $div_name : $div_name;
             ?>
-              <option value="<?php echo ($sec->division_id ?? $sec->section_id); ?>" <?php echo (($student->division_id ?? $student->section_id) == ($sec->division_id ?? $sec->section_id)) ? 'selected' : ''; ?>>Division <?php echo html_escape(($sec->division_name ?? $sec->section_name)); ?></option>
+              <option value="<?php echo ($sec->division_id ?? $sec->section_id); ?>" <?php echo (($student->division_id ?? $student->section_id ?? 0) == ($sec->division_id ?? $sec->section_id)) ? 'selected' : ''; ?>><?php echo html_escape($display_name); ?></option>
             <?php endforeach; ?>
           </select>
         </div>
@@ -520,17 +524,20 @@
             dataType: 'json',
             success: function (r) {
                 if (r && (r.divisions || r.sections) && (r.divisions || r.sections).length > 0) {
+                    var list = r.divisions || r.sections;
                     var opts = '';
-                    (r.divisions || r.sections).forEach(function (d, idx) {
-                        opts += '<option value="' + (d.division_id || d.section_id) + '" ' + (idx === 0 ? 'selected' : '') + '>Division ' + $('<div>').text((d.division_name || d.section_name)).html() + '</option>';
+                    list.forEach(function (d, idx) {
+                        var name = (d.division_name || d.section_name || '').toString();
+                        var label = (name.toLowerCase().indexOf('division') === -1) ? 'Division ' + name : name;
+                        opts += '<option value="' + (d.division_id || d.section_id) + '" ' + (idx === 0 ? 'selected' : '') + '>' + $('<div>').text(label).html() + '</option>';
                     });
                     $('#edit_division_id').html(opts);
                 } else {
-                    $('#edit_division_id').html('<option value="12" selected>Division A</option>');
+                    $('#edit_division_id').html('<option value="">No divisions available</option>');
                 }
             },
             error: function () {
-                $('#edit_division_id').html('<option value="12" selected>Division A</option>');
+                $('#edit_division_id').html('<option value="">Failed to load divisions</option>');
             }
         });
     });
