@@ -17,8 +17,11 @@ class Subject_teacher_model extends CI_Model {
             ->join('tbl_subjects sub', 'sub.subject_id = st.subject_id', 'left')
             ->join('tbl_staff s', 's.staff_id = st.staff_id', 'left')
             ->where('st.status', 1)
+            ->where('st.is_deleted', 'n')
+            ->where('c.is_deleted', 'n')
             ->order_by('st.class_id', 'ASC')
-            ->order_by('st.division_id', 'ASC');
+            ->order_by('st.division_id', 'ASC')
+            ->order_by('sub.subject_name', 'ASC');
 
         if (!empty($filters['academic_year_id'])) {
             $this->db->where('st.academic_year_id', $filters['academic_year_id']);
@@ -26,8 +29,9 @@ class Subject_teacher_model extends CI_Model {
         if (!empty($filters['class_id'])) {
             $this->db->where('st.class_id', $filters['class_id']);
         }
-        if (!empty($filters['division_id'])) {
-            $this->db->where('st.division_id', $filters['division_id']);
+        $div_id = $filters['division_id'] ?? ($filters['section_id'] ?? null);
+        if (!empty($div_id)) {
+            $this->db->where('st.division_id', $div_id);
         }
         if (!empty($filters['subject_id'])) {
             $this->db->where('st.subject_id', $filters['subject_id']);
@@ -39,16 +43,16 @@ class Subject_teacher_model extends CI_Model {
         return $this->db->get()->result();
     }
 
-    public function assign($academic_year_id, $class_id, $section_id, $subject_id, $staff_id)
+    public function assign($academic_year_id, $class_id, $division_id, $subject_id, $staff_id)
     {
         // Enforce teacher only
-        $staff = $this->db->where('staff_id', $staff_id)->where('staff_type', 'teacher')->get('tbl_staff')->row();
-        if (!$staff) return FALSE;
+        $staff = $this->db->where('staff_id', $staff_id)->where('is_deleted', 'n')->get('tbl_staff')->row();
+        if (!$staff || $staff->status != 1 || (strtolower($staff->staff_type) !== 'teacher' && strtolower($staff->category) !== 'teaching' && strtolower($staff->category) !== 'teacher')) return FALSE;
 
         $existing = $this->db
             ->where('academic_year_id', $academic_year_id)
             ->where('class_id', $class_id)
-            ->where('division_id', $section_id)
+            ->where('division_id', $division_id)
             ->where('subject_id', $subject_id)
             ->get($this->table)
             ->row();
@@ -57,6 +61,7 @@ class Subject_teacher_model extends CI_Model {
             $this->db->where('subject_teacher_id', $existing->subject_teacher_id)->update($this->table, array(
                 'staff_id'   => $staff_id,
                 'status'     => 1,
+                'is_deleted' => 'n',
                 'updated_at' => date('Y-m-d H:i:s')
             ));
             return $existing->subject_teacher_id;
@@ -64,17 +69,18 @@ class Subject_teacher_model extends CI_Model {
             $this->db->insert($this->table, array(
                 'academic_year_id' => $academic_year_id,
                 'class_id'         => $class_id,
-                'division_id'       => $section_id,
+                'division_id'      => $division_id,
                 'subject_id'       => $subject_id,
                 'staff_id'         => $staff_id,
                 'status'           => 1,
+                'is_deleted'       => 'n',
                 'created_at'       => date('Y-m-d H:i:s')
             ));
             return $this->db->insert_id();
         }
     }
 
-    public function get_teachers_by_subject($academic_year_id, $class_id, $section_id, $subject_id)
+    public function get_teachers_by_subject($academic_year_id, $class_id, $division_id, $subject_id)
     {
         $this->db
             ->select('s.staff_id, s.full_name, s.employee_code')
@@ -82,11 +88,12 @@ class Subject_teacher_model extends CI_Model {
             ->join('tbl_staff s', 's.staff_id = st.staff_id', 'inner')
             ->where('st.academic_year_id', $academic_year_id)
             ->where('st.class_id', $class_id)
-            ->where('st.division_id', $section_id)
+            ->where('st.division_id', $division_id)
             ->where('st.subject_id', $subject_id)
             ->where('st.status', 1)
+            ->where('st.is_deleted', 'n')
             ->where('s.status', 1)
-            ->where('s.staff_type', 'teacher');
+            ->where('s.is_deleted', 'n');
 
         return $this->db->get()->result();
     }

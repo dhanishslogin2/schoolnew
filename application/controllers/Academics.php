@@ -869,53 +869,113 @@ class Academics extends MY_Controller {
         $this->require_permission('academics.view');
         if ($this->input->method() === 'post') {
             $this->require_permission('academics.edit');
-            $year_id     = $this->input->post('academic_year_id') ?: 1;
-            $class_id    = $this->input->post('class_id');
-            $division_id = $this->input->post('division_id') ?: $this->input->post('section_id');
-            $subject_id  = $this->input->post('subject_id');
-            $staff_id    = $this->input->post('staff_id');
+            $year_id     = (int)($this->input->post('academic_year_id') ?: 1);
+            $class_id    = (int)$this->input->post('class_id');
+            $division_id = (int)($this->input->post('division_id') ?: $this->input->post('section_id'));
+            $subject_id  = (int)$this->input->post('subject_id');
+            $staff_id    = (int)$this->input->post('staff_id');
 
             if (empty($class_id) || empty($division_id) || empty($subject_id) || empty($staff_id)) {
                 $this->session->set_flashdata('error', 'Please fill all required assignment fields.');
+                redirect('academics/subject_teachers');
+            }
+
+            // Backend validation
+            $year = $this->Academic_year_model->get_by_id($year_id);
+            if (!$year || $year->status != 1 || $year->is_deleted !== 'n') {
+                $this->session->set_flashdata('error', 'Invalid Academic Session selected.');
+                redirect('academics/subject_teachers');
+            }
+
+            $class = $this->Class_model->get_by_id($class_id);
+            if (!$class || $class->status != 1 || $class->is_deleted !== 'n') {
+                $this->session->set_flashdata('error', 'Invalid Class selected.');
+                redirect('academics/subject_teachers');
+            }
+
+            $division = $this->Division_model->get_by_id($division_id);
+            if (!$division || $division->status != 1 || $division->is_deleted !== 'n' || (int)$division->class_id !== $class_id) {
+                $this->session->set_flashdata('error', 'Selected Division does not belong to the selected Class.');
+                redirect('academics/subject_teachers');
+            }
+
+            $subject = $this->Subject_model->get_by_id($subject_id);
+            if (!$subject || $subject->status != 1 || (!empty($subject->class_id) && (int)$subject->class_id !== $class_id)) {
+                $this->session->set_flashdata('error', 'Selected Subject does not belong to the selected Class.');
+                redirect('academics/subject_teachers');
+            }
+
+            $staff = $this->db->where('staff_id', $staff_id)->where('is_deleted', 'n')->get('tbl_staff')->row();
+            if (!$staff || $staff->status != 1 || (strtolower($staff->staff_type) !== 'teacher' && strtolower($staff->category) !== 'teaching' && strtolower($staff->category) !== 'teacher')) {
+                $this->session->set_flashdata('error', 'Failed to assign subject teacher. Only active teaching faculty can be assigned.');
+                redirect('academics/subject_teachers');
+            }
+
+            $res = $this->Subject_teacher_model->assign($year_id, $class_id, $division_id, $subject_id, $staff_id);
+            if ($res) {
+                $this->session->set_flashdata('success', 'Subject Teacher assigned successfully!');
             } else {
-                $res = $this->Subject_teacher_model->assign($year_id, $class_id, $division_id, $subject_id, $staff_id);
-                if ($res) {
-                    $this->session->set_flashdata('success', 'Subject Teacher assigned successfully!');
-                } else {
-                    $this->session->set_flashdata('error', 'Failed to assign subject teacher. Only teaching faculty can be assigned.');
-                }
+                $this->session->set_flashdata('error', 'Failed to assign subject teacher. Only teaching faculty can be assigned.');
             }
             redirect('academics/subject_teachers');
         }
 
-        $div_filter = $this->input->get('division_id') ?: $this->input->get('section_id');
+        $selected_year_id     = $this->input->get('academic_year_id');
+        $selected_class_id    = $this->input->get('class_id');
+        $selected_division_id = $this->input->get('division_id') ?: $this->input->get('section_id');
+        $selected_subject_id  = $this->input->get('subject_id');
+        $selected_staff_id    = $this->input->get('staff_id');
+
+        // Backend validation of division filter
+        if (!empty($selected_division_id) && !empty($selected_class_id)) {
+            $chk_div = $this->Division_model->get_by_id($selected_division_id);
+            if (!$chk_div || (int)$chk_div->class_id !== (int)$selected_class_id || $chk_div->status != 1 || $chk_div->is_deleted !== 'n') {
+                // Invalid or mismatched division: neutralize to prevent leaking cross-division records
+                $selected_division_id = -1;
+            }
+        } elseif (!empty($selected_division_id) && empty($selected_class_id)) {
+            $chk_div = $this->Division_model->get_by_id($selected_division_id);
+            if (!$chk_div || $chk_div->status != 1 || $chk_div->is_deleted !== 'n') {
+                $selected_division_id = -1;
+            }
+        }
+
         $filters = array(
-            'academic_year_id' => $this->input->get('academic_year_id'),
-            'class_id'         => $this->input->get('class_id'),
-            'division_id'      => $div_filter,
-            'section_id'       => $div_filter,
-            'subject_id'       => $this->input->get('subject_id'),
-            'staff_id'         => $this->input->get('staff_id'),
+            'academic_year_id' => $selected_year_id,
+            'class_id'         => $selected_class_id,
+            'division_id'      => $selected_division_id,
+            'section_id'       => $selected_division_id,
+            'subject_id'       => $selected_subject_id,
+            'staff_id'         => $selected_staff_id,
         );
 
         $assignments = $this->Subject_teacher_model->get_all($filters);
         $years       = $this->Academic_year_model->get_all();
         $classes     = $this->Class_model->get_all();
         $divisions   = $this->Division_model->get_all();
-        $subjects    = $this->Subject_model->get_all();
         $teachers    = $this->Staff_model->get_teachers();
 
+        // If a class is selected, divisions and subjects in the filter dropdown must correspond to that class
+        $filter_divisions = !empty($selected_class_id) ? $this->Division_model->get_all($selected_class_id) : array();
+        $filter_subjects  = !empty($selected_class_id) ? $this->Subject_model->get_all($selected_class_id) : $this->Subject_model->get_all();
+
         $this->render('pages/academics/subject_teachers', array(
-            'title'       => 'Subject Teachers',
-            'page_key'    => 'subject-teachers',
-            'breadcrumb'  => array('Academic Management', 'Subject Teachers'),
-            'assignments' => $assignments,
-            'years'       => $years,
-            'classes'     => $classes,
-            'divisions'   => $divisions,
-            'sections'    => $divisions,
-            'subjects'    => $subjects,
-            'teachers'    => $teachers,
+            'title'                => 'Subject Teachers',
+            'page_key'             => 'subject-teachers',
+            'breadcrumb'           => array('Academic Management', 'Subject Teachers'),
+            'assignments'          => $assignments,
+            'years'                => $years,
+            'classes'              => $classes,
+            'divisions'            => $divisions,
+            'filter_divisions'     => $filter_divisions,
+            'filter_subjects'      => $filter_subjects,
+            'subjects'             => $this->Subject_model->get_all(),
+            'teachers'             => $teachers,
+            'selected_year_id'     => $selected_year_id,
+            'selected_class_id'    => $selected_class_id,
+            'selected_division_id' => ($selected_division_id == -1 ? '' : $selected_division_id),
+            'selected_subject_id'  => $selected_subject_id,
+            'selected_staff_id'    => $selected_staff_id,
         ));
     }
 

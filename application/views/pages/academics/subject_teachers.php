@@ -17,7 +17,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
         <h2 class="font-headline-md text-headline-md text-on-surface">Subject Teachers</h2>
-        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Assign subject specialist teachers to specific academic classes and sections.</p>
+        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Assign subject specialist teachers to specific academic classes and divisions.</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
         <button onclick="openAssignSubjectTeacherModal()" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-secondary text-on-secondary text-label-md hover:bg-on-secondary-fixed-variant transition-colors shadow-sm cursor-pointer">
@@ -31,25 +31,38 @@
       <select onchange="applyFilter('academic_year_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
         <option value="">All Academic Years</option>
         <?php foreach ($years as $yr): ?>
-          <option value="<?php echo $yr->academic_year_id; ?>" <?php echo ($this->input->get('academic_year_id') == $yr->academic_year_id) ? 'selected' : ''; ?>><?php echo html_escape($yr->year_name); ?></option>
+          <option value="<?php echo $yr->academic_year_id; ?>" <?php echo ($selected_year_id == $yr->academic_year_id) ? 'selected' : ''; ?>><?php echo html_escape($yr->year_name); ?></option>
         <?php endforeach; ?>
       </select>
-      <select onchange="applyFilter('class_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
+      <select id="filter_class_id" onchange="onClassFilterChange(this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
         <option value="">All Classes</option>
         <?php foreach ($classes as $cls): ?>
-          <option value="<?php echo $cls->class_id; ?>" <?php echo ($this->input->get('class_id') == $cls->class_id) ? 'selected' : ''; ?>><?php echo html_escape($cls->class_name); ?></option>
+          <option value="<?php echo $cls->class_id; ?>" <?php echo ($selected_class_id == $cls->class_id) ? 'selected' : ''; ?>><?php echo html_escape($cls->class_name); ?></option>
         <?php endforeach; ?>
       </select>
-      <select onchange="applyFilter('subject_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
+      <select id="filter_division_id" onchange="applyFilter('division_id', this.value)" <?php echo empty($selected_class_id) ? 'disabled' : ''; ?> class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant <?php echo empty($selected_class_id) ? 'opacity-60 cursor-not-allowed' : ''; ?>">
+        <?php if (empty($selected_class_id)): ?>
+          <option value="">Select Class First</option>
+        <?php elseif (empty($filter_divisions)): ?>
+          <option value="">No divisions found</option>
+        <?php else: ?>
+          <option value="">All Divisions</option>
+          <?php foreach ($filter_divisions as $div): ?>
+            <?php $d_id = $div->division_id ?: $div->section_id; ?>
+            <option value="<?php echo $d_id; ?>" <?php echo ($selected_division_id == $d_id) ? 'selected' : ''; ?>>Division <?php echo html_escape($div->division_name ?: $div->section_name); ?></option>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </select>
+      <select id="filter_subject_id" onchange="applyFilter('subject_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
         <option value="">All Subjects</option>
-        <?php foreach ($subjects as $sub): ?>
-          <option value="<?php echo $sub->subject_id; ?>" <?php echo ($this->input->get('subject_id') == $sub->subject_id) ? 'selected' : ''; ?>><?php echo html_escape($sub->subject_name); ?></option>
+        <?php foreach ($filter_subjects as $sub): ?>
+          <option value="<?php echo $sub->subject_id; ?>" <?php echo ($selected_subject_id == $sub->subject_id) ? 'selected' : ''; ?>><?php echo html_escape($sub->subject_name); ?></option>
         <?php endforeach; ?>
       </select>
       <select onchange="applyFilter('staff_id', this.value)" class="px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md font-body-md text-on-surface-variant">
         <option value="">All Teachers</option>
         <?php foreach ($teachers as $t): ?>
-          <option value="<?php echo $t->staff_id; ?>" <?php echo ($this->input->get('staff_id') == $t->staff_id) ? 'selected' : ''; ?>><?php echo html_escape($t->full_name); ?></option>
+          <option value="<?php echo $t->staff_id; ?>" <?php echo ($selected_staff_id == $t->staff_id) ? 'selected' : ''; ?>><?php echo html_escape($t->full_name); ?></option>
         <?php endforeach; ?>
       </select>
       <a href="<?php echo site_url('academics/subject_teachers'); ?>" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant bg-surface-container-lowest text-label-md hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[18px]">restart_alt</span>Reset</a>
@@ -84,7 +97,7 @@
                     </div>
                   </div>
                 </td>
-                <td class="px-4 py-3 text-on-surface whitespace-nowrap font-medium"><?php echo html_escape($a->class_name . ' - Division ' . $a->section_name); ?></td>
+                <td class="px-4 py-3 text-on-surface whitespace-nowrap font-medium"><?php echo html_escape($a->class_name . ' - Division ' . ($a->division_name ?: $a->section_name)); ?></td>
                 <td class="px-4 py-3 font-bold text-secondary whitespace-nowrap">
                   <a href="<?php echo site_url('staff/teachers?id=' . $a->staff_id); ?>" class="hover:underline"><?php echo html_escape($a->teacher_name); ?></a>
                 </td>
@@ -161,6 +174,20 @@
         window.location.href = url.toString();
       }
 
+      function onClassFilterChange(classId) {
+        var url = new URL(window.location.href);
+        if (classId) {
+          url.searchParams.set('class_id', classId);
+        } else {
+          url.searchParams.delete('class_id');
+        }
+        // Changing class clears dependent division and subject selections
+        url.searchParams.delete('division_id');
+        url.searchParams.delete('section_id');
+        url.searchParams.delete('subject_id');
+        window.location.href = url.toString();
+      }
+
       function openAssignSubjectTeacherModal() {
         document.getElementById('modal_st_class').selectedIndex = 0;
         document.getElementById('modal_st_section').innerHTML = '<option value="">Select Class First</option>';
@@ -172,7 +199,7 @@
         var secSelect = document.getElementById('modal_st_section');
         var subSelect = document.getElementById('modal_st_subject');
 
-        secSelect.innerHTML = '<option value="">Loading sections...</option>';
+        secSelect.innerHTML = '<option value="">Loading divisions...</option>';
         subSelect.innerHTML = '<option value="">Loading subjects...</option>';
 
         if (!classId) {
