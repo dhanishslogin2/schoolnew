@@ -443,7 +443,6 @@ const NAV = [
       { key: "report-cards", label: "Report Cards" },
       { key: "exam-ranks", label: "Rank / Position" },
       { key: "progress-reports", label: "Progress Reports" },
-      { key: "exam-reports", label: "Reports" },
     ],
   },
 
@@ -1023,6 +1022,11 @@ function findActiveHierarchy(activeKey) {
       });
     }
     return false;
+  }
+
+  // Preserve Examination & Results module expansion on direct navigation to exam-reports
+  if (normKeyDash === "exam-reports") {
+    return { moduleKey: "examinations", groupLabel: null, pageKey: "exam-reports" };
   }
 
   // 1. Exact match across NAV
