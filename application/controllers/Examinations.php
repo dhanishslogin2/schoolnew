@@ -820,21 +820,21 @@ class Examinations extends MY_Controller {
         if ($this->input->method() === 'post') {
             $exam_id    = (int)$this->input->post('exam_id');
             $class_id   = $this->input->post('class_id') ? (int)$this->input->post('class_id') : NULL;
-            $section_id = $this->input->post('division_id') ? (int)$this->input->post('division_id') : NULL;
+            $division_id = $this->input->post('division_id') ? (int)$this->input->post('division_id') : NULL;
 
             if (empty($exam_id)) {
                 $this->session->set_flashdata('error', 'Please select an exam to calculate results.');
                 redirect('examinations/calculate');
             }
 
-            if (!empty($class_id) && !empty($section_id)) {
-                if (!$this->Division_model->is_valid_division_for_class($section_id, $class_id)) {
+            if (!empty($class_id) && !empty($division_id)) {
+                if (!$this->Division_model->is_valid_division_for_class($division_id, $class_id)) {
                     $this->session->set_flashdata('error', 'The selected division does not belong to the selected class.');
                     redirect('examinations/calculate');
                 }
             }
 
-            $count = $this->Result_model->calculate_results_for_exam($exam_id, $class_id, $section_id, $this->current_user->user_id);
+            $count = $this->Result_model->calculate_results_for_exam($exam_id, $class_id, $division_id, $this->current_user->user_id);
 
             $this->session->set_flashdata('success', "Results and ranks calculated successfully for {$count} students.");
             redirect('examinations/results?exam_id=' . $exam_id);

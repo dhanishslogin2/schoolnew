@@ -18,7 +18,7 @@ class Result_model extends CI_Model {
     /* =========================================================================
        1. Core Backend Result Calculation Engine
        ========================================================================= */
-    public function calculate_results_for_exam($exam_id, $class_id = NULL, $section_id = NULL, $user_id = NULL)
+    public function calculate_results_for_exam($exam_id, $class_id = NULL, $division_id = NULL, $user_id = NULL)
     {
         $settings = $this->Exam_setting_model->get_settings();
 
@@ -31,7 +31,7 @@ class Result_model extends CI_Model {
             ->group_by('st.student_id');
 
         if ($class_id) $this->db->where('st.class_id', $class_id);
-        if ($section_id) $this->db->where('st.division_id', $section_id);
+        if ($division_id) $this->db->where('st.division_id', $division_id);
 
         $students = $this->db->get()->result();
 
@@ -100,7 +100,7 @@ class Result_model extends CI_Model {
                 'student_id'            => $student_id,
                 'academic_year_id'      => $stu->academic_year_id,
                 'class_id'              => $stu->class_id,
-                'division_id'            => $stu->section_id,
+                'division_id'           => $stu->division_id,
                 'total_marks'           => $total_marks,
                 'max_marks'             => $max_marks,
                 'percentage'            => $percentage,
@@ -123,7 +123,7 @@ class Result_model extends CI_Model {
         }
 
         // 2. Rank Calculation Engine with Dense/Standard Competition Ties
-        $this->recalculate_ranks_for_exam($exam_id, $class_id, $section_id);
+        $this->recalculate_ranks_for_exam($exam_id, $class_id, $division_id);
 
         if ($user_id) {
             $this->Exam_audit_model->log($user_id, 'RESULT_CALCULATED', 'tbl_exams', $exam_id, "Calculated results for {$processed_count} students.");
@@ -135,7 +135,7 @@ class Result_model extends CI_Model {
     /* =========================================================================
        2. Rank Engine (Handles Ties: 1, 2, 2, 4)
        ========================================================================= */
-    public function recalculate_ranks_for_exam($exam_id, $class_id = NULL, $section_id = NULL)
+    public function recalculate_ranks_for_exam($exam_id, $class_id = NULL, $division_id = NULL)
     {
         $settings = $this->Exam_setting_model->get_settings();
         $sort_field = 'percentage';
@@ -161,11 +161,11 @@ class Result_model extends CI_Model {
         }
 
         foreach ($by_class as $c_id => $rows) {
+            $passed_count = 0;
             $rank = 1;
             $prev_score = NULL;
-            $same_rank_count = 0;
 
-            foreach ($rows as $index => $row) {
+            foreach ($rows as $row) {
                 if (!$settings->include_failed_in_rank && $row->pass_status === 'Fail') {
                     $this->db->where('result_id', $row->result_id)->update($this->table, ['class_rank' => NULL]);
                     continue;
@@ -173,39 +173,42 @@ class Result_model extends CI_Model {
 
                 $score = (float)$row->score;
                 if ($prev_score !== null && $score == $prev_score) {
-                    $same_rank_count++;
+                    // keep same rank
                 } else {
-                    $rank = $index + 1;
-                    $same_rank_count = 0;
+                    $rank = $passed_count + 1;
                 }
 
                 $this->db->where('result_id', $row->result_id)->update($this->table, ['class_rank' => $rank]);
                 $prev_score = $score;
+                $passed_count++;
             }
         }
 
-        // 2. Calculate Section-Wise Ranks
+        // 2. Calculate Division-Wise Ranks
         $this->db
-            ->select('result_id, division_id, ' . $sort_field . ' as score, pass_status')
+            ->select('result_id, class_id, division_id, ' . $sort_field . ' as score, pass_status')
             ->from($this->table)
             ->where('exam_id', $exam_id)
+            ->order_by('class_id', 'ASC')
             ->order_by('division_id', 'ASC')
             ->order_by($sort_field, 'DESC');
 
         if ($class_id) $this->db->where('class_id', $class_id);
-        if ($section_id) $this->db->where('division_id', $section_id);
+        if ($division_id) $this->db->where('division_id', $division_id);
 
-        $sec_results = $this->db->get()->result();
-        $by_section = [];
-        foreach ($sec_results as $r) {
-            $by_section[$r->division_id][] = $r;
+        $div_results = $this->db->get()->result();
+        $by_division = [];
+        foreach ($div_results as $r) {
+            $key = $r->class_id . '_' . $r->division_id;
+            $by_division[$key][] = $r;
         }
 
-        foreach ($by_section as $s_id => $rows) {
+        foreach ($by_division as $div_key => $rows) {
+            $passed_count = 0;
             $rank = 1;
             $prev_score = NULL;
 
-            foreach ($rows as $index => $row) {
+            foreach ($rows as $row) {
                 if (!$settings->include_failed_in_rank && $row->pass_status === 'Fail') {
                     $this->db->where('result_id', $row->result_id)->update($this->table, ['division_rank' => NULL]);
                     continue;
@@ -215,11 +218,12 @@ class Result_model extends CI_Model {
                 if ($prev_score !== null && $score == $prev_score) {
                     // keep same rank
                 } else {
-                    $rank = $index + 1;
+                    $rank = $passed_count + 1;
                 }
 
                 $this->db->where('result_id', $row->result_id)->update($this->table, ['division_rank' => $rank]);
                 $prev_score = $score;
+                $passed_count++;
             }
         }
     }
@@ -324,11 +328,11 @@ class Result_model extends CI_Model {
     /* =========================================================================
        4. Result Publishing & Security Locking
        ========================================================================= */
-    public function publish_results($exam_id, $class_id = NULL, $section_id = NULL, $user_id = NULL)
+    public function publish_results($exam_id, $class_id = NULL, $division_id = NULL, $user_id = NULL)
     {
         $this->db->where('exam_id', $exam_id);
         if ($class_id) $this->db->where('class_id', $class_id);
-        if ($section_id) $this->db->where('division_id', $section_id);
+        if ($division_id) $this->db->where('division_id', $division_id);
 
         $updated = $this->db->update($this->table, [
             'is_published' => 1,

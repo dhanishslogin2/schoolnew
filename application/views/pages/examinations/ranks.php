@@ -94,7 +94,7 @@
                     <?php endif; ?>
                   </td>
                   <td class="px-4 py-3 text-center font-mono text-body-md font-semibold text-on-surface-variant">
-                    <?php echo ($r->division_rank ?? $r->section_rank) ?: '—'; ?>
+                    <?php echo $r->division_rank ?: '—'; ?>
                   </td>
                   <td class="px-4 py-3 text-center font-mono font-bold text-primary whitespace-nowrap">
                     <?php echo html_escape($r->roll_number ?: '—'); ?>
