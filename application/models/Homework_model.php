@@ -50,7 +50,7 @@ class Homework_model extends CI_Model {
 
         // Attach submission counts to each assignment
         foreach ($assignments as &$asgn) {
-            $asgn->submission_stats = $this->get_submission_summary($asgn->assignment_id, $asgn->class_id, $asgn->section_id);
+            $asgn->submission_stats = $this->get_submission_summary($asgn->assignment_id, $asgn->class_id, $asgn->division_id);
         }
 
         return $assignments;
@@ -72,18 +72,22 @@ class Homework_model extends CI_Model {
             ->row();
 
         if ($asgn) {
-            $asgn->submission_stats = $this->get_submission_summary($asgn->assignment_id, $asgn->class_id, $asgn->section_id);
+            $asgn->submission_stats = $this->get_submission_summary($asgn->assignment_id, $asgn->class_id, $asgn->division_id);
         }
         return $asgn;
     }
 
-    public function get_submission_summary($assignment_id, $class_id, $section_id)
+    public function get_submission_summary($assignment_id, $class_id, $division_id = NULL)
     {
-        $total_students = (int)$this->db
+        $this->db
             ->where('class_id', $class_id)
-            ->where('division_id', $section_id)
-            ->where('status', 1)
-            ->count_all_results('tbl_students');
+            ->where('status', 1);
+
+        if (!empty($division_id)) {
+            $this->db->where('division_id', $division_id);
+        }
+
+        $total_students = (int)$this->db->count_all_results('tbl_students');
 
         $submitted = (int)$this->db
             ->where('assignment_id', $assignment_id)
@@ -135,9 +139,13 @@ class Homework_model extends CI_Model {
 
         // Total target submissions
         $total_expected = 0;
-        $active_asgns = $this->db->select('assignment_id, class_id, section_id')->where('academic_year_id', $year_id)->where('status', 'Published')->get('tbl_assignments')->result();
+        $active_asgns = $this->db->select('assignment_id, class_id, division_id')->where('academic_year_id', $year_id)->where('status', 'Published')->get('tbl_assignments')->result();
         foreach ($active_asgns as $as) {
-            $total_expected += (int)$this->db->where('class_id', $as->class_id)->where('division_id', $as->section_id)->where('status', 1)->where('academic_year_id', $year_id)->count_all_results('tbl_students');
+            $this->db->where('class_id', $as->class_id)->where('status', 1)->where('academic_year_id', $year_id);
+            if (!empty($as->division_id)) {
+                $this->db->where('division_id', $as->division_id);
+            }
+            $total_expected += (int)$this->db->count_all_results('tbl_students');
         }
         $pending = max(0, $total_expected - $submitted);
         $completion_pct = ($total_expected > 0) ? round(($submitted / $total_expected) * 100, 1) : 0;

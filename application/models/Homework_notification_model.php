@@ -14,7 +14,7 @@ class Homework_notification_model extends CI_Model {
             ->join('tbl_assignments a', 'a.assignment_id = n.assignment_id', 'left')
             ->join('tbl_students s', 's.student_id = n.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
-            ->join('tbl_divisions div', 'div.division_id = s.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = s.division_id', 'left')
             ->order_by('n.created_at', 'DESC');
 
         if (!empty($filters['assignment_id'])) $this->db->where('n.assignment_id', $filters['assignment_id']);
@@ -52,7 +52,7 @@ class Homework_notification_model extends CI_Model {
         if (!$asgn) return 0;
 
         $this->db->where('class_id', $asgn->class_id);
-        if ($asgn->section_id) $this->db->where('division_id', $asgn->section_id);
+        if (!empty($asgn->division_id)) $this->db->where('division_id', $asgn->division_id);
         $students = $this->db->where('status', 1)->get('tbl_students')->result();
 
         $count = 0;

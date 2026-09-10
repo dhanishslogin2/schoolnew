@@ -98,6 +98,23 @@ class Subject_teacher_model extends CI_Model {
         return $this->db->get()->result();
     }
 
+    public function is_assigned($academic_year_id, $class_id, $division_id, $subject_id, $staff_id)
+    {
+        $this->db
+            ->where('academic_year_id', (int)$academic_year_id)
+            ->where('class_id', (int)$class_id)
+            ->where('subject_id', (int)$subject_id)
+            ->where('staff_id', (int)$staff_id)
+            ->where('status', 1)
+            ->where('is_deleted', 'n');
+
+        if (!empty($division_id)) {
+            $this->db->where('division_id', (int)$division_id);
+        }
+
+        return ($this->db->count_all_results($this->table) > 0);
+    }
+
     public function delete($id)
     {
         return $this->db->where('subject_teacher_id', $id)->delete($this->table);

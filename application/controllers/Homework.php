@@ -82,7 +82,7 @@ class Homework extends MY_Controller {
 
         if ($this->input->post()) {
             $class_id = (int)$this->input->post('class_id');
-            $section_id = (int)$this->input->post('division_id');
+            $division_id = (int)$this->input->post('division_id');
             $subject_id = (int)$this->input->post('subject_id');
             $teacher_id = (int)$this->input->post('teacher_id');
             $status = $this->input->post('submit_action') === 'publish' ? 'Published' : 'Draft';
@@ -90,9 +90,9 @@ class Homework extends MY_Controller {
             // Teacher Subject Authorization Check (Section 6)
             $is_super = in_array($this->session->userdata('role_id'), [1, 2]); // Super Admin / Principal
             if (!$is_super && $teacher_id > 0) {
-                $is_authorized = $this->Subject_teacher_model->is_assigned($year_id, $class_id, $section_id, $subject_id, $teacher_id);
+                $is_authorized = $this->Subject_teacher_model->is_assigned($year_id, $class_id, $division_id, $subject_id, $teacher_id);
                 if (!$is_authorized) {
-                    $this->session->set_flashdata('error', 'Selected teacher is not authorized to teach this subject in the selected class/section.');
+                    $this->session->set_flashdata('error', 'Selected teacher is not authorized to teach this subject in the selected class/division.');
                     redirect('homework/create');
                     return;
                 }
@@ -135,7 +135,7 @@ class Homework extends MY_Controller {
             $asgnData = [
                 'academic_year_id'      => $year_id,
                 'class_id'              => $class_id,
-                'division_id'            => $section_id,
+                'division_id'           => $division_id,
                 'subject_id'            => $subject_id,
                 'teacher_id'            => $teacher_id,
                 'assignment_type_id'    => (int)$this->input->post('assignment_type_id'),
@@ -254,10 +254,10 @@ class Homework extends MY_Controller {
         $data['assignment'] = $assignment;
         $data['submissions'] = $this->Homework_submission_model->get_submissions(['assignment_id' => $id]);
         
-        // Roster of enrolled students in this class/section
+        // Roster of enrolled students in this class/division
         $students = $this->db
             ->where('class_id', $assignment->class_id)
-            ->where('division_id', $assignment->section_id)
+            ->where('division_id', $assignment->division_id)
             ->where('status', 1)
             ->order_by('roll_number', 'ASC')
             ->order_by('first_name', 'ASC')
@@ -334,11 +334,11 @@ class Homework extends MY_Controller {
         $this->require_permission('homework.view');
         $year_id = $this->input->get('academic_year_id') ?: $this->academic_year_id;
         $class_id = $this->input->get('class_id');
-        $section_id = $this->input->get('division_id');
+        $division_id = $this->input->get('division_id');
 
         $filters = ['academic_year_id' => $year_id];
         if ($class_id) $filters['class_id'] = $class_id;
-        if ($section_id) $filters['division_id'] = $section_id;
+        if ($division_id) $filters['division_id'] = $division_id;
 
         $data['title'] = 'Class-wise Assignments';
         $data['academic_years'] = $this->Academic_year_model->get_all();
@@ -346,7 +346,9 @@ class Homework extends MY_Controller {
         $data['classes'] = $this->Class_model->get_all($year_id);
         $data['selected_class'] = $class_id;
         $data['divisions'] = $class_id ? $this->Division_model->get_by_class($class_id) : [];
-        $data['selected_section'] = $section_id;
+        $data['sections'] = $data['divisions'];
+        $data['selected_division'] = $division_id;
+        $data['selected_section'] = $division_id;
         $data['assignments'] = $this->Homework_model->get_all($filters);
 
         $this->render('pages/homework/classes', $data);

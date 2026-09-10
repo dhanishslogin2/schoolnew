@@ -20,14 +20,14 @@ class Homework_submission_model extends CI_Model {
             ->join('tbl_assignments a', 'a.assignment_id = sub.assignment_id', 'left')
             ->join('tbl_students s', 's.student_id = sub.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
-            ->join('tbl_divisions div', 'div.division_id = s.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = s.division_id', 'left')
             ->join('tbl_subjects subj', 'subj.subject_id = a.subject_id', 'left')
             ->join('tbl_staff rev', 'rev.staff_id = sub.reviewed_by', 'left')
             ->order_by('sub.submitted_at', 'DESC');
 
         if (!empty($filters['assignment_id'])) $this->db->where('sub.assignment_id', $filters['assignment_id']);
         if (!empty($filters['class_id'])) $this->db->where('s.class_id', $filters['class_id']);
-        if (!empty($filters['division_id'])) $this->db->where('s.section_id', $filters['division_id']);
+        if (!empty($filters['division_id'])) $this->db->where('s.division_id', $filters['division_id']);
         if (!empty($filters['student_id'])) $this->db->where('sub.student_id', $filters['student_id']);
         if (!empty($filters['status'])) $this->db->where('sub.status', $filters['status']);
         if (!empty($filters['is_late'])) $this->db->where('sub.is_late', $filters['is_late']);
@@ -53,7 +53,7 @@ class Homework_submission_model extends CI_Model {
             ->join('tbl_assignments a', 'a.assignment_id = sub.assignment_id', 'left')
             ->join('tbl_students s', 's.student_id = sub.student_id', 'left')
             ->join('tbl_classes c', 'c.class_id = s.class_id', 'left')
-            ->join('tbl_divisions div', 'div.division_id = s.section_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = s.division_id', 'left')
             ->join('tbl_subjects subj', 'subj.subject_id = a.subject_id', 'left')
             ->join('tbl_staff rev', 'rev.staff_id = sub.reviewed_by', 'left')
             ->join('tbl_staff t', 't.staff_id = a.teacher_id', 'left')
