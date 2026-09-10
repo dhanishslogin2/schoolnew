@@ -68,10 +68,23 @@ class Fee_model extends CI_Model {
         $due_stu_res = $this->db->get('tbl_student_fees')->row();
         $students_with_dues = ($due_stu_res) ? (int)$due_stu_res->cnt : 0;
 
-        // 7. Number of Fully Paid Students
-        $this->db->select('COUNT(DISTINCT student_id) as cnt')->where('payment_status', 'Paid')->where('status', 1);
-        if ($academic_year_id) $this->db->where('academic_year_id', $academic_year_id);
-        $paid_stu_res = $this->db->get('tbl_student_fees')->row();
+        // 7. Number of Fully Paid Students (Students with active assigned fees in the academic year and ZERO outstanding dues)
+        $this->db->select('COUNT(DISTINCT sf1.student_id) as cnt')
+                 ->from('tbl_student_fees sf1')
+                 ->where('sf1.status', 1)
+                 ->where('sf1.is_deleted', 'n');
+        if ($academic_year_id) {
+            $this->db->where('sf1.academic_year_id', $academic_year_id);
+        }
+        $this->db->where("NOT EXISTS (
+            SELECT 1 FROM tbl_student_fees sf2 
+            WHERE sf2.student_id = sf1.student_id 
+              AND sf2.status = 1 
+              AND sf2.is_deleted = 'n' 
+              " . ($academic_year_id ? "AND sf2.academic_year_id = " . (int)$academic_year_id : "") . "
+              AND sf2.due_amount > 0
+        )", NULL, FALSE);
+        $paid_stu_res = $this->db->get()->row();
         $fully_paid_students = ($paid_stu_res) ? (int)$paid_stu_res->cnt : 0;
 
         return array(
@@ -199,7 +212,19 @@ class Fee_model extends CI_Model {
             $this->db->where('fs.fee_head_id', $filters['fee_head_id']);
         }
         if (!empty($filters['payment_status'])) {
-            $this->db->where('sf.payment_status', $filters['payment_status']);
+            if ($filters['payment_status'] === 'Fully Paid') {
+                $this->db->where('sf.due_amount', 0);
+                $this->db->where("NOT EXISTS (
+                    SELECT 1 FROM tbl_student_fees sf_due 
+                    WHERE sf_due.student_id = sf.student_id 
+                      AND sf_due.status = 1 
+                      AND sf_due.is_deleted = 'n' 
+                      " . (!empty($filters['academic_year_id']) ? "AND sf_due.academic_year_id = " . (int)$filters['academic_year_id'] : "") . "
+                      AND sf_due.due_amount > 0
+                )", NULL, FALSE);
+            } else {
+                $this->db->where('sf.payment_status', $filters['payment_status']);
+            }
         }
         if (!empty($filters['search'])) {
             $s = trim($filters['search']);
@@ -677,6 +702,58 @@ class Fee_model extends CI_Model {
         }
 
         return $this->db->count_all_results();
+    }
+
+    public function get_filtered_payments_total($filters = array())
+    {
+        $this->db
+            ->select('COALESCE(SUM(fp.amount_paid), 0.00) as total_amount, COUNT(DISTINCT fp.student_id) as total_students, COUNT(fp.payment_id) as total_transactions')
+            ->from('tbl_fee_payments fp')
+            ->join('tbl_students st', 'st.student_id = fp.student_id', 'inner')
+            ->join('tbl_student_fees sf', 'sf.student_fee_id = fp.student_fee_id', 'left')
+            ->join('tbl_fee_structures fs', 'fs.fee_structure_id = sf.fee_structure_id', 'left')
+            ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'left')
+            ->join('tbl_classes c', 'c.class_id = st.class_id', 'left')
+            ->join('tbl_divisions div', 'div.division_id = st.division_id', 'left')
+            ->where('fp.is_deleted', 'n')
+            ->where('fp.status', 1);
+
+        if (!empty($filters['academic_year_id'])) {
+            $this->db->where('sf.academic_year_id', (int)$filters['academic_year_id']);
+        }
+        if (!empty($filters['student_id'])) {
+            $this->db->where('fp.student_id', (int)$filters['student_id']);
+        }
+        if (!empty($filters['class_id'])) {
+            $this->db->where('st.class_id', (int)$filters['class_id']);
+        }
+        if (!empty($filters['payment_mode'])) {
+            $this->db->where('fp.payment_mode', $filters['payment_mode']);
+        }
+        if (!empty($filters['date_from'])) {
+            $this->db->where('fp.payment_date >=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $this->db->where('fp.payment_date <=', $filters['date_to']);
+        }
+        if (!empty($filters['search'])) {
+            $s = trim($filters['search']);
+            $this->db->group_start()
+                     ->like('st.first_name', $s)
+                     ->or_like('st.last_name', $s)
+                     ->or_like('fp.receipt_no', $s)
+                     ->or_like('st.admission_number', $s)
+                     ->or_like('fp.transaction_reference', $s)
+                     ->or_like('fh.head_name', $s)
+                     ->group_end();
+        }
+
+        $res = $this->db->get()->row();
+        return array(
+            'total_amount'       => ($res && $res->total_amount) ? (float)$res->total_amount : 0.00,
+            'total_students'     => ($res && $res->total_students) ? (int)$res->total_students : 0,
+            'total_transactions' => ($res && $res->total_transactions) ? (int)$res->total_transactions : 0,
+        );
     }
 
     public function get_payments_datatables($filters = array(), $limit = 25, $start = 0, $order_col = 'fp.payment_id', $order_dir = 'DESC')

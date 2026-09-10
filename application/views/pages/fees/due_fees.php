@@ -44,6 +44,7 @@
     <!-- Filter Bar -->
     <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-4 mb-6">
       <form method="get" action="<?php echo site_url('fees/due_fees'); ?>" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <input type="hidden" name="academic_year_id" value="<?php echo html_escape($filters['academic_year_id'] ?? ''); ?>"/>
         <input type="hidden" name="status" value="<?php echo html_escape($filters['status'] ?? ''); ?>"/>
 
         <div>
@@ -83,7 +84,8 @@
     <!-- Due Fees Table -->
     <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 overflow-hidden mb-6">
       <div class="p-4 border-b border-outline-variant/50 flex items-center justify-between">
-        <span class="text-body-md font-semibold text-on-surface">Outstanding Due Records (<?php echo count($due_fees); ?>)</span>
+        <?php $unique_due_students = count(array_unique(array_column($due_fees, 'student_id'))); ?>
+        <span class="text-body-md font-semibold text-on-surface">Outstanding Due Records (<?php echo count($due_fees); ?> records across <?php echo $unique_due_students; ?> students)</span>
       </div>
 
       <div class="table-scroll overflow-x-auto">

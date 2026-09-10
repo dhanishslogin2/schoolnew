@@ -80,24 +80,56 @@
       </div>
     </div>
 
+    <?php
+      $today_date = date('Y-m-d');
+      $month_start_date = date('Y-m-01');
+      $ay_id = !empty($selected_year_id) ? (int)$selected_year_id : (int)($current_academic_year_id ?? 1);
+    ?>
     <!-- 2. Collection Velocity & Student Metrics -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-      <div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 text-center">
-        <div class="text-xl font-bold font-mono text-primary">₹<?php echo number_format($metrics['today_collection'], 2); ?></div>
-        <div class="text-[12px] text-on-surface-variant mt-0.5">Today's Collection</div>
-      </div>
-      <div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 text-center">
-        <div class="text-xl font-bold font-mono text-secondary">₹<?php echo number_format($metrics['monthly_collection'], 2); ?></div>
-        <div class="text-[12px] text-on-surface-variant mt-0.5">This Month's Collection</div>
-      </div>
-      <div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 text-center">
-        <div class="text-xl font-bold font-mono text-amber-800"><?php echo $metrics['students_with_dues']; ?> Students</div>
-        <div class="text-[12px] text-on-surface-variant mt-0.5">Students with Dues</div>
-      </div>
-      <div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 text-center">
-        <div class="text-xl font-bold font-mono text-emerald-700"><?php echo $metrics['fully_paid_students']; ?> Students</div>
-        <div class="text-[12px] text-on-surface-variant mt-0.5">Fully Paid Students</div>
-      </div>
+      <!-- 1. Today's Collection -->
+      <a href="<?php echo site_url('fees/payments?date_from=' . $today_date . '&date_to=' . $today_date . '&academic_year_id=' . $ay_id); ?>" 
+         class="block p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 text-center hover:border-primary/50 hover:elevation-2 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all cursor-pointer group"
+         title="View Today's Fee Collections">
+        <div class="text-xl font-bold font-mono text-primary group-hover:underline">₹<?php echo number_format($metrics['today_collection'], 2); ?></div>
+        <div class="text-[12px] text-on-surface-variant mt-0.5 flex items-center justify-center gap-1">
+          <span>Today's Collection</span>
+          <span class="material-symbols-outlined text-[14px] text-primary opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+        </div>
+      </a>
+
+      <!-- 2. This Month's Collection -->
+      <a href="<?php echo site_url('fees/payments?date_from=' . $month_start_date . '&date_to=' . $today_date . '&academic_year_id=' . $ay_id); ?>" 
+         class="block p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 text-center hover:border-secondary/50 hover:elevation-2 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-secondary/40 transition-all cursor-pointer group"
+         title="View This Month's Fee Collections">
+        <div class="text-xl font-bold font-mono text-secondary group-hover:underline">₹<?php echo number_format($metrics['monthly_collection'], 2); ?></div>
+        <div class="text-[12px] text-on-surface-variant mt-0.5 flex items-center justify-center gap-1">
+          <span>This Month's Collection</span>
+          <span class="material-symbols-outlined text-[14px] text-secondary opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+        </div>
+      </a>
+
+      <!-- 3. Students with Dues -->
+      <a href="<?php echo site_url('fees/due_fees?academic_year_id=' . $ay_id); ?>" 
+         class="block p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 text-center hover:border-amber-800/50 hover:elevation-2 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-amber-800/40 transition-all cursor-pointer group"
+         title="View Students with Outstanding Dues">
+        <div class="text-xl font-bold font-mono text-amber-800 group-hover:underline"><?php echo $metrics['students_with_dues']; ?> <?php echo ($metrics['students_with_dues'] == 1) ? 'Student' : 'Students'; ?></div>
+        <div class="text-[12px] text-on-surface-variant mt-0.5 flex items-center justify-center gap-1">
+          <span>Students with Dues</span>
+          <span class="material-symbols-outlined text-[14px] text-amber-800 opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+        </div>
+      </a>
+
+      <!-- 4. Fully Paid Students -->
+      <a href="<?php echo site_url('fees/student_fees?payment_status=Fully Paid&academic_year_id=' . $ay_id); ?>" 
+         class="block p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 text-center hover:border-emerald-700/50 hover:elevation-2 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-emerald-700/40 transition-all cursor-pointer group"
+         title="View Fully Paid Students (Zero Balance)">
+        <div class="text-xl font-bold font-mono text-emerald-700 group-hover:underline"><?php echo $metrics['fully_paid_students']; ?> <?php echo ($metrics['fully_paid_students'] == 1) ? 'Student' : 'Students'; ?></div>
+        <div class="text-[12px] text-on-surface-variant mt-0.5 flex items-center justify-center gap-1">
+          <span>Fully Paid Students</span>
+          <span class="material-symbols-outlined text-[14px] text-emerald-700 opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+        </div>
+      </a>
     </div>
 
     <!-- 3. Collection Summary & Outstanding Breakdown -->

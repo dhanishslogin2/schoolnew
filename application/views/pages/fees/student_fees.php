@@ -30,6 +30,8 @@
     <!-- Filter Bar -->
     <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-4 mb-6">
       <form method="get" action="<?php echo site_url('fees/student_fees'); ?>" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <input type="hidden" name="academic_year_id" value="<?php echo html_escape($filters['academic_year_id'] ?? ''); ?>"/>
+
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Class</label>
           <select name="class_id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
@@ -70,9 +72,10 @@
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Status</label>
           <select name="payment_status" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
             <option value="">All Statuses</option>
+            <option value="Fully Paid" <?php echo ($filters['payment_status'] === 'Fully Paid') ? 'selected' : ''; ?>>Fully Paid (Zero Balance)</option>
+            <option value="Paid" <?php echo ($filters['payment_status'] === 'Paid') ? 'selected' : ''; ?>>Paid</option>
             <option value="Pending" <?php echo ($filters['payment_status'] === 'Pending') ? 'selected' : ''; ?>>Pending</option>
             <option value="Partially Paid" <?php echo ($filters['payment_status'] === 'Partially Paid') ? 'selected' : ''; ?>>Partially Paid</option>
-            <option value="Paid" <?php echo ($filters['payment_status'] === 'Paid') ? 'selected' : ''; ?>>Paid</option>
             <option value="Overdue" <?php echo ($filters['payment_status'] === 'Overdue') ? 'selected' : ''; ?>>Overdue</option>
           </select>
         </div>
@@ -90,7 +93,8 @@
     <!-- Student Fees Table -->
     <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 overflow-hidden mb-6">
       <div class="p-4 border-b border-outline-variant/50 flex items-center justify-between">
-        <span class="text-body-md font-semibold text-on-surface">Assigned Fee Invoices (<?php echo count($fees); ?>)</span>
+        <?php $unique_students_count = count(array_unique(array_column($fees, 'student_id'))); ?>
+        <span class="text-body-md font-semibold text-on-surface">Assigned Fee Invoices (<?php echo count($fees); ?> invoices across <?php echo $unique_students_count; ?> students)</span>
       </div>
 
       <div class="table-scroll overflow-x-auto">

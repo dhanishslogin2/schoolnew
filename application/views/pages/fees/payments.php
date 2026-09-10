@@ -24,6 +24,8 @@
     <!-- Filter Bar -->
     <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 p-4 mb-6">
       <form method="get" action="<?php echo site_url('fees/payments'); ?>" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <input type="hidden" name="academic_year_id" value="<?php echo html_escape($filters['academic_year_id'] ?? ''); ?>"/>
+
         <div>
           <label class="block font-label-md text-label-md text-on-surface mb-1 font-medium">Class</label>
           <select name="class_id" onchange="this.form.submit()" class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
@@ -68,6 +70,39 @@
       </form>
     </div>
 
+    <?php if (isset($summary)): ?>
+      <!-- Filter Summary Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 flex items-center justify-between">
+          <div>
+            <span class="text-label-md font-medium text-on-surface-variant block">Total Collection Amount</span>
+            <span class="text-xl font-bold font-mono text-secondary">₹<?php echo number_format($summary['total_amount'], 2); ?></span>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center text-secondary">
+            <span class="material-symbols-outlined text-[20px]">payments</span>
+          </div>
+        </div>
+        <div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 flex items-center justify-between">
+          <div>
+            <span class="text-label-md font-medium text-on-surface-variant block">Payments Recorded</span>
+            <span class="text-xl font-bold font-mono text-on-surface"><?php echo (int)$summary['total_transactions']; ?> Transactions</span>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
+            <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+          </div>
+        </div>
+        <div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/50 elevation-1 flex items-center justify-between">
+          <div>
+            <span class="text-label-md font-medium text-on-surface-variant block">Students Represented</span>
+            <span class="text-xl font-bold font-mono text-on-surface"><?php echo (int)$summary['total_students']; ?> Students</span>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+            <span class="material-symbols-outlined text-[20px]">group</span>
+          </div>
+        </div>
+      </div>
+    <?php endif; ?>
+
     <!-- Payments Table -->
     <div class="elevation-1 rounded-xl bg-surface-container-lowest border border-outline-variant/50 overflow-hidden mb-6">
       <div class="table-scroll overflow-x-auto p-2">
@@ -104,11 +139,12 @@
               url: '<?php echo site_url('fees/ajax_payments_list'); ?>',
               type: 'POST',
               data: function(d) {
-                d.class_id     = '<?php echo html_escape($filters['class_id'] ?? ''); ?>';
-                d.payment_mode = '<?php echo html_escape($filters['payment_mode'] ?? ''); ?>';
-                d.date_from    = '<?php echo html_escape($filters['date_from'] ?? ''); ?>';
-                d.date_to      = '<?php echo html_escape($filters['date_to'] ?? ''); ?>';
-                d.search       = { value: '<?php echo html_escape($filters['search'] ?? ''); ?>' };
+                d.academic_year_id = '<?php echo html_escape($filters['academic_year_id'] ?? ''); ?>';
+                d.class_id         = '<?php echo html_escape($filters['class_id'] ?? ''); ?>';
+                d.payment_mode     = '<?php echo html_escape($filters['payment_mode'] ?? ''); ?>';
+                d.date_from        = '<?php echo html_escape($filters['date_from'] ?? ''); ?>';
+                d.date_to          = '<?php echo html_escape($filters['date_to'] ?? ''); ?>';
+                d.search           = { value: '<?php echo html_escape($filters['search'] ?? ''); ?>' };
               }
             },
             columns: [

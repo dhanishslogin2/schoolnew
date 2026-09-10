@@ -494,12 +494,14 @@ class Fees extends MY_Controller {
 
         $payments = $this->Fee_model->get_payments($filters);
         $classes = $this->Class_model->get_all($filters['academic_year_id']);
+        $summary = $this->Fee_model->get_filtered_payments_total($filters);
 
         $this->render('pages/fees/payments', array(
             'title'    => 'Payment Transaction History',
             'page_key' => 'payment-history',
             'payments' => $payments,
             'classes'  => $classes,
+            'summary'  => $summary,
             'filters'  => $filters,
         ));
     }
