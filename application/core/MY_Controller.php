@@ -269,7 +269,7 @@ class MY_Controller extends CI_Controller {
                     return 'classes';
                 case 'divisions':
                 case 'sections':
-                    return 'academics-divisions';
+                    return 'divisions';
                 case 'subjects':
                     return 'subjects';
                 case 'class_teachers':

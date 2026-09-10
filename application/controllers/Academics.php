@@ -617,7 +617,7 @@ class Academics extends MY_Controller {
         $groups    = $this->Academic_group_model->get_all();
         $this->render('pages/academics/divisions', array(
             'title'      => 'Divisions',
-            'page_key'   => 'academics-divisions',
+            'page_key'   => 'divisions',
             'breadcrumb' => array('Academic Management', 'Divisions'),
             'divisions'  => $divisions,
             'sections'   => $divisions,

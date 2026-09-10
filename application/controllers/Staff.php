@@ -202,7 +202,7 @@ class Staff extends MY_Controller {
 
         $this->render('pages/staff/non_teaching', array(
             'title'        => 'Non-Teaching Staff',
-            'page_key'     => 'non_teaching',
+            'page_key'     => 'non-teaching-staff',
             'breadcrumb'   => array('Staff Management', 'All Staff', 'Non-Teaching Staff'),
             'staff'        => $staff,
             'departments'  => $departments,
@@ -702,7 +702,7 @@ class Staff extends MY_Controller {
 
         $this->render('pages/staff/profile', array(
             'title'             => 'Staff Profile: ' . $staff->full_name,
-            'page_key'          => 'staff_profile',
+            'page_key'          => ($staff->staff_type === 'teacher') ? 'teachers' : 'non-teaching-staff',
             'breadcrumb'        => array('Staff Management', 'Staff Profile'),
             'staff'             => $staff,
             'staff_id'          => $staff_id,
@@ -752,7 +752,7 @@ class Staff extends MY_Controller {
 
         $this->render('pages/staff/departments_designations', array(
             'title'        => 'Departments & Designations',
-            'page_key'     => 'departments_designations',
+            'page_key'     => 'designations',
             'breadcrumb'   => array('Staff Management', 'Departments & Designations'),
             'departments'  => $departments,
             'designations' => $designations,
