@@ -65,9 +65,8 @@
             <select name="fee_structure_id" id="ind-struct-select" onchange="updateStructureAmount(this)" required class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
               <option value="">-- Choose Fee Structure --</option>
               <?php foreach ($structures as $fs): ?>
-                <?php $cd_label = $fs->class_name . (!empty($fs->division_name) ? ' - ' . $fs->division_name : ''); ?>
                 <option value="<?php echo $fs->fee_structure_id; ?>" data-amount="<?php echo $fs->amount; ?>" data-due="<?php echo $fs->due_date; ?>">
-                  <?php echo html_escape($fs->category_name . ' - ' . $cd_label . ' (₹' . number_format($fs->amount, 2) . ')'); ?>
+                  <?php echo html_escape($fs->category_name . ' - ' . $fs->class_name . ' (₹' . number_format($fs->amount, 2) . ')'); ?>
                 </option>
               <?php endforeach; ?>
             </select>
@@ -198,9 +197,8 @@
             <select name="fee_structure_id" id="bulk-fee-structure-id" onchange="onBulkFeeStructureChange()" required class="w-full px-3.5 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary">
               <option value="">-- Choose Fee Structure --</option>
               <?php foreach ($structures as $fs): ?>
-                <?php $cd_label = $fs->class_name . (!empty($fs->division_name) ? ' - ' . $fs->division_name : ''); ?>
                 <option value="<?php echo $fs->fee_structure_id; ?>">
-                  <?php echo html_escape($fs->category_name . ' - ' . $cd_label . ' (₹' . number_format($fs->amount, 2) . ' - Due: ' . date('d M Y', strtotime($fs->due_date)) . ')'); ?>
+                  <?php echo html_escape($fs->category_name . ' - ' . $fs->class_name . ' (₹' . number_format($fs->amount, 2) . ' - Due: ' . date('d M Y', strtotime($fs->due_date)) . ')'); ?>
                 </option>
               <?php endforeach; ?>
             </select>

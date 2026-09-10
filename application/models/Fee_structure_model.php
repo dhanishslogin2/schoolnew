@@ -5,12 +5,11 @@ class Fee_structure_model extends CI_Model {
 
     public function get_all($filters = array())
     {
-        $this->db->select('fs.*, fh.head_name as category_name, fh.category_code, ay.year_name, c.class_name, div.division_name, ag.academic_group_id, ag.group_name')
+        $this->db->select('fs.*, fh.head_name as category_name, fh.category_code, ay.year_name, c.class_name, ag.academic_group_id, ag.group_name')
                  ->from('tbl_fee_structures fs')
                  ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'inner')
                  ->join('tbl_academic_years ay', 'ay.academic_year_id = fs.academic_year_id', 'left')
                  ->join('tbl_classes c', 'c.class_id = fs.class_id', 'left')
-                 ->join('tbl_divisions div', 'div.division_id = fs.division_id', 'left')
                  ->join('tbl_academic_groups ag', 'ag.academic_group_id = c.academic_group_id', 'left')
                  ->where('fs.is_deleted', 'n');
 
@@ -19,9 +18,6 @@ class Fee_structure_model extends CI_Model {
         }
         if (!empty($filters['class_id'])) {
             $this->db->where('fs.class_id', (int)$filters['class_id']);
-        }
-        if (!empty($filters['division_id'])) {
-            $this->db->where('fs.division_id', (int)$filters['division_id']);
         }
         if (!empty($filters['academic_group_id'])) {
             $this->db->where('c.academic_group_id', (int)$filters['academic_group_id']);
@@ -35,7 +31,6 @@ class Fee_structure_model extends CI_Model {
 
         return $this->db->order_by('ag.display_order', 'ASC')
                         ->order_by('c.class_id', 'ASC')
-                        ->order_by('div.division_name', 'ASC')
                         ->order_by('fh.head_name', 'ASC')
                         ->get()
                         ->result();
@@ -43,12 +38,11 @@ class Fee_structure_model extends CI_Model {
 
     public function get_by_id($id)
     {
-        return $this->db->select('fs.*, fh.head_name as category_name, fh.category_code, ay.year_name, c.class_name, div.division_name, ag.academic_group_id, ag.group_name')
+        return $this->db->select('fs.*, fh.head_name as category_name, fh.category_code, ay.year_name, c.class_name, ag.academic_group_id, ag.group_name')
                         ->from('tbl_fee_structures fs')
                         ->join('tbl_fee_heads fh', 'fh.fee_head_id = fs.fee_head_id', 'inner')
                         ->join('tbl_academic_years ay', 'ay.academic_year_id = fs.academic_year_id', 'left')
                         ->join('tbl_classes c', 'c.class_id = fs.class_id', 'left')
-                        ->join('tbl_divisions div', 'div.division_id = fs.division_id', 'left')
                         ->join('tbl_academic_groups ag', 'ag.academic_group_id = c.academic_group_id', 'left')
                         ->where('fs.fee_structure_id', (int)$id)
                         ->where('fs.is_deleted', 'n')
@@ -56,21 +50,12 @@ class Fee_structure_model extends CI_Model {
                         ->row();
     }
 
-    public function is_duplicate($fee_head_id, $academic_year_id, $class_id, $division_id = null, $exclude_id = 0)
+    public function is_duplicate($fee_head_id, $academic_year_id, $class_id, $exclude_id = 0)
     {
         $this->db->where('fee_head_id', (int)$fee_head_id)
                  ->where('academic_year_id', (int)$academic_year_id)
                  ->where('class_id', (int)$class_id)
                  ->where('is_deleted', 'n');
-
-        if ($division_id !== null && (int)$division_id > 0) {
-            $this->db->where('division_id', (int)$division_id);
-        } else {
-            $this->db->group_start()
-                     ->where('division_id IS NULL', null, false)
-                     ->or_where('division_id', 0)
-                     ->group_end();
-        }
 
         if ($exclude_id > 0) {
             $this->db->where('fee_structure_id !=', (int)$exclude_id);
@@ -80,14 +65,14 @@ class Fee_structure_model extends CI_Model {
     }
 
     /**
-     * Bulk create fee structures for multiple class & division combinations.
+     * Bulk create fee structures for target classes.
      * Skips existing duplicates and creates missing records within a transaction.
      *
      * @param array $base_data Base template fields (fee_head_id, academic_year_id, amount, frequency, due_date, etc.)
-     * @param array $combinations Array of array('class_id' => X, 'division_id' => Y)
+     * @param array $target_classes Array of class objects or class IDs
      * @return array ['created' => int, 'skipped' => int, 'created_ids' => array]
      */
-    public function bulk_create_structures($base_data, $combinations)
+    public function bulk_create_structures($base_data, $target_classes)
     {
         $this->db->trans_start();
 
@@ -95,22 +80,20 @@ class Fee_structure_model extends CI_Model {
         $skipped_count = 0;
         $created_ids = array();
 
-        foreach ($combinations as $combo) {
-            $class_id = (int)$combo['class_id'];
-            $division_id = !empty($combo['division_id']) ? (int)$combo['division_id'] : null;
+        foreach ($target_classes as $target) {
+            $class_id = is_object($target) ? (int)$target->class_id : (is_array($target) ? (int)$target['class_id'] : (int)$target);
 
             if ($class_id <= 0) {
                 continue;
             }
 
-            if ($this->is_duplicate($base_data['fee_head_id'], $base_data['academic_year_id'], $class_id, $division_id)) {
+            if ($this->is_duplicate($base_data['fee_head_id'], $base_data['academic_year_id'], $class_id)) {
                 $skipped_count++;
                 continue;
             }
 
             $record = $base_data;
             $record['class_id'] = $class_id;
-            $record['division_id'] = $division_id;
             $record['created_at'] = date('Y-m-d H:i:s');
 
             $this->db->insert('tbl_fee_structures', $record);
@@ -155,4 +138,3 @@ class Fee_structure_model extends CI_Model {
         return $this->db->where('fee_structure_id', (int)$id)->update('tbl_fee_structures', ['is_deleted' => 'y']);
     }
 }
-

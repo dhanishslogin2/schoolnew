@@ -157,11 +157,10 @@ class Fees extends MY_Controller {
                 redirect('fees/structures');
             }
 
-            // --- ADD MODE: Bulk generation across Session / Class / Division ---
+            // --- ADD MODE: Generation across Session / Class ---
             if ($struct_id === 0) {
                 $academic_group_id = (int)$this->input->post('academic_group_id');
                 $raw_class_id = trim($this->input->post('class_id'));
-                $raw_division_id = trim($this->input->post('division_id'));
 
                 if ($academic_group_id <= 0) {
                     $this->session->set_flashdata('error', 'Please select a session/group.');
@@ -176,11 +175,6 @@ class Fees extends MY_Controller {
 
                 if ($raw_class_id === '') {
                     $this->session->set_flashdata('error', 'Please select a class.');
-                    redirect('fees/structures');
-                }
-
-                if ($raw_division_id === '') {
-                    $this->session->set_flashdata('error', 'Please select a division.');
                     redirect('fees/structures');
                 }
 
@@ -201,50 +195,6 @@ class Fees extends MY_Controller {
                     $target_classes = array($cls);
                 }
 
-                // 2. Resolve combinations of (class_id, division_id)
-                $combinations = array();
-                foreach ($target_classes as $c) {
-                    $cid = (int)$c->class_id;
-                    $divs = $this->Division_model->get_all($cid);
-
-                    if ($raw_division_id === 'all') {
-                        if (empty($divs)) {
-                            $combinations[] = array('class_id' => $cid, 'division_id' => NULL);
-                        } else {
-                            foreach ($divs as $d) {
-                                $combinations[] = array('class_id' => $cid, 'division_id' => (int)$d->division_id);
-                            }
-                        }
-                    } elseif (strpos($raw_division_id, 'name:') === 0) {
-                        $target_div_name = trim(substr($raw_division_id, 5));
-                        foreach ($divs as $d) {
-                            if (strcasecmp(trim($d->division_name), $target_div_name) === 0) {
-                                $combinations[] = array('class_id' => $cid, 'division_id' => (int)$d->division_id);
-                                break;
-                            }
-                        }
-                    } else {
-                        $target_div_id = (int)$raw_division_id;
-                        $found = false;
-                        foreach ($divs as $d) {
-                            if ((int)$d->division_id === $target_div_id) {
-                                $combinations[] = array('class_id' => $cid, 'division_id' => $target_div_id);
-                                $found = true;
-                                break;
-                            }
-                        }
-                        if (!$found && count($target_classes) === 1) {
-                            $this->session->set_flashdata('error', 'The selected division does not belong to the selected class.');
-                            redirect('fees/structures');
-                        }
-                    }
-                }
-
-                if (empty($combinations)) {
-                    $this->session->set_flashdata('error', 'No matching class and division combinations could be determined.');
-                    redirect('fees/structures');
-                }
-
                 $base_data = array(
                     'fee_head_id'      => $fee_head_id,
                     'academic_year_id' => $academic_year_id,
@@ -257,7 +207,7 @@ class Fees extends MY_Controller {
                     'status'           => $status,
                 );
 
-                $result = $this->Fee_structure_model->bulk_create_structures($base_data, $combinations);
+                $result = $this->Fee_structure_model->bulk_create_structures($base_data, $target_classes);
                 $created = $result['created'];
                 $skipped = $result['skipped'];
 
@@ -266,7 +216,7 @@ class Fees extends MY_Controller {
                         'FEE_STRUCTURE_CREATED',
                         'tbl_fee_structures',
                         0,
-                        "Bulk created {$created} fee structure(s), skipped {$skipped} existing."
+                        "Created {$created} class-level fee structure(s), skipped {$skipped} existing."
                     );
                     $msg = "Fee structures processed successfully. Created: {$created}";
                     if ($skipped > 0) {
@@ -274,18 +224,16 @@ class Fees extends MY_Controller {
                     }
                     $this->session->set_flashdata('success', $msg);
                 } else {
-                    $this->session->set_flashdata('warning', "No new fee structures were created. All {$skipped} combination(s) already exist.");
+                    $this->session->set_flashdata('warning', "No new fee structures were created. All {$skipped} class(es) already have this fee structure.");
                 }
                 redirect('fees/structures');
             }
 
             // --- EDIT MODE: Single structure update ---
             $class_id = (int)$this->input->post('class_id');
-            $raw_division_id = $this->input->post('division_id');
-            $division_id = ($raw_division_id !== '' && $raw_division_id !== 'all' && $raw_division_id !== null) ? (int)$raw_division_id : null;
 
-            if ($this->Fee_structure_model->is_duplicate($fee_head_id, $academic_year_id, $class_id, $division_id, $struct_id)) {
-                $this->session->set_flashdata('error', 'A fee structure for this Category, Class, Division, and Academic Year already exists.');
+            if ($this->Fee_structure_model->is_duplicate($fee_head_id, $academic_year_id, $class_id, $struct_id)) {
+                $this->session->set_flashdata('error', 'A fee structure for this Category, Class, and Academic Year already exists.');
                 redirect('fees/structures');
             }
 
@@ -293,7 +241,6 @@ class Fees extends MY_Controller {
                 'fee_head_id'      => $fee_head_id,
                 'academic_year_id' => $academic_year_id,
                 'class_id'         => $class_id,
-                'division_id'      => $division_id,
                 'amount'           => $amount,
                 'frequency'        => $frequency,
                 'due_date'         => $due_date,
@@ -308,7 +255,7 @@ class Fees extends MY_Controller {
                 'FEE_STRUCTURE_UPDATED',
                 'tbl_fee_structures',
                 $struct_id,
-                "Updated fee structure ID {$struct_id} for Class ID {$class_id}, Amount ₹{$amount}"
+                "Updated class-level fee structure ID {$struct_id} for Class ID {$class_id}, Amount ₹{$amount}"
             );
 
             $this->session->set_flashdata('success', 'Fee structure updated successfully.');
@@ -1103,69 +1050,6 @@ class Fees extends MY_Controller {
 
         $classes = $this->Class_model->get_by_group((int)$group_id, $academic_year_id);
         echo json_encode(array('status' => true, 'classes' => $classes));
-    }
-
-    /**
-     * AJAX endpoint: Get divisions for Fee Structure modal based on group & class selection.
-     */
-    public function ajax_get_divisions_for_structure()
-    {
-        header('Content-Type: application/json');
-        $academic_group_id = (int)($this->input->get('academic_group_id') ?: $this->input->post('academic_group_id'));
-        $class_id = trim($this->input->get('class_id') ?: $this->input->post('class_id'));
-        $academic_year_id = (int)($this->input->get('academic_year_id') ?: $this->academic_year_id);
-
-        if (empty($class_id) || empty($academic_group_id)) {
-            echo json_encode(array('status' => false, 'divisions' => array()));
-            return;
-        }
-
-        if ($class_id === 'all') {
-            // Find distinct divisions across all classes in this group
-            $classes = $this->Class_model->get_by_group($academic_group_id, $academic_year_id);
-            $div_names = array();
-            foreach ($classes as $c) {
-                $divs = $this->Division_model->get_all((int)$c->class_id);
-                foreach ($divs as $d) {
-                    $name = trim($d->division_name);
-                    if ($name !== '' && !in_array($name, $div_names)) {
-                        $div_names[] = $name;
-                    }
-                }
-            }
-            sort($div_names);
-
-            $divisions = array();
-            foreach ($div_names as $name) {
-                $divisions[] = array(
-                    'division_id'   => 'name:' . $name,
-                    'division_name' => 'Division ' . $name
-                );
-            }
-
-            echo json_encode(array(
-                'status'    => true,
-                'mode'      => 'all_classes',
-                'divisions' => $divisions
-            ));
-            return;
-        }
-
-        // Specific class
-        $divs = $this->Division_model->get_all((int)$class_id);
-        $divisions = array();
-        foreach ($divs as $d) {
-            $divisions[] = array(
-                'division_id'   => $d->division_id,
-                'division_name' => $d->division_name
-            );
-        }
-
-        echo json_encode(array(
-            'status'    => true,
-            'mode'      => 'single_class',
-            'divisions' => $divisions
-        ));
     }
 }
 
